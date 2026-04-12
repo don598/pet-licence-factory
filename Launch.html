@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Pet Licence Factory — Launcher</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#000d00;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;gap:32px;padding:40px 20px}
+    h1{color:#00ff41;font-size:clamp(10px,2vw,18px);text-align:center;text-shadow:0 0 12px #00ff41;letter-spacing:2px;line-height:2}
+    .sub{color:#006600;font-size:clamp(6px,1vw,9px);text-align:center;margin-top:-16px}
+    .btn-row{display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+    a.launch-btn{display:flex;flex-direction:column;align-items:center;gap:10px;background:#001200;border:2px solid #00aa22;color:#00ff41;font-family:'Press Start 2P',monospace;font-size:clamp(7px,1.2vw,12px);padding:28px 40px;text-decoration:none;border-radius:4px;transition:all .15s;box-shadow:0 0 12px rgba(0,255,65,.15);min-width:200px}
+    a.launch-btn:hover{background:#002200;border-color:#00ff41;box-shadow:0 0 24px rgba(0,255,65,.4);transform:translateY(-2px)}
+    a.launch-btn:active{transform:translateY(1px);box-shadow:none}
+    .btn-icon{font-size:2em}
+    .btn-label{letter-spacing:1px}
+    .btn-sub{color:#006600;font-size:clamp(5px,.8vw,7px);margin-top:2px}
+    .tip{color:#004400;font-size:clamp(5px,.7vw,7px);text-align:center;max-width:500px;line-height:2.2;border:1px solid #002200;padding:12px 20px;border-radius:3px}
+    .tip span{color:#008800}
+  </style>
+</head>
+<body>
+  <h1>🐾 PET LICENCE FACTORY</h1>
+  <p class="sub">LOCAL PREVIEW LAUNCHER</p>
+
+  <div class="btn-row">
+    <a class="launch-btn" href="public/index.html" target="_blank" onclick="this.href='public/index.html?v='+Date.now()" style="border-color:#ffd060;box-shadow:0 0 12px rgba(255,208,96,.3)">
+      <span class="btn-icon">🏠</span>
+      <span class="btn-label">HOMEPAGE</span>
+      <span class="btn-sub">Landing page · factory overview</span>
+    </a>
+    <a class="launch-btn" href="public/mobile.html" target="_blank" onclick="this.href='public/mobile.html?v='+Date.now()">
+      <span class="btn-icon">📱</span>
+      <span class="btn-label">MOBILE</span>
+      <span class="btn-sub">Touch UI · portrait</span>
+    </a>
+    <a class="launch-btn" href="public/game.html" target="_blank" onclick="this.href='public/game.html?v='+Date.now()">
+      <span class="btn-icon">🖥️</span>
+      <span class="btn-label">DESKTOP</span>
+      <span class="btn-sub">Full screen · mouse</span>
+    </a>
+    <a class="launch-btn" href="public/mobile.html?skipToS4=1" target="_blank" onclick="this.href='public/mobile.html?skipToS4=1&v='+Date.now()" style="border-color:#00aa44;box-shadow:0 0 12px rgba(0,255,65,.25)">
+      <span class="btn-icon">💳</span>
+      <span class="btn-label">CHIP STATION</span>
+      <span class="btn-sub">Skip straight to station 4</span>
+    </a>
+    <a class="launch-btn" href="sprite-preview.html" target="_blank" onclick="this.href='sprite-preview.html?v='+Date.now()" style="border-color:#ffaa00;box-shadow:0 0 12px rgba(255,170,0,.25)">
+      <span class="btn-icon">🎨</span>
+      <span class="btn-label">SPRITE PREVIEW</span>
+      <span class="btn-sub">Desktop · animate · position</span>
+    </a>
+    <a class="launch-btn" href="sprite-preview-mobile.html" target="_blank" onclick="this.href='sprite-preview-mobile.html?v='+Date.now()" style="border-color:#ff6600;box-shadow:0 0 12px rgba(255,102,0,.25)">
+      <span class="btn-icon">📐</span>
+      <span class="btn-label">MOBILE SPRITES</span>
+      <span class="btn-sub">Portrait · position · debug</span>
+    </a>
+    <a class="launch-btn" href="sprite-preview-homepage.html" target="_blank" onclick="this.href='sprite-preview-homepage.html?v='+Date.now()" style="border-color:#ffd060;box-shadow:0 0 12px rgba(255,208,96,.25)">
+      <span class="btn-icon">🏭</span>
+      <span class="btn-label">HOMEPAGE SPRITES</span>
+      <span class="btn-sub">Factory overview · desktop & mobile</span>
+    </a>
+  </div>
+
+  <div class="tip">
+    💡 <span>TIP:</span> Buttons always open a fresh version — no stale cache.<br>
+    For mobile layout: DevTools (Cmd+Opt+I) → device icon → pick iPhone
+  </div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "pet-licence-factory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pet Licence Factory — Netlify Functions dependencies",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.46.0",
+    "sharp": "^0.34.5",
+    "stripe": "^16.0.0"
+  }
+}

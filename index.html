@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>Pet Licence Factory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0804;font-family:'Press Start 2P',monospace}
+
+/* ── Scene ── */
+.scene{position:relative;width:100%;height:100%;overflow:hidden}
+
+/* ── Star field (behind everything) ── */
+#star-canvas{position:absolute;inset:0;z-index:1}
+
+/* ── Factory background: full-bleed on desktop, edge-to-edge width on mobile ── */
+.factory-bg{position:absolute;z-index:2;background-image:url('images/Game%20Canvas%20Background.webp');background-size:cover;background-position:center;background-repeat:no-repeat}
+.factory-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 35%,rgba(10,8,4,.6) 100%);pointer-events:none;z-index:3}
+.factory-dim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,6,0,.5) 0%,rgba(10,6,0,.08) 30%,rgba(10,6,0,.08) 60%,rgba(10,6,0,.55) 100%);pointer-events:none;z-index:3}
+
+/* ── Scanline ── */
+.scene::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);pointer-events:none;z-index:100}
+
+/* ── Sprite layer: matches factory bg area ── */
+#sprite-layer{position:absolute;z-index:5}
+.mini-sprite{position:absolute;aspect-ratio:1;background-repeat:no-repeat;image-rendering:pixelated}
+.ms-cat{left:22.9%;top:42.5%;width:8%;background-image:url('images/Station%201%20sprite.png');background-size:400% 100%}
+.ms-cockatoo{left:34.9%;top:45.4%;width:8%;background-image:url('images/Station%202%20sprite.png');background-size:600% 100%;image-rendering:auto}
+.ms-bulldog{left:53.9%;top:40.1%;width:10.5%;background-image:url('images/Station%203%20sprite.png');background-size:600% 100%}
+.ms-otter{left:64.7%;top:35%;width:13.5%;background-image:url('images/Station%204%20sprite.png');background-size:600% 100%}
+.ms-rabbit{left:93.3%;top:35.8%;width:9%;background-image:url('images/Station%205%20sprite.png');background-size:600% 100%}
+
+/* ── Station glow pads ── */
+.station-glow{position:absolute;width:14%;height:8%;border-radius:50%;opacity:0;animation:padGlow 3s ease-in-out infinite}
+.sg-1{left:3%;top:62%;background:radial-gradient(ellipse,rgba(100,180,255,.25),transparent 70%);animation-delay:0s}
+.sg-2{left:20%;top:62%;background:radial-gradient(ellipse,rgba(0,255,200,.2),transparent 70%);animation-delay:.6s}
+.sg-3{left:37%;top:62%;background:radial-gradient(ellipse,rgba(255,100,80,.2),transparent 70%);animation-delay:1.2s}
+.sg-4{left:56%;top:58%;background:radial-gradient(ellipse,rgba(100,255,100,.2),transparent 70%);animation-delay:1.8s}
+.sg-5{left:78%;top:62%;background:radial-gradient(ellipse,rgba(255,200,50,.2),transparent 70%);animation-delay:2.4s}
+@keyframes padGlow{0%,100%{opacity:0}50%{opacity:1}}
+
+/* ── Title ── */
+.title-area{position:absolute;left:0;right:0;text-align:center;z-index:20;pointer-events:none}
+.title-icon{font-size:clamp(18px,3.5vw,36px);display:block;margin-bottom:clamp(2px,.4vh,6px);filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+.title{font-size:clamp(10px,2.8vw,28px);color:#ffd060;text-shadow:3px 3px 0 #6a3400,0 0 20px rgba(255,180,40,.4);letter-spacing:clamp(1px,.3vw,4px);line-height:1.6}
+.subtitle-text{font-size:clamp(5px,1vw,10px);color:#c8922a;letter-spacing:clamp(1px,.2vw,3px);margin-top:clamp(2px,.4vh,8px);line-height:2;text-shadow:1px 1px 0 #3a1a00}
+
+/* ── Card showcase: no stacking context so cards z-index freely ── */
+.card-showcase{position:absolute;left:0;right:0;margin:0 auto;pointer-events:auto;width:clamp(280px,60vw,500px);height:clamp(180px,30vw,320px)}
+.showcase-card{position:absolute;width:clamp(160px,26vw,260px);aspect-ratio:1322/830;left:50%;top:50%;border-radius:clamp(4px,.5vw,8px);cursor:pointer;transition:transform .6s cubic-bezier(.25,.8,.25,1),box-shadow .4s,filter .4s,opacity .5s;transform-origin:center center;opacity:0;box-shadow:0 4px 20px rgba(0,0,0,.5);overflow:hidden;backface-visibility:hidden}
+.showcase-card img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+.showcase-card:hover{filter:brightness(1.1);box-shadow:0 8px 32px rgba(255,200,60,.3)}
+.showcase-card.fanned{opacity:1}
+.showcase-card.focused{cursor:default;filter:brightness(1.08)!important;box-shadow:0 12px 60px rgba(0,0,0,.7),0 0 40px rgba(255,200,60,.3)!important}
+
+/* ── Card backdrop ── */
+.card-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:50;opacity:0;pointer-events:none;transition:opacity .4s}
+.card-backdrop.active{opacity:1;pointer-events:auto;cursor:pointer}
+
+/* ── Preview buttons (shown when card focused) ── */
+.preview-btns{position:absolute;left:50%;transform:translateX(-50%);z-index:62;display:flex;gap:clamp(12px,2vw,20px);opacity:0;pointer-events:none;transition:opacity .4s .15s}
+.preview-btns.show{opacity:1;pointer-events:auto}
+.preview-btn{font-family:'Press Start 2P',monospace;font-size:clamp(8px,1.4vw,13px);border:3px solid;padding:clamp(8px,1.5vh,16px) clamp(20px,3.5vw,40px);cursor:pointer;letter-spacing:1px;transition:background .12s,transform .08s;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1}
+.preview-btn:active{transform:translate(1px,1px)}
+.btn-back{background:#1a1a04;color:#ffd060;border-color:#c8922a}
+.btn-back:hover{background:#c8922a;color:#1a0e04}
+.btn-build{background:#0a2a0a;color:#60ff80;border-color:#3cb050}
+.btn-build:hover{background:#3cb050;color:#0a2a0a}
+
+/* ── CTA area ── */
+.cta-area{position:absolute;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:clamp(8px,1.5vh,16px);z-index:20}
+.tagline{font-size:clamp(5px,.85vw,9px);color:#d4a84a;text-align:center;max-width:600px;padding:0 20px;line-height:2.2;text-shadow:1px 1px 4px rgba(0,0,0,.8);letter-spacing:.5px}
+
+/* ── Enter button ── */
+@keyframes btnPulse{0%,100%{box-shadow:0 0 8px rgba(255,208,96,.3),2px 2px 0 #5a3a00;text-shadow:0 0 4px #ffd060}50%{box-shadow:0 0 24px rgba(255,208,96,.7),0 0 48px rgba(255,180,40,.25),2px 2px 0 #5a3a00;text-shadow:0 0 16px #ffd060}}
+.start-btn{font-family:'Press Start 2P',monospace;font-size:clamp(9px,1.6vw,16px);background:#1a0e04;color:#ffd060;border:3px solid #c8922a;padding:clamp(12px,2vh,22px) clamp(24px,4vw,50px);cursor:pointer;letter-spacing:2px;animation:btnPulse 2s ease-in-out infinite;transition:background .12s,transform .08s;pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:clamp(6px,1vw,12px);line-height:1}
+.start-btn:hover{background:#c8922a;color:#1a0e04}
+.start-btn:active{transform:translate(2px,2px);box-shadow:none!important;animation:none}
+
+/* ── Fade ── */
+#fade{position:absolute;inset:0;z-index:200;background:#0a0804;opacity:1;pointer-events:all;transition:opacity .8s ease-out}
+#fade.clear{opacity:0;pointer-events:none}
+
+/* ── Mobile ── */
+@media (max-width:768px),(max-aspect-ratio:4/3){
+  .title{font-size:clamp(12px,5vw,22px)}
+  .subtitle-text{font-size:clamp(6px,2vw,9px);max-width:90%;margin:4px auto 0}
+  .tagline{font-size:clamp(6px,2vw,8px);max-width:85%;line-height:2.4}
+  .start-btn{font-size:clamp(9px,3vw,14px);padding:12px 28px}
+  .card-showcase{width:88vw;height:55vw}
+  .showcase-card{width:clamp(130px,38vw,200px)}
+}
+@media (max-width:400px){
+  .title{font-size:clamp(10px,4.5vw,18px)}
+  .tagline{font-size:clamp(5px,1.8vw,7px);line-height:2.6}
+}
+</style>
+</head>
+<body>
+
+<div class="scene" id="scene">
+  <canvas id="star-canvas"></canvas>
+
+  <!-- Factory background (positioned by JS) -->
+  <div class="factory-bg" id="factory-bg">
+    <div class="factory-vignette"></div>
+    <div class="factory-dim"></div>
+  </div>
+
+  <!-- Sprite layer (positioned by JS to match factory bg) -->
+  <div id="sprite-layer">
+    <div class="mini-sprite ms-cat" id="ms-cat"></div>
+    <div class="mini-sprite ms-cockatoo" id="ms-cockatoo"></div>
+    <div class="mini-sprite ms-bulldog" id="ms-bulldog"></div>
+    <div class="mini-sprite ms-otter" id="ms-otter"></div>
+    <div class="mini-sprite ms-rabbit" id="ms-rabbit"></div>
+    <div class="station-glow sg-1"></div>
+    <div class="station-glow sg-2"></div>
+    <div class="station-glow sg-3"></div>
+    <div class="station-glow sg-4"></div>
+    <div class="station-glow sg-5"></div>
+  </div>
+
+  <!-- Title -->
+  <div class="title-area" id="title-area">
+    <span class="title-icon">🐾</span>
+    <h1 class="title">PET LICENCE FACTORY</h1>
+    <p class="subtitle-text">EST. 2026 · OFFICIAL PET ID BUREAU</p>
+  </div>
+
+  <!-- Card showcase -->
+  <div class="card-showcase" id="card-showcase">
+    <div class="showcase-card" id="card-0"><img src="images/preview-licences/luna-whiskers.png" alt="Luna Whiskers"/></div>
+    <div class="showcase-card" id="card-1"><img src="images/preview-licences/max-woofington.png" alt="Max Woofington"/></div>
+    <div class="showcase-card" id="card-2"><img src="images/preview-licences/oliver-pawsley.png" alt="Oliver Pawsley"/></div>
+  </div>
+
+  <!-- Preview buttons (shown on focused card) -->
+  <div class="preview-btns" id="preview-btns">
+    <button class="preview-btn btn-back" id="btn-back">◀ BACK</button>
+    <button class="preview-btn btn-build" id="btn-build">BUILD YOURS ▶</button>
+  </div>
+
+  <!-- Backdrop -->
+  <div class="card-backdrop" id="card-backdrop"></div>
+
+  <!-- CTA -->
+  <div class="cta-area" id="cta-area">
+    <p class="tagline">Turn your credit card into your fur baby's official driver's licence. Custom credit card skin stickers — designed, laminated & shipped by our finest animal staff.</p>
+    <button class="start-btn" id="start-btn">🏭 ENTER THE FACTORY</button>
+  </div>
+
+  <div id="fade"></div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+// RETRO STAR FIELD — smooth floating, soft glow
+// ═══════════════════════════════════════════
+const starCanvas = document.getElementById('star-canvas');
+const starCtx = starCanvas.getContext('2d');
+let stars = [];
+
+function initStars() {
+  const w = starCanvas.width = window.innerWidth;
+  const h = starCanvas.height = window.innerHeight;
+  stars = [];
+  const count = Math.floor((w * h) / 500);
+  for (let i = 0; i < count; i++) {
+    // Each star drifts on its own slow circular/elliptical path
+    const angle = Math.random() * Math.PI * 2;
+    const orbitRx = 8 + Math.random() * 30;   // horizontal orbit radius
+    const orbitRy = 5 + Math.random() * 20;   // vertical orbit radius
+    const orbitSpeed = 0.0002 + Math.random() * 0.0006; // very slow
+    stars.push({
+      cx: Math.random() * w,             // center x of orbit
+      cy: Math.random() * h,             // center y of orbit
+      orbitAngle: angle,
+      orbitRx, orbitRy, orbitSpeed,
+      size: 1 + Math.random() * 2,
+      brightness: 0.25 + Math.random() * 0.75,
+      pulseSpeed: 0.3 + Math.random() * 0.8,  // twinkle speed
+      pulsePhase: Math.random() * Math.PI * 2,
+    });
+  }
+}
+
+let starTime = 0;
+function drawStars() {
+  const w = starCanvas.width, h = starCanvas.height;
+  // Full clear each frame (no ghosting/trails)
+  starCtx.fillStyle = '#0a0804';
+  starCtx.fillRect(0, 0, w, h);
+
+  starTime += 0.016;
+
+  for (let i = 0; i < stars.length; i++) {
+    const s = stars[i];
+
+    // Smooth orbital drift
+    s.orbitAngle += s.orbitSpeed;
+    const x = s.cx + Math.cos(s.orbitAngle) * s.orbitRx;
+    const y = s.cy + Math.sin(s.orbitAngle) * s.orbitRy;
+
+    // Wrap around edges
+    const wx = ((x % w) + w) % w;
+    const wy = ((y % h) + h) % h;
+
+    // Gentle pulse (slow sine, no jitter)
+    const pulse = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(starTime * s.pulseSpeed + s.pulsePhase));
+    const alpha = s.brightness * pulse;
+
+    // Warm gold/amber colour
+    const r = 200 + Math.round(55 * s.brightness);
+    const g = 160 + Math.round(60 * s.brightness);
+    const b = 40 + Math.round(40 * s.brightness);
+
+    // Soft glow halo for brighter stars (circle, not rect)
+    if (s.brightness > 0.55) {
+      const glowR = s.size * 3.5;
+      const grd = starCtx.createRadialGradient(wx, wy, 0, wx, wy, glowR);
+      grd.addColorStop(0, `rgba(${r},${g},${b},${alpha * 0.3})`);
+      grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      starCtx.fillStyle = grd;
+      starCtx.beginPath();
+      starCtx.arc(wx, wy, glowR, 0, Math.PI * 2);
+      starCtx.fill();
+    }
+
+    // Star dot (circle, sub-pixel smooth)
+    starCtx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.9})`;
+    starCtx.beginPath();
+    starCtx.arc(wx, wy, s.size * 0.5, 0, Math.PI * 2);
+    starCtx.fill();
+  }
+
+  // Occasional shooting star
+  if (Math.random() < 0.004) {
+    const sx = Math.random() * w, sy = Math.random() * h * 0.5;
+    const len = 50 + Math.random() * 70;
+    const grad = starCtx.createLinearGradient(sx, sy, sx + len, sy + len * 0.3);
+    grad.addColorStop(0, 'rgba(255,220,100,0.75)');
+    grad.addColorStop(0.3, 'rgba(255,200,80,0.35)');
+    grad.addColorStop(1, 'rgba(255,220,100,0)');
+    starCtx.strokeStyle = grad;
+    starCtx.lineWidth = 1.5;
+    starCtx.beginPath();
+    starCtx.moveTo(sx, sy);
+    starCtx.lineTo(sx + len, sy + len * 0.3);
+    starCtx.stroke();
+  }
+
+  requestAnimationFrame(drawStars);
+}
+
+initStars();
+drawStars();
+
+// ═══════════════════════════════════════════
+// LAYOUT ENGINE
+// Image is ~16:9 (2362x1328 = 1.779:1)
+// ═══════════════════════════════════════════
+const IMG_RATIO = 2362 / 1328; // ~1.779
+const scene = document.getElementById('scene');
+const factoryBg = document.getElementById('factory-bg');
+const spriteLayer = document.getElementById('sprite-layer');
+const titleArea = document.getElementById('title-area');
+const cardShowcase = document.getElementById('card-showcase');
+const ctaArea = document.getElementById('cta-area');
+const previewBtns = document.getElementById('preview-btns');
+
+function updateLayout() {
+  const sw = scene.clientWidth;
+  const sh = scene.clientHeight;
+  const viewRatio = sw / sh;
+
+  let bgW, bgH, bgX, bgY;
+
+  if (viewRatio >= IMG_RATIO - 0.05) {
+    // Desktop / wide: cover — fill viewport, factory is the full backdrop
+    bgW = sw;
+    bgH = sw / IMG_RATIO;
+    if (bgH < sh) { bgH = sh; bgW = sh * IMG_RATIO; }
+    bgX = (sw - bgW) / 2;
+    bgY = (sh - bgH) / 2;
+  } else {
+    // Portrait / mobile: fill width, factory image edge-to-edge horizontally
+    bgW = sw;
+    bgH = sw / IMG_RATIO;
+    bgX = 0;
+    // Position factory in the upper portion
+    bgY = sh * 0.10;
+  }
+
+  // Position factory bg
+  factoryBg.style.left = bgX + 'px';
+  factoryBg.style.top = bgY + 'px';
+  factoryBg.style.width = bgW + 'px';
+  factoryBg.style.height = bgH + 'px';
+
+  // Sprite layer matches the visible factory area
+  spriteLayer.style.left = bgX + 'px';
+  spriteLayer.style.top = bgY + 'px';
+  spriteLayer.style.width = bgW + 'px';
+  spriteLayer.style.height = bgH + 'px';
+
+  // Title
+  if (viewRatio >= IMG_RATIO - 0.05) {
+    // Desktop: title floats near top
+    titleArea.style.top = '2%';
+  } else {
+    // Mobile: title above factory
+    titleArea.style.top = Math.max(4, bgY - sh * 0.085) + 'px';
+  }
+
+  // Cards: overlap lower portion of factory
+  if (viewRatio >= IMG_RATIO - 0.05) {
+    // Desktop: centered vertically a bit below middle
+    cardShowcase.style.top = (sh * 0.52) + 'px';
+  } else {
+    // Mobile: just below factory bottom edge, overlapping slightly
+    const factoryBottom = bgY + bgH;
+    cardShowcase.style.top = (factoryBottom - bgH * 0.12) + 'px';
+  }
+
+  // CTA: below cards
+  const cardTop = parseFloat(cardShowcase.style.top);
+  const cardZone = sw <= 768 ? sw * 0.42 : 220;
+  ctaArea.style.top = (cardTop + cardZone) + 'px';
+  ctaArea.style.bottom = 'auto';
+
+  // Preview buttons: positioned by focusCard() dynamically
+}
+
+updateLayout();
+window.addEventListener('resize', () => { initStars(); updateLayout(); });
+
+// ═══════════════════════════════════════════
+// SPRITE ANIMATION
+// ═══════════════════════════════════════════
+const sprites = [
+  { el: document.getElementById('ms-cat'),      frames: 4, frame: 0 },
+  { el: document.getElementById('ms-cockatoo'),  frames: 6, frame: 0 },
+  { el: document.getElementById('ms-bulldog'),   frames: 6, frame: 0 },
+  { el: document.getElementById('ms-otter'),     frames: 6, frame: 0 },
+  { el: document.getElementById('ms-rabbit'),    frames: 6, frame: 0 },
+];
+
+let tick = 0;
+function animateSprites() {
+  tick++;
+  sprites.forEach(s => {
+    if (!s.el) return;
+    const w = Math.round(s.el.offsetWidth);
+    if (w === 0) return;
+    s.el.style.backgroundSize = `${w * s.frames}px auto`;
+    s.el.style.backgroundPosition = `${-s.frame * w}px 0`;
+    if (s.frames === 4 || (s === sprites[1] && tick % 2 === 0) || (s !== sprites[1] && s.frames === 6)) {
+      s.frame = (s.frame + 1) % s.frames;
+    }
+  });
+}
+setInterval(animateSprites, 1000 / 7);
+animateSprites();
+
+// ═══════════════════════════════════════════
+// CARD FAN-OUT & FOCUS
+// ═══════════════════════════════════════════
+const cards = document.querySelectorAll('.showcase-card');
+const backdrop = document.getElementById('card-backdrop');
+const btnBack = document.getElementById('btn-back');
+const btnBuild = document.getElementById('btn-build');
+let focusedCard = null;
+
+const FAN_LAYOUT = [
+  { tx: '-115%', ty: '-50%', rot: -12 },
+  { tx: '-50%',  ty: '-54%', rot: 0   },
+  { tx: '15%',   ty: '-50%', rot: 12  },
+];
+
+function fanCards(delay = true) {
+  cards.forEach((card, i) => {
+    const layout = FAN_LAYOUT[i];
+    const d = delay ? (0.3 + i * 0.15) : 0;
+    card.style.transitionDelay = d + 's';
+    card.style.transform = `translate(${layout.tx}, ${layout.ty}) rotate(${layout.rot}deg)`;
+    card.style.zIndex = 10 + i;
+    card.style.filter = '';
+    card.classList.add('fanned');
+    card.classList.remove('focused');
+  });
+  focusedCard = null;
+  backdrop.classList.remove('active');
+  previewBtns.classList.remove('show');
+}
+
+function focusCard(idx) {
+  if (focusedCard === idx) { fanCards(false); return; }
+  focusedCard = idx;
+  backdrop.classList.add('active');
+
+  cards.forEach((card, i) => {
+    card.style.transitionDelay = '0s';
+    if (i === idx) {
+      const scale = window.innerWidth <= 768 ? 1.5 : 1.7;
+      card.style.transform = `translate(-50%, -55%) rotate(0deg) scale(${scale})`;
+      card.style.zIndex = 60;
+      card.style.filter = 'brightness(1.08)';
+      card.classList.add('focused');
+    } else {
+      const dir = i < idx ? -1 : 1;
+      const layout = FAN_LAYOUT[i];
+      card.style.transform = `translate(${layout.tx}, ${layout.ty}) rotate(${layout.rot + dir * 6}deg) scale(0.85)`;
+      card.style.zIndex = 10 + i;
+      card.style.filter = 'brightness(0.35)';
+      card.classList.remove('focused');
+    }
+  });
+
+  // Calculate button position mathematically (no need to wait for transition)
+  const card = cards[idx];
+  const scale = window.innerWidth <= 768 ? 1.5 : 1.7;
+  // Card natural height (before scaling)
+  const cardW = card.offsetWidth;
+  const cardH = cardW * (830 / 1322); // aspect ratio
+  const scaledH = cardH * scale;
+  // Card is translated -55% vertically from its top:50% anchor in the showcase
+  const showcaseTop = parseFloat(cardShowcase.style.top);
+  const showcaseH = cardShowcase.offsetHeight;
+  const cardCenter = showcaseTop + showcaseH * 0.5;
+  const cardVisualTop = cardCenter - scaledH * 0.55;
+  const cardVisualBottom = cardVisualTop + scaledH;
+  previewBtns.style.top = (cardVisualBottom + 16) + 'px';
+  previewBtns.classList.add('show');
+}
+
+cards.forEach((card, i) => {
+  card.addEventListener('click', (e) => { e.stopPropagation(); sfxClick(); focusCard(i); });
+});
+backdrop.addEventListener('click', () => { sfxClick(); fanCards(false); });
+
+// Preview buttons
+btnBack.addEventListener('click', (e) => { e.stopPropagation(); sfxClick(); fanCards(false); });
+btnBuild.addEventListener('click', (e) => {
+  e.stopPropagation();
+  sfxClick();
+  goToGame();
+});
+
+// ═══════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════
+function sfxClick() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'square'; o.frequency.value = 440;
+    g.gain.setValueAtTime(0.1, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+    o.start(); o.stop(ctx.currentTime + 0.05);
+    setTimeout(() => {
+      const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.type = 'square'; o2.frequency.value = 660;
+      g2.gain.setValueAtTime(0.1, ctx.currentTime);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+      o2.start(); o2.stop(ctx.currentTime + 0.07);
+    }, 50);
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function goToGame() {
+  const fade = document.getElementById('fade');
+  fade.classList.remove('clear');
+  setTimeout(() => {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                     (window.innerWidth <= 768 && 'ontouchstart' in window);
+    window.location.href = isMobile ? 'mobile.html' : 'game.html';
+  }, 800);
+}
+
+// ═══════════════════════════════════════════
+// LOAD
+// ═══════════════════════════════════════════
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('fade').classList.add('clear'), 200);
+  setTimeout(() => fanCards(true), 700);
+});
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  sfxClick();
+  goToGame();
+});
+</script>
+
+</body>
+</html>
