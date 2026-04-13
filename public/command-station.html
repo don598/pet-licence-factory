@@ -1092,10 +1092,15 @@ async function generateLicence() {
     // 3. Draw pet photo (main + watermark) with background removed
     if (o.photo_url) {
       try {
-        btn.textContent = '⌛ Removing background…';
-        const cleanUrl = await removePhotoBackground(o.photo_url);
+        let photoSrc = o.photo_url;
+        try {
+          btn.textContent = '⌛ Removing background…';
+          photoSrc = await removePhotoBackground(o.photo_url);
+        } catch (bgErr) {
+          console.warn('Background removal failed, using original photo:', bgErr);
+        }
         btn.textContent = '⌛ Rendering…';
-        const photo = await loadImg(cleanUrl);
+        const photo = await loadImg(photoSrc);
 
         // Main photo
         ctx.save();
