@@ -492,7 +492,7 @@ html,body{width:100%;height:100%;background:#060808;display:flex;align-items:cen
 // ═══════════════════════════════════════════════════════════
 // ORDER SUBMISSION (server-side via Netlify Function)
 // ═══════════════════════════════════════════════════════════
-async function submitOrderToSupabase(orderData) {
+async function submitOrder(orderData) {
   const resp = await fetch('/.netlify/functions/submit-order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1597,13 +1597,13 @@ async function s5Checkout() {
     discountEarned, total: parseFloat((base + dec - disc + ship).toFixed(2))
   };
 
-  // Save order to Supabase (status: 'pending' — webhook will flip to 'paid')
+  // Save order to database (status: 'pending' — webhook will flip to 'paid')
   let orderId = null;
   try {
-    orderId = await submitOrderToSupabase(orderData);
+    orderId = await submitOrder(orderData);
     orderData.orderId = orderId;
   } catch (err) {
-    console.error('Supabase order save failed:', err);
+    console.error('Order save failed:', err);
     // Continue — don't block checkout if DB write fails
   }
 

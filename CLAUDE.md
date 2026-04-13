@@ -9,14 +9,16 @@ The experience is themed as a retro pixel-art factory with animated sprite chara
 ## Tech Stack
 
 - **Frontend:** Static HTML/CSS/JS (no framework). Uses `Press Start 2P` and `Sacramento` Google Fonts. All pages are self-contained single-file HTML with inline styles and scripts.
-- **Shared logic:** `plf-shared.js` -- common engine used by both desktop (`game.html`) and mobile (`mobile.html`) builder pages. Handles Supabase order submission, Stripe checkout initiation, pricing, sprite animation, and canvas-based licence rendering.
-- **Backend / Serverless:** Netlify Functions (Node.js) for Stripe checkout session creation and webhook handling.
-- **Database:** Supabase (PostgreSQL) for order storage. Schema defined in `supabase_setup.sql`.
+- **Shared logic:** `plf-shared.js` -- common engine used by both desktop (`game.html`) and mobile (`mobile.html`) builder pages. Handles order submission (via Netlify Function), Stripe checkout initiation, pricing, sprite animation, and canvas-based licence rendering.
+- **Backend / Serverless:** Netlify Functions (Node.js) for order submission, Stripe checkout session creation, webhook handling, and admin API.
+- **Database:** AWS RDS PostgreSQL on shared instance (`lessoncomplete-db.c9e2648w8z0z.us-east-2.rds.amazonaws.com`), database `petlicencefactory`. Schema defined in `rds_setup.sql`. Uses `pg` (node-postgres) client via shared `netlify/functions/db.js` Pool helper.
 - **Payments:** Stripe Checkout (server-side session creation, webhook for fulfilment).
-- **Hosting:** Netlify (static site deployed from `public/`, functions from `netlify/functions/`).
+- **Hosting:** Netlify (static site deployed from `public/`, functions from `netlify/functions/`). GitHub repo: `don598/pet-licence-factory` (public).
 - **Audio:** Web Audio API -- `public/music-toggle.js` provides a chiptune ambient pad + melody sequencer with a floating play/pause button. `tools/daw.html` is a full DAW for composing chiptune music.
 - **Animation:** 12-frame sprite sheets (PNG strips at 1200% width) animated via CSS `background-position` stepping, driven by JS `requestAnimationFrame`.
-- **Dependencies (server-side only):** `stripe`, `@supabase/supabase-js`, `sharp` (image processing).
+- **Shipping:** EasyPost for shipping label generation and tracking.
+- **Email:** SendGrid for transactional order emails.
+- **Dependencies (server-side only):** `stripe`, `pg`, `bcryptjs`, `jsonwebtoken`, `sharp` (image processing).
 
 ## How to Run Locally
 
@@ -35,7 +37,7 @@ npx http-server tools -p 8767 -c-1
 
 There is also a `Launch.html` at the project root that acts as a local preview launcher with links to all major pages, dev tools (now under `tools/`), and the Music Studio.
 
-For Netlify Functions (Stripe checkout), you need `netlify dev` with a `.env` file. See `.env.example` for required keys (Stripe, Supabase, SendGrid, EasyPost).
+For Netlify Functions (Stripe checkout, order submission, admin API), you need `netlify dev` with a `.env` file. See `.env.example` for required keys (DATABASE_URL, Stripe, Admin, SendGrid, EasyPost).
 
 ## Directory Structure
 
@@ -47,7 +49,7 @@ For Netlify Functions (Stripe checkout), you need `netlify dev` with a `.env` fi
 │   ├── game.html               # Desktop licence builder (5 stations + checkout)
 │   ├── mobile.html             # Mobile licence builder
 │   ├── success.html            # Post-checkout order confirmation page
-│   ├── admin.html              # Admin dashboard (Supabase-powered order management, Fabric.js canvas)
+│   ├── admin.html              # Admin dashboard (order management via admin-api, Fabric.js canvas)
 │   ├── command-station.html    # PLF Command Station (admin/ops dashboard)
 │   ├── music-toggle.js         # Web Audio chiptune player with floating UI toggle
 │   └── images/                 # All image assets for the site
@@ -83,17 +85,21 @@ For Netlify Functions (Stripe checkout), you need `netlify dev` with a `.env` fi
 │
 ├── netlify/
 │   └── functions/
+│       ├── db.js                          # Shared pg Pool connection helper (AWS RDS)
+│       ├── admin-api.js                   # Admin API (JWT auth, order/task CRUD via pg)
 │       ├── create-checkout-session.js     # Stripe Checkout session creator (pricing, line items)
-│       └── stripe-webhook.js              # Stripe webhook handler (updates Supabase on payment)
+│       ├── submit-order.js                # Order submission (replaces old browser-side DB insert)
+│       └── stripe-webhook.js              # Stripe webhook handler (updates RDS on payment)
 │
-├── plf-shared.js               # Shared JS engine (Supabase client, order submission, pricing,
+├── plf-shared.js               # Shared JS engine (order submission via fetch, pricing,
 │                               #   sprite animation, canvas licence rendering, checkout flow)
 │
 ├── Launch.html                 # Local dev launcher page (links to all pages + tools/ + Music Studio)
 │
-├── supabase_setup.sql          # Database schema (pet_orders table, RLS policies)
+├── rds_setup.sql               # RDS database schema (pet_orders + admin_tasks tables)
+├── supabase_setup.sql          # Legacy schema reference (was used before RDS migration)
 ├── netlify.toml                # Netlify build + headers config (publish = "public/", functions = "netlify/functions")
-├── package.json                # Node dependencies (stripe, supabase-js, sharp)
+├── package.json                # Node dependencies (stripe, pg, bcryptjs, jsonwebtoken, sharp)
 ├── .env.example                # Environment variable template
 ├── .netlifyignore              # Excludes CCA/, legal/, tools/, _preview_licenses_temp/,
 │                               #   Launch.html, plf-shared.js, and other non-production files
@@ -112,38 +118,62 @@ For Netlify Functions (Stripe checkout), you need `netlify dev` with a `.env` fi
 |------|---------|
 | `public/index.html` | Desktop landing page. Starfield canvas, split layout with title + card showcase on left, animated factory window on right. Redirects mobile users to `mobile-welcome.html`. |
 | `public/mobile-welcome.html` | Mobile landing. Touch-optimised version of the landing page. |
-| `public/game.html` | The core product. 5-station licence builder: photo upload, pet details, customisation, review, checkout. Uses `plf-shared.js`. |
+| `public/game.html` | The core product. 5-station licence builder: photo upload, pet details, customisation, review, checkout. |
 | `public/mobile.html` | Mobile version of the licence builder. |
 | `public/success.html` | Post-checkout order confirmation page shown after Stripe redirect. |
-| `public/admin.html` | Admin dashboard for viewing/managing orders. Uses Supabase JS client and Fabric.js for canvas operations. |
+| `public/admin.html` | Admin dashboard for viewing/managing orders. Uses admin-api Netlify Function and Fabric.js for canvas operations. |
 | `public/command-station.html` | Ops dashboard ("PLF Command Station"). |
 | `public/music-toggle.js` | Self-contained IIFE that injects a floating music button. Web Audio API with ambient sine pad + triangle-wave melody sequencer. Persists play state via `localStorage`. |
-| `plf-shared.js` | ~49KB shared engine. Supabase client init, order submission, Stripe checkout redirect, pricing constants, sprite animation loop, canvas-based licence card rendering. Used by both `game.html` and `mobile.html`. |
+| `plf-shared.js` | ~49KB shared engine. Order submission (via fetch to submit-order function), Stripe checkout redirect, pricing constants, sprite animation loop, canvas-based licence card rendering. Used by both `game.html` and `mobile.html`. |
+| `netlify/functions/db.js` | Shared pg Pool connection to AWS RDS. Strips `sslmode` from connection string and uses `ssl: { rejectUnauthorized: false }`. |
+| `netlify/functions/admin-api.js` | Admin API. JWT-based auth with bcrypt password verification. Handles order listing, updates, task CRUD. |
+| `netlify/functions/submit-order.js` | Server-side order submission. Generates order ID, validates input, inserts into RDS. Called from game/mobile pages via fetch. |
 | `netlify/functions/create-checkout-session.js` | Creates Stripe Checkout sessions. Handles 1-pack/2-pack pricing, decal add-on, discount calculation, shipping tiers. |
-| `netlify/functions/stripe-webhook.js` | Processes `checkout.session.completed` events. Updates Supabase order with payment status and shipping address. |
+| `netlify/functions/stripe-webhook.js` | Processes `checkout.session.completed` events. Updates RDS order with payment status and shipping address. |
 | `tools/daw.html` | PLF Music Studio. Full chiptune DAW for composing game music with sequencer, waveform selection, and export. |
 | `tools/sprite-builder.html` | Interactive sprite sheet builder/editor for creating 12-frame animation strips. |
-| `supabase_setup.sql` | Full schema for the `pet_orders` table with all licence fields, payment tracking, and RLS policies. |
+| `rds_setup.sql` | Full schema for the `pet_orders` and `admin_tasks` tables with indexes and auto-update trigger. |
 | `Launch.html` | Local dev convenience page with links to homepage, game, mobile, admin, tools, and Music Studio. |
 
 ## Architecture Notes
 
-- **Static site architecture:** Everything is vanilla HTML/CSS/JS with no build step. Pages load Google Fonts and Supabase JS from CDNs. The shared engine (`plf-shared.js`) is loaded via `<script>` tag.
+- **Static site architecture:** Everything is vanilla HTML/CSS/JS with no build step. Pages load Google Fonts from CDNs. The shared engine (`plf-shared.js`) is loaded via `<script>` tag.
 - **Netlify deployment:** The root `netlify.toml` sets `publish = "public/"` and `functions = "netlify/functions"`. Only the `public/` directory is deployed to production. Dev tools, legal files, CCA assets, and other non-production files are excluded via `.netlifyignore`.
+- **Database connection:** All database access goes through Netlify Functions (server-side only). The `db.js` helper creates a pg Pool connected to the shared AWS RDS instance. No database credentials or connection strings exist in client-side code.
 - **Sprite animation system:** Each of the 5 animal characters (cat, cockatoo, bulldog, otter, rabbit) has a 12-frame sprite sheet stored as a single horizontal PNG strip. Animation is achieved by stepping `background-position-x` through 12 positions (each at `background-size: 1200% 100%`).
 - **Mobile detection:** The desktop landing page (`index.html`) checks `navigator.userAgent` and `window.innerWidth` on load and redirects mobile users to `mobile-welcome.html`.
-- **Payment flow:** User builds licence in `game.html` -> order saved to Supabase -> Stripe Checkout session created via Netlify Function -> user pays on Stripe -> webhook updates order status -> redirect to `success.html`.
+- **Payment flow:** User builds licence in `game.html` -> order saved to RDS via `submit-order` function -> Stripe Checkout session created via `create-checkout-session` function -> user pays on Stripe -> webhook updates order status to 'paid' -> redirect to `success.html`.
+- **Admin auth:** Admin pages use JWT-based authentication via the `admin-api` Netlify Function. Password is verified against a bcrypt hash stored in `ADMIN_PASSWORD_HASH` env var. JWT tokens expire after 8 hours.
 - **Audio system:** `music-toggle.js` creates a Web Audio context on first user interaction. Plays an ambient sine-wave pad (A3 + E4) with a slow LFO breathing effect, plus a triangle-wave melody arpeggio sequencer. Exposes `window.PLFMusic` API for melody replacement. The `tools/daw.html` Music Studio provides a full DAW for composing new chiptune tracks.
 
-## Project Cleanup (Completed)
+## Environment Variables
 
-The project was restructured to separate production files from dev tools and eliminate root-level duplicates:
+All secrets are stored in Netlify environment variables (and locally in `.env`). See `.env.example` for the full list:
 
-- **Root duplicates removed:** `index.html`, `mobile-welcome.html`, `mobile.html`, `game.html`, and `images/` no longer exist at root. Canonical versions live exclusively in `public/`.
-- **`public/netlify.toml` deleted:** Was a confusing duplicate of the root config. Only the root `netlify.toml` exists now.
-- **`netlify.toml` updated:** Now publishes from `public/` instead of `.` (root), so only production files are deployed.
-- **Dev tools moved to `tools/`:** `cat.html`, `human.html`, `sprite-builder.html`, `pixel-extractor.html`, `sprite-preview*.html`, `generate-sprite.js`, `save-sprite-data.js`, `sprite-data.json`, and `test-pixelate.js` relocated from root.
-- **`success.html`, `admin.html`, `command-station.html` moved to `public/`:** These are production pages and now live alongside the other deployed files.
-- **`.netlifyignore` expanded:** Excludes `CCA/`, `legal/`, `tools/`, `_preview_licenses_temp/`, `Launch.html`, and `plf-shared.js` from deploys.
-- **`.gitignore` expanded:** Excludes `_preview_licenses_temp/`, `CCA/`, and `legal/` from version control.
-- **`Launch.html` updated:** Links now point to `tools/` paths and includes a new Music Studio button for `tools/daw.html`.
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string for AWS RDS (`postgresql://plf_admin:...@lessoncomplete-db...`) |
+| `STRIPE_SECRET_KEY` | Stripe API secret key (test or live) |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (used in checkout redirect) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook endpoint signing secret |
+| `ADMIN_PASSWORD_HASH` | bcrypt hash of admin password |
+| `ADMIN_JWT_SECRET` | Secret for signing admin JWT tokens |
+| `EASYPOST_API_KEY` | EasyPost API key for shipping label generation |
+| `SENDGRID_API_KEY` | SendGrid API key for transactional emails |
+| `SENDGRID_FROM_EMAIL` | Sender email address for SendGrid |
+| `SENDGRID_FROM_NAME` | Sender display name for SendGrid |
+
+## Deployment
+
+- **Site URL:** https://magnificent-douhua-83f3e5.netlify.app/
+- **GitHub:** https://github.com/don598/pet-licence-factory (public)
+- **Auto-deploy:** Pushes to `main` branch trigger automatic Netlify deploys.
+- **Stripe webhook endpoint:** `https://magnificent-douhua-83f3e5.netlify.app/.netlify/functions/stripe-webhook`
+  - Events: `checkout.session.completed`
+  - Must be configured in Stripe Dashboard → Developers → Webhooks
+
+## Project History
+
+- **Initial build:** 12-frame sprite system, 5-station game flow, Supabase for database.
+- **Security hardening (2026-04-13):** Removed exposed Supabase keys from frontend, created server-side admin API with JWT auth.
+- **RDS migration (2026-04-13):** Fully migrated from Supabase to AWS RDS PostgreSQL. All Supabase dependencies removed. Order submission moved from browser-side Supabase insert to server-side `submit-order` Netlify Function. Database now on shared RDS instance alongside Muphonic and Lesson Complete projects.

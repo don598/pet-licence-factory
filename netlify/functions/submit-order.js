@@ -6,7 +6,7 @@
 //         photo, packQty, chipSize, wantsDecal, total }
 // Returns: { orderId }
 //
-// Replaces the direct Supabase insert that was previously done from the browser.
+// Server-side order submission endpoint.
 // ---------------------------------------------------------------------------
 
 const db = require('./db');

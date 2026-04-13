@@ -508,7 +508,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 // ═══════════════════════════════════════════════════════════
 // ORDER SUBMISSION (server-side via Netlify Function)
 // ═══════════════════════════════════════════════════════════
-async function submitOrderToSupabase(orderData) {
+async function submitOrder(orderData) {
   const resp = await fetch('/.netlify/functions/submit-order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1714,8 +1714,8 @@ async function s5Checkout(){
   const orderData={...petData,photo:photoDataURL,chipSize,packQty,wantsDecal,shippingOption,basePrice:base,decalAmt:dec,discountEarned,total:parseFloat((base+dec-disc+shipPrice).toFixed(2))};
   hidePanel(); setNav(null,null);
   let orderId=null;
-  try{ orderId=await submitOrderToSupabase(orderData); orderData.orderId=orderId; }
-  catch(err){ console.error('Supabase save failed:',err); }
+  try{ orderId=await submitOrder(orderData); orderData.orderId=orderId; }
+  catch(err){ console.error('Order save failed:',err); }
   window.PLF_ORDER={...orderData,orderId};
   window.parent.postMessage({type:'PLF_CHECKOUT',data:{...orderData,orderId}},'*');
   typewrite(5,`Payment confirmed! ${petData.petFirstName||'Your pet'} is about to become the most official animal in the neighbourhood. We'll have that out to you soon! 🐰`,()=>{});
