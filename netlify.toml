@@ -1,7 +1,7 @@
 # ── Pet Licence Factory — Netlify Config ──────────────────────
 
 [build]
-  publish   = "."
+  publish   = "public"
   functions = "netlify/functions"
 
 # Security headers

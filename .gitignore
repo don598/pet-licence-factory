@@ -16,3 +16,10 @@ _archive/
 
 # Temp files
 *.tmp
+_preview_licenses_temp/
+
+# Manufacturing (large binary files)
+CCA/
+
+# Legal (sensitive documents)
+legal/

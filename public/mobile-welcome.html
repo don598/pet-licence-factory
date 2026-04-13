@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>Pet Licence Factory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#060808;font-family:'Press Start 2P',monospace}
+.scene{position:relative;width:100%;height:100%;overflow:hidden}
+#star-canvas{position:absolute;inset:0;z-index:1}
+.scene::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);pointer-events:none;z-index:100}
+
+
+/* ── Content column ── */
+.content-col{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(16px,3vh,32px);pointer-events:none}
+
+/* ── Title ── */
+.title-area{text-align:center;pointer-events:none;flex-shrink:0}
+.title-icon{font-size:clamp(20px,6vw,36px);display:block;margin-bottom:clamp(2px,.5vh,6px);filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+.title{font-size:clamp(14px,5.5vw,24px);color:#00ff41;text-shadow:3px 3px 0 #003a10,0 0 20px rgba(0,255,65,.4);letter-spacing:clamp(1px,.4vw,4px);line-height:1.6}
+.subtitle-text{font-size:clamp(6px,2vw,10px);color:#00cc33;letter-spacing:clamp(1px,.3vw,3px);margin-top:clamp(2px,.5vh,8px);line-height:2;text-shadow:1px 1px 0 #002a0a}
+
+/* ── Card showcase: fanned layout ── */
+.card-showcase{position:relative;pointer-events:auto;width:85vw;height:clamp(160px,45vw,280px);flex-shrink:0}
+.showcase-card{position:absolute;width:clamp(130px,40vw,200px);aspect-ratio:1322/830;left:50%;top:50%;border-radius:clamp(4px,.8vw,8px);cursor:pointer;transition:transform .6s cubic-bezier(.25,.8,.25,1),box-shadow .4s,filter .4s,opacity .5s;transform-origin:center center;opacity:0;box-shadow:0 4px 20px rgba(0,0,0,.5);overflow:hidden;backface-visibility:hidden}
+.showcase-card img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;pointer-events:none}
+.showcase-card.fanned{opacity:1}
+
+/* ── Card backdrop ── */
+.card-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:50;opacity:0;pointer-events:none;transition:opacity .4s}
+.card-backdrop.active{opacity:1;pointer-events:auto;cursor:pointer}
+
+/* ── Focused card ── */
+.showcase-card.focused{cursor:default;filter:none!important;z-index:60;box-shadow:0 12px 60px rgba(0,0,0,.7),0 0 40px rgba(0,255,65,.3)!important}
+
+/* ── Preview buttons ── */
+.preview-btns{position:fixed;left:50%;bottom:8%;transform:translateX(-50%);z-index:62;display:flex;gap:clamp(8px,3vw,16px);opacity:0;pointer-events:none;transition:opacity .4s .15s}
+.preview-btns.show{opacity:1;pointer-events:auto}
+.preview-btn{font-family:'Press Start 2P',monospace;font-size:clamp(7px,2.5vw,12px);border:3px solid;padding:clamp(8px,2vh,14px) clamp(16px,5vw,32px);cursor:pointer;letter-spacing:1px;transition:background .12s,transform .08s;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1}
+.preview-btn:active{transform:translate(1px,1px)}
+.btn-back{background:#0a1a0a;color:#00ff41;border-color:#00cc33}
+.btn-build{background:#0a2a0a;color:#60ff80;border-color:#3cb050}
+
+/* ── CTA area ── */
+.cta-area{display:flex;flex-direction:column;align-items:center;gap:clamp(12px,2.5vh,20px);pointer-events:auto;flex-shrink:0}
+.tagline{font-size:clamp(7px,2.5vw,11px);color:#00cc33;text-align:center;max-width:85%;padding:clamp(8px,2vh,14px) clamp(12px,4vw,24px);line-height:2.2;text-shadow:1px 1px 4px rgba(0,0,0,.8);letter-spacing:.5px;background:rgba(0,0,0,.55);border-radius:8px}
+
+/* ── Enter button ── */
+@keyframes btnPulse{0%,100%{box-shadow:0 0 8px rgba(0,255,65,.3),2px 2px 0 #003a10;text-shadow:0 0 4px #00ff41}50%{box-shadow:0 0 24px rgba(0,255,65,.7),0 0 48px rgba(0,255,65,.25),2px 2px 0 #003a10;text-shadow:0 0 16px #00ff41}}
+.start-btn{font-family:'Press Start 2P',monospace;font-size:clamp(9px,3vw,14px);background:#0a1a0a;color:#00ff41;border:3px solid #00cc33;padding:12px clamp(24px,6vw,40px);cursor:pointer;letter-spacing:2px;animation:btnPulse 2s ease-in-out infinite;transition:background .12s,transform .08s;pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1}
+.start-btn:active{transform:translate(2px,2px);box-shadow:none!important;animation:none}
+
+/* ── Fade ── */
+#fade{position:absolute;inset:0;z-index:200;background:#060808;opacity:1;pointer-events:all;transition:opacity .8s ease-out}
+#fade.clear{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="scene" id="scene">
+  <canvas id="star-canvas"></canvas>
+
+  <div class="content-col" id="content-col">
+    <div class="title-area">
+      <span class="title-icon">🐾</span>
+      <h1 class="title">PET LICENCE FACTORY</h1>
+      <p class="subtitle-text">EST. 2026 · OFFICIAL PET ID BUREAU</p>
+    </div>
+
+    <div class="card-showcase" id="card-showcase">
+      <div class="showcase-card" id="card-0"><img src="images/preview-licences/luna-whiskers.png" alt="Luna Whiskers"/></div>
+      <div class="showcase-card" id="card-1"><img src="images/preview-licences/max-woofington.png" alt="Max Woofington"/></div>
+      <div class="showcase-card" id="card-2"><img src="images/preview-licences/oliver-pawsley.png" alt="Oliver Pawsley"/></div>
+    </div>
+
+    <div class="cta-area">
+      <p class="tagline">Turn your credit card into your fur baby's official driver's licence. Custom credit card skin stickers — designed, laminated & shipped by our finest animal staff.</p>
+      <button class="start-btn" id="start-btn">🏭 ENTER THE FACTORY</button>
+    </div>
+  </div>
+
+  <div class="card-backdrop" id="card-backdrop"></div>
+
+  <div class="preview-btns" id="preview-btns">
+    <button class="preview-btn btn-back" id="btn-back">◀ BACK</button>
+    <button class="preview-btn btn-build" id="btn-build">BUILD YOURS ▶</button>
+  </div>
+
+  <div id="fade"></div>
+</div>
+
+<script src="music-toggle.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+// MULTICOLORED STAR FIELD
+// ═══════════════════════════════════════════
+const starCanvas = document.getElementById('star-canvas');
+const starCtx = starCanvas.getContext('2d');
+let stars = [];
+
+const STAR_COLORS = [
+  [255,255,255],[255,255,255],[200,220,255],[100,180,255],
+  [0,255,200],[0,255,65],[255,100,200],[255,200,80],[180,130,255],
+];
+
+function initStars() {
+  const w = starCanvas.width = window.innerWidth;
+  const h = starCanvas.height = window.innerHeight;
+  stars = [];
+  const count = Math.floor((w * h) / 500);
+  for (let i = 0; i < count; i++) {
+    const color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    const driftAngle = Math.random() * Math.PI * 2;
+    const driftSpeed = 0.04 + Math.random() * 0.15;
+    stars.push({
+      x: Math.random() * w, y: Math.random() * h,
+      dx: Math.cos(driftAngle) * driftSpeed,
+      dy: Math.sin(driftAngle) * driftSpeed,
+      size: 0.8 + Math.random() * 2.5,
+      brightness: 0.3 + Math.random() * 0.7,
+      pulseSpeed: 0.5 + Math.random() * 2.0,
+      pulsePhase: Math.random() * Math.PI * 2,
+      r: color[0], g: color[1], b: color[2],
+    });
+  }
+}
+
+let starTime = 0;
+function drawStars() {
+  const w = starCanvas.width, h = starCanvas.height;
+  starCtx.fillStyle = '#060808';
+  starCtx.fillRect(0, 0, w, h);
+  starTime += 0.016;
+
+  for (const s of stars) {
+    s.x += s.dx; s.y += s.dy;
+    if (s.x < 0) s.x += w; else if (s.x > w) s.x -= w;
+    if (s.y < 0) s.y += h; else if (s.y > h) s.y -= h;
+    const pulse = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(starTime * s.pulseSpeed + s.pulsePhase));
+    const alpha = s.brightness * pulse;
+    if (s.brightness > 0.5 && s.size > 1.5) {
+      const glowR = s.size * 4;
+      const grd = starCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
+      grd.addColorStop(0, `rgba(${s.r},${s.g},${s.b},${alpha * 0.25})`);
+      grd.addColorStop(1, `rgba(${s.r},${s.g},${s.b},0)`);
+      starCtx.fillStyle = grd;
+      starCtx.beginPath(); starCtx.arc(s.x, s.y, glowR, 0, Math.PI * 2); starCtx.fill();
+    }
+    starCtx.fillStyle = `rgba(${s.r},${s.g},${s.b},${alpha})`;
+    starCtx.beginPath(); starCtx.arc(s.x, s.y, s.size * 0.5, 0, Math.PI * 2); starCtx.fill();
+  }
+
+  if (Math.random() < 0.008) {
+    const sx = Math.random() * w, sy = Math.random() * h * 0.6;
+    const len = 60 + Math.random() * 100;
+    const sc = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    const grad = starCtx.createLinearGradient(sx, sy, sx + len, sy + len * 0.3);
+    grad.addColorStop(0, `rgba(${sc[0]},${sc[1]},${sc[2]},0.8)`);
+    grad.addColorStop(0.3, `rgba(${sc[0]},${sc[1]},${sc[2]},0.3)`);
+    grad.addColorStop(1, `rgba(${sc[0]},${sc[1]},${sc[2]},0)`);
+    starCtx.strokeStyle = grad; starCtx.lineWidth = 1.5;
+    starCtx.beginPath(); starCtx.moveTo(sx, sy); starCtx.lineTo(sx + len, sy + len * 0.3); starCtx.stroke();
+  }
+
+  // Draw touch particles
+  for (let i = touchParticles.length - 1; i >= 0; i--) {
+    const p = touchParticles[i];
+    p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+    if (p.life <= 0) { touchParticles.splice(i, 1); continue; }
+    const a = p.life * 0.9;
+    // Glow
+    const gr = p.size * (p.type === 'burst' ? 5 : 3.5);
+    const grd = starCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr);
+    grd.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.5})`);
+    grd.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
+    starCtx.fillStyle = grd;
+    starCtx.beginPath(); starCtx.arc(p.x, p.y, gr, 0, Math.PI * 2); starCtx.fill();
+    // Dot
+    starCtx.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+    starCtx.beginPath(); starCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); starCtx.fill();
+  }
+
+  requestAnimationFrame(drawStars);
+}
+
+// Touch sparkle particles
+let touchParticles = [];
+
+// TAP: burst of sparkles radiating outward
+document.addEventListener('touchstart', (e) => {
+  const touch = e.touches[0];
+  const x = touch.clientX, y = touch.clientY;
+  for (let i = 0; i < 20; i++) {
+    const angle = (Math.PI * 2 / 20) * i + (Math.random() - 0.5) * 0.5;
+    const speed = 2 + Math.random() * 4;
+    const color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    touchParticles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0, decay: 0.02 + Math.random() * 0.01,
+      size: 2 + Math.random() * 3,
+      r: color[0], g: color[1], b: color[2],
+      type: 'burst',
+    });
+  }
+  if (touchParticles.length > 150) touchParticles = touchParticles.slice(-150);
+}, { passive: true });
+
+// DRAG: gentle trail of sparkles following finger
+document.addEventListener('touchmove', (e) => {
+  const touch = e.touches[0];
+  const x = touch.clientX, y = touch.clientY;
+  for (let i = 0; i < 3; i++) {
+    const color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    touchParticles.push({
+      x: x + (Math.random() - 0.5) * 16,
+      y: y + (Math.random() - 0.5) * 16,
+      vx: (Math.random() - 0.5) * 1.5,
+      vy: -0.5 - Math.random() * 1.5,
+      life: 1.0, decay: 0.025,
+      size: 1.5 + Math.random() * 2,
+      r: color[0], g: color[1], b: color[2],
+      type: 'trail',
+    });
+  }
+  if (touchParticles.length > 150) touchParticles = touchParticles.slice(-150);
+}, { passive: true });
+
+initStars(); drawStars();
+window.addEventListener('resize', () => { initStars(); });
+
+// ═══════════════════════════════════════════
+// CARD FAN & FOCUS
+// ═══════════════════════════════════════════
+const cards = document.querySelectorAll('.showcase-card');
+const sceneEl = document.getElementById('scene');
+const backdrop = document.getElementById('card-backdrop');
+const previewBtns = document.getElementById('preview-btns');
+const btnBack = document.getElementById('btn-back');
+const btnBuild = document.getElementById('btn-build');
+let focusedCard = null;
+let focusedCardOrigParent = null;
+let focusedCardOrigNext = null;
+
+const FAN_LAYOUT = [
+  { tx: '-115%', ty: '-50%', rot: -12 },
+  { tx: '-50%',  ty: '-54%', rot: 0   },
+  { tx: '15%',   ty: '-50%', rot: 12  },
+];
+
+function fanCards(delay = true) {
+  cards.forEach((card, i) => {
+    const layout = FAN_LAYOUT[i];
+    const d = delay ? (0.3 + i * 0.15) : 0;
+    card.style.transitionDelay = d + 's';
+    card.style.transform = `translate(${layout.tx}, ${layout.ty}) rotate(${layout.rot}deg)`;
+    card.style.zIndex = 10 + i;
+    card.style.filter = '';
+    card.classList.add('fanned');
+    card.classList.remove('focused');
+  });
+  // Move card back if it was moved to scene root
+  if (focusedCard !== null && focusedCardOrigParent) {
+    const card = cards[focusedCard];
+    if (focusedCardOrigNext) {
+      focusedCardOrigParent.insertBefore(card, focusedCardOrigNext);
+    } else {
+      focusedCardOrigParent.appendChild(card);
+    }
+    // Re-apply fan transform after moving back
+    const layout = FAN_LAYOUT[focusedCard];
+    card.style.transform = `translate(${layout.tx}, ${layout.ty}) rotate(${layout.rot}deg)`;
+  }
+  focusedCard = null;
+  backdrop.classList.remove('active');
+  previewBtns.classList.remove('show');
+}
+
+function focusCard(idx) {
+  if (focusedCard === idx) { fanCards(false); return; }
+  // Unfocus previous
+  if (focusedCard !== null) fanCards(false);
+  focusedCard = idx;
+  const card = cards[idx];
+  // Remember original position
+  focusedCardOrigParent = card.parentNode;
+  focusedCardOrigNext = card.nextSibling;
+  // Move to scene root above backdrop
+  sceneEl.appendChild(card);
+  backdrop.classList.add('active');
+  cards.forEach((c, i) => {
+    c.style.transitionDelay = '0s';
+    if (i === idx) {
+      c.style.transform = 'translate(-50%, -55%) rotate(0deg) scale(1.5)';
+      c.style.zIndex = 60;
+      c.style.filter = '';
+      c.classList.add('focused');
+    } else {
+      const dir = i < idx ? -1 : 1;
+      const layout = FAN_LAYOUT[i];
+      c.style.transform = `translate(${layout.tx}, ${layout.ty}) rotate(${layout.rot + dir * 6}deg) scale(0.85)`;
+      c.style.zIndex = 10 + i;
+      c.style.filter = 'brightness(0.35)';
+      c.classList.remove('focused');
+    }
+  });
+  previewBtns.classList.add('show');
+}
+
+cards.forEach((card, i) => {
+  card.addEventListener('click', (e) => { e.stopPropagation(); sfxClick(); focusCard(i); });
+});
+backdrop.addEventListener('click', () => { sfxClick(); fanCards(false); });
+btnBack.addEventListener('click', (e) => { e.stopPropagation(); sfxClick(); fanCards(false); });
+btnBuild.addEventListener('click', (e) => { e.stopPropagation(); sfxClick(); goToGame(); });
+
+// ═══════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════
+function sfxClick() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'square'; o.frequency.value = 440;
+    g.gain.setValueAtTime(0.1, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+    o.start(); o.stop(ctx.currentTime + 0.05);
+    setTimeout(() => {
+      const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.type = 'square'; o2.frequency.value = 660;
+      g2.gain.setValueAtTime(0.1, ctx.currentTime);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+      o2.start(); o2.stop(ctx.currentTime + 0.07);
+    }, 50);
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function goToGame() {
+  const fade = document.getElementById('fade');
+  fade.classList.remove('clear');
+  setTimeout(() => { window.location.href = 'mobile.html'; }, 800);
+}
+
+// ═══════════════════════════════════════════
+// LOAD
+// ═══════════════════════════════════════════
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('fade').classList.add('clear'), 200);
+  setTimeout(() => fanCards(true), 700);
+});
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  sfxClick();
+  goToGame();
+});
+</script>
+
+</body>
+</html>

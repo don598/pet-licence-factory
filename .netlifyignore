@@ -1,3 +1,28 @@
+# Secrets & config
 .env
 .env.example
 supabase_setup.sql
+
+# Manufacturing assets (large PSDs, DXFs)
+CCA/
+
+# Legal documents
+legal/
+
+# Dev tools (not for production)
+tools/
+
+# Temp files
+_preview_licenses_temp/
+
+# Archive
+_archive/
+
+# Node
+node_modules/
+
+# Dev launcher
+Launch.html
+
+# Reference JS (not runtime)
+plf-shared.js

@@ -419,6 +419,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 
 </div><!-- /scene -->
 
+<script src="music-toggle.js"></script>
 <script>
 'use strict';
 
@@ -481,6 +482,9 @@ function setBg(el,url){ el.style.backgroundImage=`url('${url}')`; }
 function showStation(n){
   document.querySelectorAll('.station').forEach(s=>s.classList.remove('active'));
   $('s'+n).classList.add('active');
+  // Remove any lingering spark canvases
+  document.querySelectorAll('#scene > canvas').forEach(c=>c.remove());
+  try { localStorage.setItem('plf-station', n); } catch(e){}
 }
 function hideAllBubbles(){ [1,2,3,4,5].forEach(n=>$('s'+n+'-bwrap').classList.remove('show')); }
 function hidePanel(){
@@ -1141,10 +1145,87 @@ function s4Confirm(){
   if(!chipSize)return;
   const label=chipSize==='standard'?'Classic Chip — the larger square cutout':'Mini Chip — the smaller narrow cutout';
   hidePanel(); setNav(null,null);
+  pauseSprite('s4-sprite');
+  fireChipSparks();
   typewrite(4,`${label}. That'll line up perfectly. Installing now… *CLICK* *WHIRR*. Done! ${petData.petFirstName||'Your pet'}'s sticker is ready!`,()=>{
     setNav(()=>fadeTransition(()=>startStation5()),()=>fadeTransition(()=>startStation3()),'GO TO CHECKOUT ▶');
   });
   jingle([{f:440,t:0},{f:550,t:150},{f:660,t:300}]);
+}
+
+// ── Chip Install Spark Effect ──
+let SPARK_TIP_X_PCT = 0.88;
+let SPARK_TIP_Y_PCT = 0.40;
+
+function fireChipSparks() {
+  document.querySelectorAll('#scene > canvas').forEach(c=>c.remove());
+  const scene=$('scene');
+  const sceneRect=scene.getBoundingClientRect();
+  const sprite=$('s4-sprite');
+  const spriteRect=sprite.getBoundingClientRect();
+  const tipX=spriteRect.left+spriteRect.width*SPARK_TIP_X_PCT-sceneRect.left;
+  const tipY=spriteRect.top+spriteRect.height*SPARK_TIP_Y_PCT-sceneRect.top;
+
+  const sparkCanvas=document.createElement('canvas');
+  sparkCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:15;pointer-events:none';
+  sparkCanvas.width=scene.offsetWidth*2; sparkCanvas.height=scene.offsetHeight*2;
+  scene.appendChild(sparkCanvas);
+  const ctx=sparkCanvas.getContext('2d');
+  ctx.scale(2,2);
+  const sw=scene.offsetWidth, sh=scene.offsetHeight;
+
+  const SPARK_COLORS=[[255,255,255],[255,255,200],[255,240,120],[255,200,60],[255,160,30],[255,100,20],[255,60,10],[0,255,65],[100,255,100]];
+  const sparks=[];
+
+  function addBurst(count,spreadMul,speedMul){
+    for(let i=0;i<count;i++){
+      const angle=-Math.PI/2+(Math.random()-.5)*Math.PI*spreadMul;
+      const speed=(1.5+Math.random()*5)*speedMul;
+      const color=SPARK_COLORS[Math.floor(Math.random()*SPARK_COLORS.length)];
+      sparks.push({x:tipX+(Math.random()-.5)*6,y:tipY+(Math.random()-.5)*4,vx:Math.cos(angle)*speed+(Math.random()-.5)*1.5,vy:Math.sin(angle)*speed,gravity:.04+Math.random()*.04,life:1,decay:.004+Math.random()*.006,size:.8+Math.random()*2.5,r:color[0],g:color[1],b:color[2],trail:[]});
+    }
+  }
+
+  addBurst(100,1.3,1);
+  let flashAlpha=1;
+  [250,500,800,1200,1600,2000,2500,3000].forEach(d=>{
+    setTimeout(()=>{addBurst(20+Math.floor(Math.random()*25),1+Math.random()*.4,.7+Math.random()*.5);beep(700+Math.random()*600,.02+Math.random()*.02,'square',.04);flashAlpha=Math.max(flashAlpha,.4+Math.random()*.3);},d);
+  });
+
+  function drawSparks(){
+    ctx.clearRect(0,0,sw,sh);
+    if(flashAlpha>0){
+      const gr=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,50);
+      gr.addColorStop(0,`rgba(255,255,255,${flashAlpha})`);
+      gr.addColorStop(.15,`rgba(255,250,200,${flashAlpha*.8})`);
+      gr.addColorStop(.4,`rgba(255,200,80,${flashAlpha*.4})`);
+      gr.addColorStop(.7,`rgba(0,255,65,${flashAlpha*.15})`);
+      gr.addColorStop(1,'rgba(0,255,65,0)');
+      ctx.fillStyle=gr;ctx.beginPath();ctx.arc(tipX,tipY,50,0,Math.PI*2);ctx.fill();
+      const cr=ctx.createRadialGradient(tipX,tipY,0,tipX,tipY,8);
+      cr.addColorStop(0,`rgba(255,255,255,${flashAlpha})`);
+      cr.addColorStop(1,'rgba(255,255,200,0)');
+      ctx.fillStyle=cr;ctx.beginPath();ctx.arc(tipX,tipY,8,0,Math.PI*2);ctx.fill();
+      flashAlpha-=.004;
+    }
+    let alive=0;
+    for(const s of sparks){
+      if(s.life<=0)continue;alive++;
+      s.trail.push({x:s.x,y:s.y,a:s.life});if(s.trail.length>6)s.trail.shift();
+      s.x+=s.vx;s.y+=s.vy;s.vy+=s.gravity;s.vx*=.99;s.life-=s.decay;
+      for(let t=0;t<s.trail.length;t++){const tp=s.trail[t];const ta=tp.a*(t/s.trail.length)*.4;ctx.fillStyle=`rgba(${s.r},${s.g},${s.b},${ta})`;ctx.beginPath();ctx.arc(tp.x,tp.y,s.size*.3*(t/s.trail.length),0,Math.PI*2);ctx.fill();}
+      const a=s.life;const glowR=s.size*3;
+      const grd=ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,glowR);
+      grd.addColorStop(0,`rgba(${s.r},${s.g},${s.b},${a*.5})`);grd.addColorStop(1,`rgba(${s.r},${s.g},${s.b},0)`);
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(s.x,s.y,glowR,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=`rgba(${Math.min(255,s.r+50)},${Math.min(255,s.g+50)},${Math.min(255,s.b+50)},${a})`;
+      ctx.beginPath();ctx.arc(s.x,s.y,s.size*.5*a,0,Math.PI*2);ctx.fill();
+    }
+    if(alive>0||flashAlpha>0){requestAnimationFrame(drawSparks);}
+    else{sparkCanvas.remove();setTimeout(()=>resumeSprite('s4-sprite'),1000);}
+  }
+  beep(1200,.04,'square',.03);beep(900,.06,'sawtooth',.04);
+  requestAnimationFrame(drawSparks);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1541,11 +1622,14 @@ window.addEventListener('load',()=>{
   setBg($('s1-bg'),A.s1bg);
   /* sprite loops started at load */
   const skipToS4=new URLSearchParams(location.search).get('skipToS4');
+  let savedStation = parseInt(localStorage.getItem('plf-station')) || 1;
+  if (savedStation > 1 && (!petData.petFirstName || !licTemplate)) savedStation = 1;
+  const starters = [startStation1, startStation2, startStation3, startStation4, startStation5];
   if(skipToS4){
     loadLicenceTemplate();
     setTimeout(()=>{ startStation4(); },100);
   } else {
-    setTimeout(()=>{ startStation1(); },100);
+    setTimeout(()=>{ (starters[savedStation - 1] || startStation1)(); },100);
   }
 });
 </script>

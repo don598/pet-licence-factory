@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PLF Music Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#0a0c0c;color:#00ff41;font-family:'Press Start 2P',monospace;overflow:hidden}
+
+/* ── Layout ── */
+.app{display:flex;flex-direction:column;height:100vh}
+.toolbar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#0d100d;border-bottom:1px solid rgba(0,255,65,.2);flex-shrink:0;flex-wrap:wrap}
+.toolbar-title{font-size:10px;color:#00cc33;margin-right:8px;white-space:nowrap}
+.main-area{display:flex;flex:1;overflow:hidden}
+.piano-col{flex-shrink:0;overflow-y:auto;overflow-x:hidden;background:#080a08;border-right:1px solid rgba(0,255,65,.15)}
+.grid-col{flex:1;overflow:auto;position:relative}
+.bottom-bar{display:flex;align-items:center;gap:16px;padding:8px 16px;background:#0d100d;border-top:1px solid rgba(0,255,65,.2);flex-shrink:0;flex-wrap:wrap}
+
+/* ── Toolbar controls ── */
+.tb-btn{font-family:inherit;font-size:9px;background:#0a1a0a;color:#00ff41;border:2px solid #00cc33;padding:6px 14px;cursor:pointer;letter-spacing:1px;transition:background .1s}
+.tb-btn:hover{background:#00cc33;color:#0a1a0a}
+.tb-btn:active{transform:translate(1px,1px)}
+.tb-btn.active{background:#00ff41;color:#0a0c0c;border-color:#00ff41}
+.tb-btn.danger{border-color:#ff4444;color:#ff4444}
+.tb-btn.danger:hover{background:#ff4444;color:#0a0c0c}
+.tb-btn.export-btn{border-color:#44aaff;color:#44aaff}
+.tb-btn.export-btn:hover{background:#44aaff;color:#0a0c0c}
+.tb-btn.sm{font-size:7px;padding:4px 10px}
+
+.tb-label{font-size:8px;color:#00aa33;white-space:nowrap}
+.tb-select{font-family:inherit;font-size:8px;background:#0a1a0a;color:#00ff41;border:1px solid #00cc33;padding:4px 8px;cursor:pointer}
+.tb-select option{background:#0a1a0a;color:#00ff41}
+.tb-range{-webkit-appearance:none;width:80px;height:4px;background:#003a10;border-radius:2px;outline:none}
+.tb-range::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#00ff41;cursor:pointer}
+.tb-number{font-family:inherit;font-size:9px;background:#0a1a0a;color:#00ff41;border:1px solid #00cc33;padding:4px 8px;width:60px;text-align:center}
+
+.tb-group{display:flex;align-items:center;gap:6px;padding:0 8px;border-left:1px solid rgba(0,255,65,.1)}
+.tb-group:first-child{border-left:none}
+
+/* ── Tab bars (shared for tracks + loops) ── */
+.tab-bar{display:flex;background:#0d100d;padding:0 16px;border-bottom:1px solid rgba(0,255,65,.15);align-items:flex-end}
+.tab-bar-label{font-size:7px;color:#006600;padding:6px 10px 6px 0;align-self:center;white-space:nowrap}
+.tab-row{display:flex;gap:2px}
+.tab-item{font-family:inherit;font-size:8px;padding:5px 12px;cursor:pointer;border:1px solid rgba(0,255,65,.2);border-bottom:none;background:#080a08;color:#00aa33;transition:all .15s;white-space:nowrap}
+.tab-item.active{background:#0a1a0a;color:#00ff41;border-color:#00cc33;position:relative;top:1px}
+.tab-item .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px}
+
+/* Loop tabs specific */
+.loop-tab{border-color:rgba(255,200,80,.2);cursor:grab}
+.loop-tab:active{cursor:grabbing}
+.loop-tab.active{border-color:#ffc850;color:#ffc850}
+.loop-tab.playing-loop{box-shadow:0 0 8px rgba(255,200,80,.4);border-color:#ffc850}
+.loop-tab.drag-over-left{box-shadow:-3px 0 0 #ffc850}
+.loop-tab.drag-over-right{box-shadow:3px 0 0 #ffc850}
+.loop-tab.dragging{opacity:0.4}
+
+/* ── Piano keys ── */
+.piano-key{width:80px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:7px;cursor:pointer;border-bottom:1px solid rgba(0,255,65,.06);transition:background .1s;user-select:none;white-space:nowrap}
+.piano-key.white{background:#0c100c;color:#00aa33}
+.piano-key.black{background:#060806;color:#008822;font-weight:bold}
+.piano-key:hover{background:rgba(0,255,65,.12)}
+.piano-key.sounding{background:rgba(0,255,65,.25)!important}
+
+/* ── Grid ── */
+.grid-table{border-collapse:collapse}
+.grid-cell{border:1px solid rgba(0,255,65,.06);cursor:crosshair;transition:background .08s;position:relative}
+.grid-cell:hover{background:rgba(0,255,65,.08)!important}
+.grid-cell.active{border-radius:2px}
+.grid-cell.beat-start{border-left:1px solid rgba(0,255,65,.18)}
+.grid-cell.bar-start{border-left:2px solid rgba(0,255,65,.3)}
+
+/* Playhead */
+.playhead{position:absolute;top:0;width:2px;height:100%;background:#00ff41;box-shadow:0 0 8px rgba(0,255,65,.6);z-index:10;pointer-events:none;transition:left 0.05s linear}
+
+/* ── Status bar ── */
+.status{font-size:7px;color:#00aa33}
+.status-highlight{color:#00ff41}
+
+/* ── Export modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#0d100d;border:2px solid #00cc33;padding:20px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto;border-radius:4px}
+.modal h2{font-size:11px;margin-bottom:12px;color:#00ff41}
+.modal pre{background:#060808;border:1px solid rgba(0,255,65,.2);padding:12px;font-size:8px;color:#00cc33;overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:300px;overflow-y:auto;margin-bottom:12px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <span class="toolbar-title">PLF STUDIO</span>
+
+    <div class="tb-group">
+      <button class="tb-btn" id="btn-play" title="Play">PLAY</button>
+      <button class="tb-btn" id="btn-stop" title="Stop">STOP</button>
+      <button class="tb-btn" id="btn-loop" title="Toggle loop">LOOP</button>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">BPM</span>
+      <input type="number" class="tb-number" id="bpm-input" value="120" min="40" max="300" step="1"/>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">STEPS</span>
+      <select class="tb-select" id="steps-select">
+        <option value="16">16</option>
+        <option value="32" selected>32</option>
+        <option value="48">48</option>
+        <option value="64">64</option>
+      </select>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">WAVE</span>
+      <select class="tb-select" id="wave-select">
+        <option value="triangle">Triangle</option>
+        <option value="square">Square</option>
+        <option value="sawtooth">Sawtooth</option>
+        <option value="sine">Sine</option>
+      </select>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">VOL</span>
+      <input type="range" class="tb-range" id="vol-range" min="0" max="100" value="60"/>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">ATK</span>
+      <input type="range" class="tb-range" id="attack-range" min="0" max="100" value="0"/>
+    </div>
+
+    <div class="tb-group">
+      <span class="tb-label">DECAY</span>
+      <input type="range" class="tb-range" id="decay-range" min="5" max="200" value="30"/>
+    </div>
+
+    <div class="tb-group">
+      <button class="tb-btn danger" id="btn-clear">CLEAR</button>
+      <button class="tb-btn export-btn" id="btn-export">EXPORT</button>
+    </div>
+  </div>
+
+  <!-- Track tabs -->
+  <div class="tab-bar">
+    <span class="tab-bar-label">TRACKS</span>
+    <div class="tab-row" id="track-tabs"></div>
+    <button class="tb-btn sm" id="btn-add-track" style="margin-left:auto;align-self:center">+ TRACK</button>
+  </div>
+
+  <!-- Loop tabs -->
+  <div class="tab-bar">
+    <span class="tab-bar-label">LOOPS</span>
+    <div class="tab-row" id="loop-tabs"></div>
+    <button class="tb-btn sm" id="btn-add-loop" style="margin-left:8px;align-self:center;border-color:#ffc850;color:#ffc850">+ LOOP</button>
+    <button class="tb-btn sm" id="btn-dup-loop" style="margin-left:4px;align-self:center;border-color:#ffc850;color:#ffc850">DUP</button>
+    <button class="tb-btn sm danger" id="btn-del-loop" style="margin-left:4px;align-self:center">DEL</button>
+  </div>
+
+  <!-- Main: piano + grid -->
+  <div class="main-area">
+    <div class="piano-col" id="piano-col"></div>
+    <div class="grid-col" id="grid-col">
+      <div class="playhead" id="playhead" style="display:none"></div>
+      <table class="grid-table" id="grid-table"></table>
+    </div>
+  </div>
+
+  <!-- Bottom status bar -->
+  <div class="bottom-bar">
+    <span class="status" id="status">Ready — click cells to place notes</span>
+    <span style="flex:1"></span>
+    <span class="status">PLF Music Studio v1.1</span>
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="modal-overlay" id="export-modal">
+  <div class="modal">
+    <h2>EXPORT — Paste into music-toggle.js</h2>
+    <pre id="export-code"></pre>
+    <div class="modal-actions">
+      <button class="tb-btn" id="btn-copy-export">COPY</button>
+      <button class="tb-btn" id="btn-close-modal">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+// NOTE DEFINITIONS
+// ═══════════════════════════════════════════
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function buildNoteList(lowOctave, highOctave) {
+  const notes = [];
+  for (let oct = highOctave; oct >= lowOctave; oct--) {
+    for (let n = 11; n >= 0; n--) {
+      const name = NOTE_NAMES[n];
+      const midi = (oct + 1) * 12 + n;
+      const freq = 440 * Math.pow(2, (midi - 69) / 12);
+      notes.push({ name: name + oct, freq: Math.round(freq * 100) / 100, isBlack: name.includes('#'), midi });
+    }
+  }
+  return notes;
+}
+
+const NOTES = buildNoteList(3, 5);
+const CELL_W = 28;
+const CELL_H = 18;
+
+// ═══════════════════════════════════════════
+// TRACK & LOOP STATE
+// ═══════════════════════════════════════════
+const TRACK_COLORS = [
+  { bg: 'rgba(0,255,65,0.55)', border: '#00ff41', label: '#00ff41', dot: '#00ff41' },
+  { bg: 'rgba(100,180,255,0.55)', border: '#64b4ff', label: '#64b4ff', dot: '#64b4ff' },
+  { bg: 'rgba(255,100,200,0.55)', border: '#ff64c8', label: '#ff64c8', dot: '#ff64c8' },
+  { bg: 'rgba(255,200,80,0.55)', border: '#ffc850', label: '#ffc850', dot: '#ffc850' },
+  { bg: 'rgba(180,130,255,0.55)', border: '#b482ff', label: '#b482ff', dot: '#b482ff' },
+];
+
+const LOOP_LETTERS = 'ABCDEFGHIJKLMNOP';
+
+// Each track has `grids` — an array of grids, one per loop
+let tracks = [
+  { name: 'Melody', wave: 'triangle', volume: 0.6, attack: 0, decay: 0.3, grids: [{}], colorIdx: 0 },
+  { name: 'Bass', wave: 'square', volume: 0.4, attack: 0, decay: 0.5, grids: [{}], colorIdx: 1 },
+];
+let loops = [{ name: 'A' }];
+let activeTrack = 0;
+let activeLoop = 0;
+let numSteps = 32;
+let bpm = 120;
+let looping = true;
+
+// Helper: get the active grid for a track
+function getGrid(trackIdx) {
+  const t = tracks[trackIdx];
+  // Ensure grids array is long enough
+  while (t.grids.length <= activeLoop) t.grids.push({});
+  return t.grids[activeLoop];
+}
+
+// Helper: get a specific loop's grid for a track
+function getLoopGrid(trackIdx, loopIdx) {
+  const t = tracks[trackIdx];
+  while (t.grids.length <= loopIdx) t.grids.push({});
+  return t.grids[loopIdx];
+}
+
+// ═══════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════
+let audioCtx = null;
+let masterGain = null;
+
+function ensureAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.5;
+    masterGain.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playNoteSound(freq, wave, volume, attack, duration) {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = wave;
+  osc.frequency.value = freq;
+  osc.connect(g);
+  g.connect(masterGain);
+  const now = audioCtx.currentTime;
+  const atk = attack || 0;
+  const totalDur = atk + duration;
+  g.gain.setValueAtTime(0.001, now);
+  g.gain.linearRampToValueAtTime(volume, now + atk);
+  g.gain.exponentialRampToValueAtTime(0.001, now + totalDur);
+  osc.start(now);
+  osc.stop(now + totalDur + 0.02);
+}
+
+function previewNote(noteIdx) {
+  const note = NOTES[noteIdx];
+  const track = tracks[activeTrack];
+  playNoteSound(note.freq, track.wave, track.volume, track.attack || 0, track.decay || 0.3);
+}
+
+// ═══════════════════════════════════════════
+// RENDER PIANO + GRID
+// ═══════════════════════════════════════════
+const pianoCol = document.getElementById('piano-col');
+const gridTable = document.getElementById('grid-table');
+const gridCol = document.getElementById('grid-col');
+
+function render() {
+  // Piano keys
+  pianoCol.innerHTML = '';
+  NOTES.forEach((note, i) => {
+    const key = document.createElement('div');
+    key.className = 'piano-key ' + (note.isBlack ? 'black' : 'white');
+    key.style.height = CELL_H + 'px';
+    key.textContent = note.name;
+    key.addEventListener('mousedown', () => {
+      previewNote(i);
+      key.classList.add('sounding');
+    });
+    key.addEventListener('mouseup', () => key.classList.remove('sounding'));
+    key.addEventListener('mouseleave', () => key.classList.remove('sounding'));
+    pianoCol.appendChild(key);
+  });
+
+  // Grid
+  gridTable.innerHTML = '';
+  NOTES.forEach((note, row) => {
+    const tr = document.createElement('tr');
+    for (let col = 0; col < numSteps; col++) {
+      const td = document.createElement('td');
+      td.className = 'grid-cell';
+      td.style.width = CELL_W + 'px';
+      td.style.height = CELL_H + 'px';
+      td.style.minWidth = CELL_W + 'px';
+      if (col % 4 === 0) td.classList.add('beat-start');
+      if (col % 16 === 0) td.classList.add('bar-start');
+      renderCellContent(td, row, col);
+      td.dataset.row = row;
+      td.dataset.col = col;
+      td.addEventListener('mousedown', (e) => onCellClick(e, row, col, td));
+      tr.appendChild(td);
+    }
+    gridTable.appendChild(tr);
+  });
+
+  renderTrackTabs();
+  renderLoopTabs();
+  updateStatus();
+}
+
+function renderCellContent(td, row, col) {
+  td.style.background = '';
+  td.classList.remove('active');
+
+  const order = tracks.map((_, i) => i).sort((a, b) => {
+    if (a === activeTrack) return 1;
+    if (b === activeTrack) return -1;
+    return a - b;
+  });
+
+  for (const ti of order) {
+    const grid = getGrid(ti);
+    const key = row + ':' + col;
+    if (grid[key]) {
+      const color = TRACK_COLORS[tracks[ti].colorIdx % TRACK_COLORS.length];
+      td.style.background = color.bg;
+      td.classList.add('active');
+    }
+  }
+}
+
+function onCellClick(e, row, col, td) {
+  const key = row + ':' + col;
+  const grid = getGrid(activeTrack);
+  if (grid[key]) {
+    delete grid[key];
+  } else {
+    grid[key] = true;
+    previewNote(row);
+  }
+  renderCellContent(td, row, col);
+}
+
+// ═══════════════════════════════════════════
+// TRACK TABS
+// ═══════════════════════════════════════════
+const trackTabsEl = document.getElementById('track-tabs');
+
+function renderTrackTabs() {
+  trackTabsEl.innerHTML = '';
+  tracks.forEach((track, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'tab-item' + (i === activeTrack ? ' active' : '');
+    const color = TRACK_COLORS[track.colorIdx % TRACK_COLORS.length];
+    tab.innerHTML = `<span class="dot" style="background:${color.dot}"></span>${track.name}`;
+    tab.addEventListener('click', () => {
+      activeTrack = i;
+      document.getElementById('wave-select').value = track.wave;
+      document.getElementById('vol-range').value = Math.round(track.volume * 100);
+      document.getElementById('attack-range').value = Math.round((track.attack || 0) * 100);
+      document.getElementById('decay-range').value = Math.round((track.decay || 0.3) * 100);
+      render();
+    });
+    tab.addEventListener('dblclick', () => {
+      const name = prompt('Track name:', track.name);
+      if (name) { track.name = name.substring(0, 12); renderTrackTabs(); }
+    });
+    trackTabsEl.appendChild(tab);
+  });
+}
+
+document.getElementById('btn-add-track').addEventListener('click', () => {
+  if (tracks.length >= 5) return;
+  const grids = loops.map(() => ({}));
+  tracks.push({
+    name: 'Track ' + (tracks.length + 1),
+    wave: 'sine',
+    volume: 0.5,
+    attack: 0,
+    decay: 0.3,
+    grids,
+    colorIdx: tracks.length % TRACK_COLORS.length,
+  });
+  activeTrack = tracks.length - 1;
+  document.getElementById('wave-select').value = 'sine';
+  document.getElementById('vol-range').value = 50;
+  document.getElementById('attack-range').value = 0;
+  document.getElementById('decay-range').value = 30;
+  render();
+});
+
+// ═══════════════════════════════════════════
+// LOOP TABS
+// ═══════════════════════════════════════════
+const loopTabsEl = document.getElementById('loop-tabs');
+
+let dragLoopIdx = null;
+
+function renderLoopTabs() {
+  loopTabsEl.innerHTML = '';
+  loops.forEach((loop, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'tab-item loop-tab' + (i === activeLoop ? ' active' : '');
+    if (playing && i === playingLoopIdx) tab.classList.add('playing-loop');
+    tab.textContent = loop.name;
+    tab.draggable = true;
+    tab.dataset.loopIdx = i;
+
+    tab.addEventListener('click', () => {
+      activeLoop = i;
+      render();
+    });
+    tab.addEventListener('dblclick', () => {
+      const name = prompt('Loop name:', loop.name);
+      if (name) { loop.name = name.substring(0, 8); renderLoopTabs(); }
+    });
+
+    // Drag events
+    tab.addEventListener('dragstart', (e) => {
+      dragLoopIdx = i;
+      tab.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', i);
+    });
+    tab.addEventListener('dragend', () => {
+      tab.classList.remove('dragging');
+      dragLoopIdx = null;
+      // Clean up any lingering indicators
+      loopTabsEl.querySelectorAll('.loop-tab').forEach(t => {
+        t.classList.remove('drag-over-left', 'drag-over-right');
+      });
+    });
+    tab.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dragLoopIdx === null || dragLoopIdx === i) return;
+      const rect = tab.getBoundingClientRect();
+      const midX = rect.left + rect.width / 2;
+      tab.classList.remove('drag-over-left', 'drag-over-right');
+      if (e.clientX < midX) {
+        tab.classList.add('drag-over-left');
+      } else {
+        tab.classList.add('drag-over-right');
+      }
+    });
+    tab.addEventListener('dragleave', () => {
+      tab.classList.remove('drag-over-left', 'drag-over-right');
+    });
+    tab.addEventListener('drop', (e) => {
+      e.preventDefault();
+      tab.classList.remove('drag-over-left', 'drag-over-right');
+      if (dragLoopIdx === null || dragLoopIdx === i) return;
+      const rect = tab.getBoundingClientRect();
+      const midX = rect.left + rect.width / 2;
+      const dropBefore = e.clientX < midX;
+
+      // Calculate target index
+      let targetIdx = dropBefore ? i : i + 1;
+      if (dragLoopIdx < targetIdx) targetIdx--;
+
+      if (targetIdx === dragLoopIdx) return;
+
+      // Move loop in the loops array
+      const [movedLoop] = loops.splice(dragLoopIdx, 1);
+      loops.splice(targetIdx, 0, movedLoop);
+
+      // Move corresponding grids in each track
+      tracks.forEach(t => {
+        const [movedGrid] = t.grids.splice(dragLoopIdx, 1);
+        t.grids.splice(targetIdx, 0, movedGrid);
+      });
+
+      // Update activeLoop to follow the moved loop
+      if (activeLoop === dragLoopIdx) {
+        activeLoop = targetIdx;
+      } else if (dragLoopIdx < activeLoop && targetIdx >= activeLoop) {
+        activeLoop--;
+      } else if (dragLoopIdx > activeLoop && targetIdx <= activeLoop) {
+        activeLoop++;
+      }
+
+      dragLoopIdx = null;
+      render();
+    });
+
+    loopTabsEl.appendChild(tab);
+  });
+}
+
+// Add blank loop
+document.getElementById('btn-add-loop').addEventListener('click', () => {
+  if (loops.length >= 16) return;
+  loops.push({ name: LOOP_LETTERS[loops.length] || 'L' + (loops.length + 1) });
+  // Extend each track's grids array with an empty grid
+  tracks.forEach(t => t.grids.push({}));
+  activeLoop = loops.length - 1;
+  render();
+});
+
+// Duplicate current loop
+document.getElementById('btn-dup-loop').addEventListener('click', () => {
+  if (loops.length >= 16) return;
+  const srcIdx = activeLoop;
+  loops.push({ name: LOOP_LETTERS[loops.length] || 'L' + (loops.length + 1) });
+  // Deep-copy each track's grid from the current loop
+  tracks.forEach(t => {
+    const srcGrid = t.grids[srcIdx] || {};
+    t.grids.push(JSON.parse(JSON.stringify(srcGrid)));
+  });
+  activeLoop = loops.length - 1;
+  render();
+});
+
+// Delete current loop
+document.getElementById('btn-del-loop').addEventListener('click', () => {
+  if (loops.length <= 1) return;
+  if (!confirm('Delete loop "' + loops[activeLoop].name + '"?')) return;
+  const idx = activeLoop;
+  loops.splice(idx, 1);
+  tracks.forEach(t => t.grids.splice(idx, 1));
+  if (activeLoop >= loops.length) activeLoop = loops.length - 1;
+  render();
+});
+
+// ═══════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════
+document.getElementById('wave-select').addEventListener('change', (e) => {
+  tracks[activeTrack].wave = e.target.value;
+});
+
+document.getElementById('vol-range').addEventListener('input', (e) => {
+  tracks[activeTrack].volume = parseInt(e.target.value) / 100;
+});
+
+document.getElementById('attack-range').addEventListener('input', (e) => {
+  tracks[activeTrack].attack = parseInt(e.target.value) / 100;
+});
+
+document.getElementById('decay-range').addEventListener('input', (e) => {
+  tracks[activeTrack].decay = parseInt(e.target.value) / 100;
+});
+
+document.getElementById('bpm-input').addEventListener('change', (e) => {
+  bpm = Math.max(40, Math.min(300, parseInt(e.target.value) || 120));
+  e.target.value = bpm;
+});
+
+document.getElementById('steps-select').addEventListener('change', (e) => {
+  numSteps = parseInt(e.target.value);
+  render();
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (confirm('Clear all notes on "' + tracks[activeTrack].name + '" in loop "' + loops[activeLoop].name + '"?')) {
+    tracks[activeTrack].grids[activeLoop] = {};
+    render();
+  }
+});
+
+const btnLoop = document.getElementById('btn-loop');
+btnLoop.classList.add('active');
+btnLoop.addEventListener('click', () => {
+  looping = !looping;
+  btnLoop.classList.toggle('active', looping);
+});
+
+// ═══════════════════════════════════════════
+// PLAYBACK (chains through loops)
+// ═══════════════════════════════════════════
+let playing = false;
+let playStep = 0;
+let playingLoopIdx = 0;
+let playTimer = null;
+const playhead = document.getElementById('playhead');
+const btnPlay = document.getElementById('btn-play');
+const btnStop = document.getElementById('btn-stop');
+
+function startPlayback() {
+  ensureAudio();
+  if (playing) return;
+  playing = true;
+  playingLoopIdx = activeLoop;
+  btnPlay.classList.add('active');
+  playhead.style.display = 'block';
+  renderLoopTabs();
+  scheduleStep();
+}
+
+function stopPlayback() {
+  playing = false;
+  playingLoopIdx = 0;
+  btnPlay.classList.remove('active');
+  playhead.style.display = 'none';
+  if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+  playStep = 0;
+  renderLoopTabs();
+}
+
+function scheduleStep() {
+  if (!playing) return;
+
+  // Move playhead
+  playhead.style.left = (playStep * CELL_W) + 'px';
+
+  // Play all notes at this step across all tracks, using the PLAYING loop's grids
+  for (let ti = 0; ti < tracks.length; ti++) {
+    const track = tracks[ti];
+    const grid = getLoopGrid(ti, playingLoopIdx);
+    for (let row = 0; row < NOTES.length; row++) {
+      if (grid[row + ':' + playStep]) {
+        playNoteSound(NOTES[row].freq, track.wave, track.volume, track.attack || 0, track.decay || 0.3);
+      }
+    }
+  }
+
+  updateStatus('Loop <span class="status-highlight">' + loops[playingLoopIdx].name + '</span> — step ' + (playStep + 1) + '/' + numSteps);
+
+  playStep++;
+  if (playStep >= numSteps) {
+    playStep = 0;
+    playingLoopIdx++;
+    if (playingLoopIdx >= loops.length) {
+      if (looping) {
+        playingLoopIdx = 0;
+      } else {
+        stopPlayback();
+        return;
+      }
+    }
+    renderLoopTabs();
+  }
+
+  const stepMs = (60000 / bpm) / 2;
+  playTimer = setTimeout(scheduleStep, stepMs);
+}
+
+btnPlay.addEventListener('click', () => {
+  if (playing) return;
+  playStep = 0;
+  startPlayback();
+});
+
+btnStop.addEventListener('click', stopPlayback);
+
+// ═══════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════
+const exportModal = document.getElementById('export-modal');
+const exportCode = document.getElementById('export-code');
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  exportCode.textContent = generateExport();
+  exportModal.classList.add('show');
+});
+
+document.getElementById('btn-close-modal').addEventListener('click', () => {
+  exportModal.classList.remove('show');
+});
+
+document.getElementById('btn-copy-export').addEventListener('click', () => {
+  navigator.clipboard.writeText(exportCode.textContent).then(() => {
+    document.getElementById('btn-copy-export').textContent = 'COPIED!';
+    setTimeout(() => document.getElementById('btn-copy-export').textContent = 'COPY', 1500);
+  });
+});
+
+exportModal.addEventListener('click', (e) => {
+  if (e.target === exportModal) exportModal.classList.remove('show');
+});
+
+function generateExport() {
+  // Build all loops sequentially into one flat melody
+  let allSteps = [];
+  for (let li = 0; li < loops.length; li++) {
+    for (let col = 0; col < numSteps; col++) {
+      // Find the first track with a note at this step in this loop
+      let freq = 0;
+      for (let ti = 0; ti < tracks.length; ti++) {
+        const grid = getLoopGrid(ti, li);
+        for (let row = 0; row < NOTES.length; row++) {
+          if (grid[row + ':' + col]) {
+            freq = NOTES[row].freq;
+            break;
+          }
+        }
+        if (freq) break;
+      }
+      allSteps.push(freq ? Math.round(freq) : 0);
+    }
+  }
+
+  // Full multi-track + multi-loop data
+  const fullData = {
+    bpm,
+    steps: numSteps,
+    loops: loops.map((loop, li) => ({
+      name: loop.name,
+      tracks: tracks.map((t, ti) => {
+        const grid = getLoopGrid(ti, li);
+        const steps = [];
+        for (let col = 0; col < numSteps; col++) {
+          const notesAtStep = [];
+          for (let row = 0; row < NOTES.length; row++) {
+            if (grid[row + ':' + col]) notesAtStep.push(NOTES[row].freq);
+          }
+          steps.push(notesAtStep.length > 0 ? notesAtStep : null);
+        }
+        return { name: t.name, wave: t.wave, volume: t.volume, decay: t.decay, steps };
+      }),
+    })),
+  };
+
+  let out = '// ═══════════════════════════════════════\n';
+  out += '// PLF Music Studio Export\n';
+  out += '// BPM: ' + bpm + ' | Steps/loop: ' + numSteps + ' | Loops: ' + loops.length + '\n';
+  out += '// ═══════════════════════════════════════\n\n';
+
+  out += '// ── Simple melody array (all loops concatenated) ──\n';
+  out += 'const MELODY_NOTES = [\n';
+  for (let i = 0; i < allSteps.length; i += 8) {
+    const chunk = allSteps.slice(i, i + 8);
+    out += '  ' + chunk.map(f => f === 0 ? '0' : f).join(', ') + ',\n';
+  }
+  out += '];\n';
+  out += 'const MELODY_BPM = ' + bpm + ';\n\n';
+
+  out += '// ── Full multi-track, multi-loop data ──\n';
+  out += 'const PLF_SONG = ' + JSON.stringify(fullData, null, 2) + ';\n';
+
+  return out;
+}
+
+// ═══════════════════════════════════════════
+// SCROLL SYNC
+// ═══════════════════════════════════════════
+const pianoColEl = document.getElementById('piano-col');
+gridCol.addEventListener('scroll', () => { pianoColEl.scrollTop = gridCol.scrollTop; });
+pianoColEl.addEventListener('scroll', () => { gridCol.scrollTop = pianoColEl.scrollTop; });
+
+// ═══════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.code === 'Space') { e.preventDefault(); playing ? stopPlayback() : (playStep = 0, startPlayback()); }
+  // Left/Right arrows to switch loops
+  if (e.code === 'ArrowLeft' && activeLoop > 0) { activeLoop--; render(); }
+  if (e.code === 'ArrowRight' && activeLoop < loops.length - 1) { activeLoop++; render(); }
+});
+
+// ═══════════════════════════════════════════
+// STATUS
+// ═══════════════════════════════════════════
+function updateStatus(msg) {
+  const el = document.getElementById('status');
+  if (msg) { el.innerHTML = msg; return; }
+  const track = tracks[activeTrack];
+  const grid = getGrid(activeTrack);
+  const noteCount = Object.keys(grid).length;
+  el.innerHTML = `Loop: <span class="status-highlight">${loops[activeLoop].name}</span> | Track: <span class="status-highlight">${track.name}</span> | Notes: <span class="status-highlight">${noteCount}</span> | BPM: <span class="status-highlight">${bpm}</span>`;
+}
+
+// ═══════════════════════════════════════════
+// MOUSE DRAG PAINTING
+// ═══════════════════════════════════════════
+let painting = false;
+let paintMode = null;
+
+gridTable.addEventListener('mousedown', (e) => {
+  if (e.target.classList.contains('grid-cell')) {
+    painting = true;
+    const row = parseInt(e.target.dataset.row);
+    const col = parseInt(e.target.dataset.col);
+    const grid = getGrid(activeTrack);
+    paintMode = grid[row + ':' + col] ? 'remove' : 'add';
+  }
+});
+
+gridTable.addEventListener('mouseover', (e) => {
+  if (!painting || !e.target.classList.contains('grid-cell')) return;
+  const row = parseInt(e.target.dataset.row);
+  const col = parseInt(e.target.dataset.col);
+  const key = row + ':' + col;
+  const grid = getGrid(activeTrack);
+  if (paintMode === 'add' && !grid[key]) {
+    grid[key] = true;
+    renderCellContent(e.target, row, col);
+    previewNote(row);
+  } else if (paintMode === 'remove' && grid[key]) {
+    delete grid[key];
+    renderCellContent(e.target, row, col);
+  }
+});
+
+document.addEventListener('mouseup', () => { painting = false; paintMode = null; });
+
+// ═══════════════════════════════════════════
+// SAVE / LOAD (localStorage)
+// ═══════════════════════════════════════════
+function saveProject() {
+  const data = { tracks, loops, bpm, numSteps, activeTrack, activeLoop, version: 2 };
+  localStorage.setItem('plf-daw-project', JSON.stringify(data));
+  updateStatus('Project saved!');
+  setTimeout(updateStatus, 1500);
+}
+
+function loadProject() {
+  try {
+    const raw = localStorage.getItem('plf-daw-project');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+
+    // Migrate v1 (single grid per track) to v2 (grids array)
+    if (!data.version || data.version < 2) {
+      if (data.tracks) {
+        data.tracks.forEach(t => {
+          if (t.grid && !t.grids) {
+            t.grids = [t.grid];
+            delete t.grid;
+          }
+        });
+      }
+      data.loops = data.loops || [{ name: 'A' }];
+      data.activeLoop = 0;
+    }
+
+    tracks = data.tracks || tracks;
+    loops = data.loops || loops;
+    bpm = data.bpm || bpm;
+    numSteps = data.numSteps || numSteps;
+    activeTrack = data.activeTrack || 0;
+    activeLoop = data.activeLoop || 0;
+
+    // Ensure all tracks have enough grids for all loops
+    tracks.forEach(t => {
+      if (!t.grids) t.grids = [t.grid || {}];
+      while (t.grids.length < loops.length) t.grids.push({});
+      if (!t.decay) t.decay = 0.3;
+    });
+
+    document.getElementById('bpm-input').value = bpm;
+    document.getElementById('steps-select').value = numSteps;
+    document.getElementById('wave-select').value = tracks[activeTrack].wave;
+    document.getElementById('vol-range').value = Math.round(tracks[activeTrack].volume * 100);
+    document.getElementById('attack-range').value = Math.round((tracks[activeTrack].attack || 0) * 100);
+    document.getElementById('decay-range').value = Math.round((tracks[activeTrack].decay || 0.3) * 100);
+    return true;
+  } catch(e) { return false; }
+}
+
+setInterval(saveProject, 30000);
+
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveProject();
+  }
+});
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+loadProject();
+render();
+</script>
+
+</body>
+</html>
