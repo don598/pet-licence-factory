@@ -509,7 +509,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 // ORDER SUBMISSION (server-side via Netlify Function)
 // ═══════════════════════════════════════════════════════════
 async function submitOrder(orderData) {
-  const resp = await fetch('/.netlify/functions/submit-order', {
+  const resp = await fetch('/api/submit-order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

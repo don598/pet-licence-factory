@@ -13,7 +13,7 @@ function clamp(min, v, max) { return Math.max(min, Math.min(max, v)); }
 // ORDER SUBMISSION (server-side via Netlify Function)
 // ═══════════════════════════════════════════════════════════
 async function submitOrder(orderData) {
-  const resp = await fetch('/.netlify/functions/submit-order', {
+  const resp = await fetch('/api/submit-order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

@@ -1,0 +1,11 @@
+# ── Pet Licence Factory — Cloudflare Pages Config ──────────────────────
+name = "pet-licence-factory"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Static assets served from public/ directory
+# Functions served from functions/ directory (file-based routing)
+
+# Non-secret env vars (secrets set via dashboard or `wrangler pages secret put`)
+[vars]
+URL = "https://pet-licence-factory.pages.dev"

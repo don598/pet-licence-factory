@@ -603,7 +603,7 @@ const F = {
 let adminToken = sessionStorage.getItem('plf_admin_token');
 
 async function adminAPI(action, params = {}) {
-  const res = await fetch('/.netlify/functions/admin-api', {
+  const res = await fetch('/api/admin-api', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
