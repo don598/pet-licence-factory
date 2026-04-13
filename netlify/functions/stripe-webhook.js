@@ -2,7 +2,7 @@
 // ── Pet Licence Factory — Stripe Webhook Handler ───────────────────────────
 // POST /.netlify/functions/stripe-webhook
 // Handles: checkout.session.completed
-//   → Updates Supabase order with payment status, email, shipping address
+//   → Updates order with payment status, email, shipping address
 // ---------------------------------------------------------------------------
 // IMPORTANT: Set STRIPE_WEBHOOK_SECRET in your Netlify environment variables.
 //   In Stripe Dashboard → Developers → Webhooks → Add endpoint:
@@ -10,8 +10,8 @@
 //   Events: checkout.session.completed
 // ---------------------------------------------------------------------------
 
-const Stripe               = require('stripe');
-const { createClient }     = require('@supabase/supabase-js');
+const Stripe = require('stripe');
+const db     = require('./db');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -46,13 +46,6 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ received: true }) };
     }
 
-    // ── Connect to Supabase with service role (bypasses RLS) ─────────────
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
     // ── Determine which shipping option was selected ──────────────────────
     let shippingOption = 'stamp';
     try {
@@ -72,32 +65,33 @@ exports.handler = async (event) => {
     const email        = session.customer_details?.email     || '';
     const customerName = session.customer_details?.name      || '';
 
-    const updates = {
-      status:           'paid',
-      stripe_payment_id: session.payment_intent || session.id,
-      customer_email:   email,
-      customer_name:    customerName,
-      ship_addr_line1:  addr.line1        || '',
-      ship_addr_line2:  addr.line2        || '',
-      ship_city:        addr.city         || '',
-      ship_state:       addr.state        || '',
-      ship_zip:         addr.postal_code  || '',
-      ship_country:     addr.country      || 'US',
-      shipping_option:  shippingOption,
-      updated_at:       new Date().toISOString(),
-    };
-
-    const { error } = await supabase
-      .from('pet_orders')
-      .update(updates)
-      .eq('order_id', orderId);
-
-    if (error) {
-      console.error('Supabase update error:', error);
+    try {
+      await db.query(
+        `UPDATE pet_orders SET
+           status = $1, stripe_payment_id = $2, customer_email = $3, customer_name = $4,
+           ship_addr_line1 = $5, ship_addr_line2 = $6, ship_city = $7, ship_state = $8,
+           ship_zip = $9, ship_country = $10, shipping_option = $11, updated_at = NOW()
+         WHERE order_id = $12`,
+        [
+          'paid',
+          session.payment_intent || session.id,
+          email,
+          customerName,
+          addr.line1       || '',
+          addr.line2       || '',
+          addr.city        || '',
+          addr.state       || '',
+          addr.postal_code || '',
+          addr.country     || 'US',
+          shippingOption,
+          orderId,
+        ]
+      );
+      console.log(`Order ${orderId} marked as paid — customer: ${email}`);
+    } catch (err) {
+      console.error('Database update error:', err);
       return { statusCode: 500, body: 'Database update failed' };
     }
-
-    console.log(`✅ Order ${orderId} marked as paid — customer: ${email}`);
   }
 
   return {

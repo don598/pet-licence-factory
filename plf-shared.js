@@ -10,44 +10,35 @@ function setBg(el, url) { el.style.backgroundImage = `url('${url}')`; }
 function clamp(min, v, max) { return Math.max(min, Math.min(max, v)); }
 
 // ═══════════════════════════════════════════════════════════
-// SUPABASE
+// ORDER SUBMISSION (server-side via Netlify Function)
 // ═══════════════════════════════════════════════════════════
-const SUPABASE_URL      = 'https://nxeswviayqkwatgdrexd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_9e9vkw1xGx_g71m35XjYtg_doVhb5GK';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 async function submitOrderToSupabase(orderData) {
-  const orderId = 'PLF-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
-  const payload = {
-    order_id:       orderId,
-    status:         'pending',
-    pet_first_name: orderData.petFirstName  || '',
-    pet_last_name:  orderData.petLastName   || '',
-    dl_number:      orderData.dlNumber      || '',
-    dob:            orderData.dob           || '',
-    exp_date:       orderData.expDate       || '',
-    iss_date:       orderData.issDate       || '',
-    addr_line1:     orderData.addrLine1     || '456 Woofington Drive',
-    addr_line2:     orderData.addrLine2     || 'Tailwag, TX 76543',
-    sex:            orderData.sex           || '',
-    height:         orderData.height        || '',
-    weight:         orderData.weight        || '',
-    eyes:           orderData.eyeColor      || '',
-    lic_class:      'A',
-    restrict:       'NONE',
-    signature:      (orderData.petFirstName + ' ' + orderData.petLastName).trim(),
-    photo_url:      orderData.photo         || null,
-    pack_count:     orderData.packQty       || 1,
-    total:          '$' + (orderData.total  || 0).toFixed(2),
-    chip_size:      orderData.chipSize      || 'mini',
-    add_on:         orderData.wantsDecal    ? 'car_decal' : null,
-  };
-  if (payload.photo_url && payload.photo_url.length > 750 * 1024) {
-    throw new Error('Photo too large. Please use a smaller image.');
-  }
-  const { error } = await db.from('pet_orders').insert(payload);
-  if (error) throw error;
-  return orderId;
+  const resp = await fetch('/.netlify/functions/submit-order', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      petFirstName: orderData.petFirstName || '',
+      petLastName:  orderData.petLastName  || '',
+      dlNumber:     orderData.dlNumber     || '',
+      dob:          orderData.dob          || '',
+      expDate:      orderData.expDate      || '',
+      issDate:      orderData.issDate      || '',
+      addrLine1:    orderData.addrLine1    || '',
+      addrLine2:    orderData.addrLine2    || '',
+      sex:          orderData.sex          || '',
+      height:       orderData.height       || '',
+      weight:       orderData.weight       || '',
+      eyeColor:     orderData.eyeColor     || '',
+      photo:        orderData.photo        || null,
+      packQty:      orderData.packQty      || 1,
+      chipSize:     orderData.chipSize     || 'mini',
+      wantsDecal:   orderData.wantsDecal   || false,
+      total:        orderData.total        || 0,
+    }),
+  });
+  const result = await resp.json();
+  if (!resp.ok) throw new Error(result.error || 'Order submission failed');
+  return result.orderId;
 }
 
 // ═══════════════════════════════════════════════════════════

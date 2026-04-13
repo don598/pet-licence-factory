@@ -4,13 +4,13 @@
 // Body: { action, ...params }
 // Auth: Bearer JWT (except for "login" action)
 //
-// All admin database operations are proxied through this function so that the
-// Supabase service role key never appears in client-side code.
+// All admin database operations are proxied through this function so that
+// database credentials never appear in client-side code.
 // ---------------------------------------------------------------------------
 
-const { createClient }  = require('@supabase/supabase-js');
-const bcrypt            = require('bcryptjs');
-const jwt               = require('jsonwebtoken');
+const db     = require('./db');
+const bcrypt = require('bcryptjs');
+const jwt    = require('jsonwebtoken');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -24,14 +24,6 @@ function json(statusCode, body) {
     },
     body: JSON.stringify(body),
   };
-}
-
-function getSupabase() {
-  return createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
 }
 
 function verifyToken(event) {
@@ -100,111 +92,104 @@ exports.handler = async (event) => {
     return json(401, { error: 'Unauthorized' });
   }
 
-  const db = getSupabase();
-
   // ── Actions ─────────────────────────────────────────────────────────────
 
-  switch (action) {
+  try {
+    switch (action) {
 
-    // ── Orders ──────────────────────────────────────────────────────────
+      // ── Orders ──────────────────────────────────────────────────────────
 
-    case 'list_orders': {
-      const limit = Math.min(Math.max(parseInt(body.limit) || 500, 1), 1000);
-      const { data, error } = await db
-        .from('pet_orders')
-        .select('id,order_id,status,created_at,updated_at,pet_first_name,pet_last_name,customer_email,customer_name,shipping_option,total,pack_count,add_on,chip_size,tracking_number,notes,stripe_payment_id,ship_addr_line1,ship_addr_line2,ship_city,ship_state,ship_zip,ship_country')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-      if (error) return json(500, { error: error.message });
-      return json(200, { orders: data });
-    }
-
-    case 'get_order': {
-      const { id } = body;
-      if (!id) return json(400, { error: 'Missing id' });
-      const { data, error } = await db
-        .from('pet_orders')
-        .select('*')
-        .eq('id', id)
-        .single();
-      if (error) return json(500, { error: error.message });
-      return json(200, { order: data });
-    }
-
-    case 'update_order': {
-      const { id, updates } = body;
-      if (!id || !updates) return json(400, { error: 'Missing id or updates' });
-
-      // Only allow whitelisted columns
-      const safe = {};
-      for (const key of ALLOWED_ORDER_UPDATES) {
-        if (key in updates) safe[key] = updates[key];
+      case 'list_orders': {
+        const limit = Math.min(Math.max(parseInt(body.limit) || 500, 1), 1000);
+        const result = await db.query(
+          `SELECT id, order_id, status, created_at, updated_at, pet_first_name, pet_last_name,
+                  customer_email, customer_name, shipping_option, total, pack_count, add_on,
+                  chip_size, tracking_number, notes, stripe_payment_id,
+                  ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country
+           FROM pet_orders ORDER BY created_at DESC LIMIT $1`,
+          [limit]
+        );
+        return json(200, { orders: result.rows });
       }
-      safe.updated_at = new Date().toISOString();
 
-      const { error } = await db
-        .from('pet_orders')
-        .update(safe)
-        .eq('id', id);
-      if (error) return json(500, { error: error.message });
-      return json(200, { success: true });
+      case 'get_order': {
+        const { id } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+        const result = await db.query('SELECT * FROM pet_orders WHERE id = $1', [id]);
+        if (result.rows.length === 0) return json(404, { error: 'Order not found' });
+        return json(200, { order: result.rows[0] });
+      }
+
+      case 'update_order': {
+        const { id, updates } = body;
+        if (!id || !updates) return json(400, { error: 'Missing id or updates' });
+
+        // Only allow whitelisted columns
+        const setClauses = [];
+        const values = [];
+        let paramIdx = 1;
+
+        for (const key of ALLOWED_ORDER_UPDATES) {
+          if (key in updates) {
+            setClauses.push(`${key} = $${paramIdx}`);
+            values.push(updates[key]);
+            paramIdx++;
+          }
+        }
+
+        if (setClauses.length === 0) return json(400, { error: 'No valid updates' });
+
+        setClauses.push(`updated_at = NOW()`);
+        values.push(id);
+
+        await db.query(
+          `UPDATE pet_orders SET ${setClauses.join(', ')} WHERE id = $${paramIdx}`,
+          values
+        );
+        return json(200, { success: true });
+      }
+
+      case 'delete_all_orders': {
+        await db.query('DELETE FROM pet_orders');
+        return json(200, { success: true });
+      }
+
+      // ── Tasks ───────────────────────────────────────────────────────────
+
+      case 'list_tasks': {
+        const result = await db.query('SELECT * FROM admin_tasks ORDER BY created_at ASC');
+        return json(200, { tasks: result.rows });
+      }
+
+      case 'add_task': {
+        const { text } = body;
+        if (!text || typeof text !== 'string') return json(400, { error: 'Missing text' });
+        const result = await db.query(
+          'INSERT INTO admin_tasks (text, done) VALUES ($1, false) RETURNING *',
+          [text.slice(0, 500)]
+        );
+        return json(200, { task: result.rows[0] });
+      }
+
+      case 'toggle_task': {
+        const { id, done } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+        await db.query('UPDATE admin_tasks SET done = $1 WHERE id = $2', [!!done, id]);
+        return json(200, { success: true });
+      }
+
+      case 'delete_task': {
+        const { id } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+        await db.query('DELETE FROM admin_tasks WHERE id = $1', [id]);
+        return json(200, { success: true });
+      }
+
+      default:
+        return json(400, { error: `Unknown action: ${action}` });
     }
-
-    case 'delete_all_orders': {
-      const { error } = await db
-        .from('pet_orders')
-        .delete()
-        .neq('id', 0);
-      if (error) return json(500, { error: error.message });
-      return json(200, { success: true });
-    }
-
-    // ── Tasks ───────────────────────────────────────────────────────────
-
-    case 'list_tasks': {
-      const { data, error } = await db
-        .from('admin_tasks')
-        .select('*')
-        .order('created_at', { ascending: true });
-      if (error) return json(200, { tasks: [], fallback: true });
-      return json(200, { tasks: data || [] });
-    }
-
-    case 'add_task': {
-      const { text } = body;
-      if (!text || typeof text !== 'string') return json(400, { error: 'Missing text' });
-      const { data, error } = await db
-        .from('admin_tasks')
-        .insert({ text: text.slice(0, 500), done: false })
-        .select()
-        .single();
-      if (error) return json(500, { error: error.message });
-      return json(200, { task: data });
-    }
-
-    case 'toggle_task': {
-      const { id, done } = body;
-      if (!id) return json(400, { error: 'Missing id' });
-      const { error } = await db
-        .from('admin_tasks')
-        .update({ done: !!done })
-        .eq('id', id);
-      if (error) return json(500, { error: error.message });
-      return json(200, { success: true });
-    }
-
-    case 'delete_task': {
-      const { id } = body;
-      if (!id) return json(400, { error: 'Missing id' });
-      const { error } = await db
-        .from('admin_tasks')
-        .delete()
-        .eq('id', id);
-      if (error) return json(500, { error: error.message });
-      return json(200, { success: true });
-    }
-
-    default:
-      return json(400, { error: `Unknown action: ${action}` });
+  } catch (err) {
+    console.error('Admin API error:', err);
+    return json(500, { error: err.message });
   }
 };
