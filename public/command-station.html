@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- Supabase CDN removed: all DB ops go through admin-api Netlify Function -->
   <style>
 /* ── Reset & Variables ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -657,27 +657,41 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 <script>
 'use strict';
-// ── Supabase (service role — bypasses RLS; command station is password-gated) ──
-const SUPABASE_URL  = 'https://nxeswviayqkwatgdrexd.supabase.co';
-const SUPABASE_SKEY = 'sb_secret_v7D0AHI1UcluPQOvlJ_7tg_LsKWsaf8'; // service role
-const adminDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_SKEY, {
-  auth: { autoRefreshToken: false, persistSession: false }
-});
+// ── Admin API (server-side — no secrets in frontend) ─────────────────────────
+let adminToken = sessionStorage.getItem('plf_admin_token');
+
+async function adminAPI(action, params = {}) {
+  const res = await fetch('/.netlify/functions/admin-api', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(adminToken ? { 'Authorization': 'Bearer ' + adminToken } : {}),
+    },
+    body: JSON.stringify({ action, ...params }),
+  });
+  if (res.status === 401 && action !== 'login') {
+    sessionStorage.removeItem('plf_admin_token');
+    adminToken = null;
+    location.reload();
+    throw new Error('Session expired');
+  }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'API error');
+  return data;
+}
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
-// Default password: "plf-factory"
-// To change: update ADMIN_PASS_B64 with btoa('your-new-password')
-const ADMIN_PASS_B64 = 'cGxmLWZhY3Rvcnk='; // base64 of "plf-factory"
-
-function doLogin() {
+async function doLogin() {
   const val = document.getElementById('pass-input').value;
   if (!val) return;
-  if (btoa(val) === ADMIN_PASS_B64) {
-    sessionStorage.setItem('plf_admin_auth', '1');
+  try {
+    const { token } = await adminAPI('login', { password: val });
+    adminToken = token;
+    sessionStorage.setItem('plf_admin_token', token);
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     loadAll();
-  } else {
+  } catch (err) {
     document.getElementById('auth-error').textContent = 'Incorrect password.';
     document.getElementById('pass-input').value = '';
     document.getElementById('pass-input').focus();
@@ -685,15 +699,27 @@ function doLogin() {
 }
 
 function logout() {
-  sessionStorage.removeItem('plf_admin_auth');
+  sessionStorage.removeItem('plf_admin_token');
+  adminToken = null;
   location.reload();
 }
 
-// Check session on load
-if (sessionStorage.getItem('plf_admin_auth') === '1') {
+// Check session on load — verify token is not expired
+function isTokenValid() {
+  if (!adminToken) return false;
+  try {
+    const payload = JSON.parse(atob(adminToken.split('.')[1]));
+    return payload.exp * 1000 > Date.now();
+  } catch { return false; }
+}
+
+if (isTokenValid()) {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   loadAll();
+} else {
+  sessionStorage.removeItem('plf_admin_token');
+  adminToken = null;
 }
 
 document.getElementById('pass-input').addEventListener('keydown', e => {
@@ -716,18 +742,16 @@ async function loadOrders() {
   const tbody = document.getElementById('orders-tbody');
   tbody.innerHTML = '<tr><td colspan="6"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
 
-  const { data, error } = await adminDb
-    .from('pet_orders')
-    .select('id,order_id,status,created_at,updated_at,pet_first_name,pet_last_name,customer_email,customer_name,shipping_option,total,pack_count,add_on,chip_size,tracking_number,notes,stripe_payment_id,ship_addr_line1,ship_addr_line2,ship_city,ship_state,ship_zip,ship_country')
-    .order('created_at', { ascending: false })
-    .limit(500);
-
-  if (error) {
-    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${error.message}</td></tr>`;
+  let data;
+  try {
+    const res = await adminAPI('list_orders', { limit: 500 });
+    data = res.orders || [];
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
     return;
   }
 
-  allOrders = data || [];
+  allOrders = data;
   updateAnalytics();
   renderTable();
 
@@ -849,9 +873,12 @@ async function openOrder(dbId) {
   if (!summary) return;
 
   // Fetch full record including photo_url
-  const { data: order, error } = await adminDb
-    .from('pet_orders').select('*').eq('id', dbId).single();
-  if (error || !order) { showToast('Could not load order details', 'err'); return; }
+  let order;
+  try {
+    const res = await adminAPI('get_order', { id: dbId });
+    order = res.order;
+  } catch { showToast('Could not load order details', 'err'); return; }
+  if (!order) { showToast('Could not load order details', 'err'); return; }
   modalOrder = order;
 
   // Header
@@ -919,8 +946,9 @@ async function saveOrderChanges() {
     notes:           document.getElementById('edit-notes').value.trim()    || null,
     updated_at:      new Date().toISOString(),
   };
-  const { error } = await adminDb.from('pet_orders').update(updates).eq('id', openOrderId);
-  if (error) { showToast('Save failed: ' + error.message, 'err'); return; }
+  try {
+    await adminAPI('update_order', { id: openOrderId, updates });
+  } catch (err) { showToast('Save failed: ' + err.message, 'err'); return; }
 
   // Update local copy
   const idx = allOrders.findIndex(o => o.id === openOrderId);
@@ -1088,17 +1116,16 @@ function downloadLicence() {
 let allTasks = [];
 
 async function loadTasks() {
-  const { data, error } = await adminDb
-    .from('admin_tasks')
-    .select('*')
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    // Table might not exist yet — fall back to localStorage
+  try {
+    const res = await adminAPI('list_tasks');
+    allTasks = res.tasks || [];
+    if (res.fallback) {
+      const stored = localStorage.getItem('plf_tasks');
+      allTasks = stored ? JSON.parse(stored) : [];
+    }
+  } catch {
     const stored = localStorage.getItem('plf_tasks');
     allTasks = stored ? JSON.parse(stored) : [];
-  } else {
-    allTasks = data || [];
   }
   renderTasks();
 }
@@ -1124,19 +1151,13 @@ async function addTask() {
   if (!text) return;
   input.value = '';
 
-  const { data, error } = await adminDb
-    .from('admin_tasks')
-    .insert({ text, done: false })
-    .select()
-    .single();
-
-  if (error) {
-    // Fallback: localStorage
+  try {
+    const res = await adminAPI('add_task', { text });
+    allTasks.push(res.task);
+  } catch {
     const localTask = { id: Date.now(), text, done: false, created_at: new Date().toISOString() };
     allTasks.push(localTask);
     localStorage.setItem('plf_tasks', JSON.stringify(allTasks));
-  } else {
-    allTasks.push(data);
   }
   renderTasks();
 }
@@ -1146,14 +1167,15 @@ async function toggleTask(id) {
   if (!task) return;
   task.done = !task.done;
 
-  const { error } = await adminDb.from('admin_tasks').update({ done: task.done }).eq('id', id);
-  if (error) localStorage.setItem('plf_tasks', JSON.stringify(allTasks));
+  try {
+    await adminAPI('toggle_task', { id, done: task.done });
+  } catch { localStorage.setItem('plf_tasks', JSON.stringify(allTasks)); }
   renderTasks();
 }
 
 async function deleteTask(id) {
   allTasks = allTasks.filter(t => t.id !== id);
-  await adminDb.from('admin_tasks').delete().eq('id', id);
+  try { await adminAPI('delete_task', { id }); } catch {}
   localStorage.setItem('plf_tasks', JSON.stringify(allTasks));
   renderTasks();
 }

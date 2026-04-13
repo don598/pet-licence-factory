@@ -42,6 +42,9 @@ async function submitOrderToSupabase(orderData) {
     chip_size:      orderData.chipSize      || 'mini',
     add_on:         orderData.wantsDecal    ? 'car_decal' : null,
   };
+  if (payload.photo_url && payload.photo_url.length > 750 * 1024) {
+    throw new Error('Photo too large. Please use a smaller image.');
+  }
   const { error } = await db.from('pet_orders').insert(payload);
   if (error) throw error;
   return orderId;

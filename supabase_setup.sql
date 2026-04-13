@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS pet_orders (
 
   -- Fulfilment
   stripe_payment_id  TEXT,
-  shippo_label_url   TEXT,
+  shipping_label_url TEXT,
   tracking_number    TEXT,
   notes              TEXT
 );

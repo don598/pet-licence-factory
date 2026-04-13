@@ -35,7 +35,7 @@ npx http-server tools -p 8767 -c-1
 
 There is also a `Launch.html` at the project root that acts as a local preview launcher with links to all major pages, dev tools (now under `tools/`), and the Music Studio.
 
-For Netlify Functions (Stripe checkout), you need `netlify dev` with a `.env` file. See `.env.example` for required keys (Stripe, Supabase, SendGrid, Shippo).
+For Netlify Functions (Stripe checkout), you need `netlify dev` with a `.env` file. See `.env.example` for required keys (Stripe, Supabase, SendGrid, EasyPost).
 
 ## Directory Structure
 

@@ -907,6 +907,7 @@ function s2Back() {
 function s2ApprovePic() {
   if (!cropImg) return;
   photoDataURL = cropCanvas.toDataURL('image/jpeg', 0.92);
+  if (photoDataURL.length > 500 * 1024) photoDataURL = cropCanvas.toDataURL('image/jpeg', 0.6);
   jingle([{f:660,t:0},{f:880,t:130},{f:1100,t:260}]);
   $('s2-form').classList.remove('visible');
   setNav(null, null);
@@ -964,6 +965,7 @@ $('zoom-in-btn').addEventListener('click', () => { cropScale=Math.min(cropScale*
 $('zoom-out-btn').addEventListener('click', () => { cropScale=Math.max(cropScale/1.18,.1); drawCrop(); refreshLicPreview(); });
 $('photo-file').addEventListener('change', e => {
   const file = e.target.files[0]; if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { alert('Photo must be under 10 MB.'); e.target.value = ''; return; }
   const reader = new FileReader(); reader.onload = ev => { const img=new Image(); img.onload=()=>{ cropImg=img; const cw=cropCanvas.width,r=Math.max(cw/img.width,cw/img.height); cropScale=r; cropOffX=(cw-img.width*r)/2; cropOffY=(cw-img.height*r)/2; drawCrop(); refreshLicPreview(); $('approve-btn').disabled=false; beep(660,.08); }; img.src=ev.target.result; }; reader.readAsDataURL(file);
 });
 
@@ -1012,8 +1014,12 @@ function refreshLicPreview(){
   // Draw photo FIRST so text/signature renders on top
   if(cropImg){
     const mp=sf('photoMain');
+    // Use uniform scale so photo isn't squished (crop canvas is square, frame is portrait)
+    const us=Math.max(mp.w/cropCanvas.width,mp.h/cropCanvas.height);
+    const driftX=(mp.w-cropCanvas.width*us)/2;
+    const driftY=(mp.h-cropCanvas.height*us)/2;
     licCtx.save();licCtx.beginPath();licCtx.rect(mp.x,mp.y,mp.w,mp.h);licCtx.clip();
-    licCtx.save();licCtx.translate(mp.x+cropOffX*(mp.w/cropCanvas.width),mp.y+cropOffY*(mp.h/cropCanvas.height));licCtx.scale(cropScale*(mp.w/cropCanvas.width),cropScale*(mp.h/cropCanvas.height));licCtx.drawImage(cropImg,0,0);licCtx.restore();licCtx.restore();
+    licCtx.translate(mp.x+driftX+cropOffX*us,mp.y+driftY+cropOffY*us);licCtx.scale(cropScale*us,cropScale*us);licCtx.drawImage(cropImg,0,0);licCtx.restore();
   }
   const addr=petData.addrMode==='woofington'||!petData.addrLine1?{l1:'456 Woofington Drive',l2:'Tailwag, TX 76543'}:{l1:petData.addrLine1||'',l2:petData.addrLine2||''};
   const tfs=[{k:'dlNumber',v:petData.dlNumber||'',c:'#1a0a00'},{k:'expDate',v:petData.expDate||'',c:'#1a0a00'},{k:'issDate',v:petData.issDate||'',c:'#1a0a00'},{k:'dob',v:petData.dob||'',c:'#c0200a'},{k:'firstName',v:petData.petFirstName||'',c:'#1a0a00'},{k:'lastName',v:petData.petLastName||'',c:'#1a0a00'},{k:'addrLine1',v:addr.l1,c:'#1a0a00'},{k:'addrLine2',v:addr.l2,c:'#1a0a00'},{k:'height',v:petData.height||'',c:'#1a0a00'},{k:'sex',v:petData.sex||'',c:'#1a0a00'},{k:'weight',v:petData.weight||'',c:'#1a0a00'},{k:'eyes',v:petData.eyeColor||'',c:'#1a0a00'},{k:'licClass',v:petData.licenceClass||'',c:'#1a0a00'},{k:'restrict',v:petData.restrictions||'NONE',c:'#1a0a00'}];

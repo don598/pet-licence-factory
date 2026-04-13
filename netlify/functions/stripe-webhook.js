@@ -22,23 +22,18 @@ exports.handler = async (event) => {
   const webhookSecret  = process.env.STRIPE_WEBHOOK_SECRET;
   const sig            = event.headers['stripe-signature'];
 
-  // ── Verify Stripe webhook signature ──────────────────────────────────────
+  // ── Verify Stripe webhook signature (mandatory) ──────────────────────────
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET not set — refusing to process unverified webhook');
+    return { statusCode: 500, body: 'Server configuration error: webhook secret not set' };
+  }
+
   let stripeEvent;
-  if (webhookSecret) {
-    try {
-      stripeEvent = stripe.webhooks.constructEvent(event.body, sig, webhookSecret);
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err.message);
-      return { statusCode: 400, body: `Webhook Error: ${err.message}` };
-    }
-  } else {
-    // STRIPE_WEBHOOK_SECRET not set — skip verification (dev only, not for production)
-    console.warn('⚠️  STRIPE_WEBHOOK_SECRET not set — skipping signature verification');
-    try {
-      stripeEvent = JSON.parse(event.body);
-    } catch {
-      return { statusCode: 400, body: 'Invalid JSON' };
-    }
+  try {
+    stripeEvent = stripe.webhooks.constructEvent(event.body, sig, webhookSecret);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return { statusCode: 400, body: `Webhook Error: ${err.message}` };
   }
 
   // ── Handle checkout.session.completed ────────────────────────────────────
