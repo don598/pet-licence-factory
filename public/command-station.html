@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <!-- Background removal (IS-Net via @imgly/background-removal v1.4.5) -->
+  <!-- Background removal (IS-Net via @imgly/background-removal v1.7.0) -->
   <!-- Model files served from staticimgly.com CDN (library default) -->
   <script type="module">
     try {
-      const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/dist/index.mjs');
+      const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/index.mjs');
       window._imglyRemoveBg = mod.removeBackground || mod.default;
-      console.log('[PLF] Background removal library loaded (v1.4.5)');
+      console.log('[PLF] Background removal library loaded (v1.7.0)');
     } catch (e) {
       console.warn('[PLF] Background removal library failed to load:', e.message);
       window._imglyRemoveBgError = e.message;
