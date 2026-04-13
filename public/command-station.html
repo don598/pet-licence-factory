@@ -498,7 +498,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   pointer-events: none;
   max-width: 300px;
 }
-#toast.show { transform: translateY(0); opacity: 1; }
+#toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
 #toast.ok   { border-left: 3px solid var(--green); }
 #toast.err  { border-left: 3px solid var(--red); }
   </style>
@@ -1114,11 +1114,16 @@ async function generateLicence() {
         let photoSrc = o.photo_url;
         try {
           btn.textContent = '⌛ Removing background…';
+          document.getElementById('licence-preview').innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px;color:var(--muted)">' +
+            '<span class="spinner" style="width:28px;height:28px;border-width:3px"></span>' +
+            '<span style="font-size:12px">Removing background with IS-Net…</span>' +
+            '<span style="font-size:10px;opacity:.6">First run downloads ~30MB model (cached after)</span></div>';
           photoSrc = await removePhotoBackground(o.photo_url);
           showToast('Background removed ✓', 'ok');
         } catch (bgErr) {
           console.warn('Background removal failed, using original photo:', bgErr);
-          showToast('BG removal skipped: ' + bgErr.message, 'err');
+          showToast('BG removal skipped: ' + bgErr.message, 'err', true);
         }
         btn.textContent = '⌛ Rendering…';
         const photo = await loadImg(photoSrc);
@@ -1256,13 +1261,16 @@ async function deleteTask(id) {
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let _toastTimer;
-function showToast(msg, type = 'ok') {
+function showToast(msg, type = 'ok', sticky = false) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className   = 'show ' + type;
+  el.innerHTML = sticky
+    ? msg + ' <span onclick="dismissToast()" style="cursor:pointer;margin-left:10px;opacity:.7;font-weight:bold">✕</span>'
+    : msg;
+  el.className = 'show ' + type;
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+  if (!sticky) _toastTimer = setTimeout(() => { el.className = ''; }, 3000);
 }
+function dismissToast() { document.getElementById('toast').className = ''; }
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
