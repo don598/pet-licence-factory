@@ -962,6 +962,33 @@ async function saveOrderChanges() {
   showToast('Order updated ✓', 'ok');
 }
 
+// ── Background Removal (IS-Net via @imgly/background-removal) ────────────────
+let _removeBg = null;           // cached module function
+let _bgRemovedCache = {};       // photo_url hash → object URL of transparent PNG
+
+async function getRemoveBg() {
+  if (_removeBg) return _removeBg;
+  const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.1.20/dist/browser.mjs');
+  _removeBg = mod.removeBackground || mod.default;
+  return _removeBg;
+}
+
+async function removePhotoBackground(dataUrl) {
+  // Return cached result if available
+  if (_bgRemovedCache[dataUrl]) return _bgRemovedCache[dataUrl];
+
+  const removeBg = await getRemoveBg();
+  const resp = await fetch(dataUrl);
+  const blob = await resp.blob();
+  const out = await removeBg(blob, {
+    debug: false,
+    publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.1.20/dist/',
+  });
+  const url = URL.createObjectURL(out);
+  _bgRemovedCache[dataUrl] = url;
+  return url;
+}
+
 // ── Licence Canvas Renderer ───────────────────────────────────────────────────
 // Field coordinates calibrated to 1322×957 Blank Card.png (printout preview template)
 const LIC_W = 1322, LIC_H = 957;
@@ -1062,10 +1089,13 @@ async function generateLicence() {
     drawTextField(ctx, F.licClass,  o.lic_class  || 'A',          '#1a0a00');
     drawTextField(ctx, F.restrict,  o.restrict   || 'NONE',       '#1a0a00');
 
-    // 3. Draw pet photo (main + watermark)
+    // 3. Draw pet photo (main + watermark) with background removed
     if (o.photo_url) {
       try {
-        const photo = await loadImg(o.photo_url);
+        btn.textContent = '⌛ Removing background…';
+        const cleanUrl = await removePhotoBackground(o.photo_url);
+        btn.textContent = '⌛ Rendering…';
+        const photo = await loadImg(cleanUrl);
 
         // Main photo
         ctx.save();
