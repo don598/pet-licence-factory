@@ -868,8 +868,8 @@ async function openOrder(dbId) {
   openOrderId = dbId;
   licenceCanvas = null;
 
-  // Find summary row (no photo)
-  const summary = allOrders.find(o => o.id === dbId);
+  // Find summary row (no photo) — coerce to string because pg returns BIGSERIAL as string
+  const summary = allOrders.find(o => String(o.id) === String(dbId));
   if (!summary) return;
 
   // Fetch full record including photo_url
@@ -951,7 +951,7 @@ async function saveOrderChanges() {
   } catch (err) { showToast('Save failed: ' + err.message, 'err'); return; }
 
   // Update local copy
-  const idx = allOrders.findIndex(o => o.id === openOrderId);
+  const idx = allOrders.findIndex(o => String(o.id) === String(openOrderId));
   if (idx >= 0) Object.assign(allOrders[idx], updates);
   if (modalOrder)  Object.assign(modalOrder,  updates);
 
