@@ -7,8 +7,11 @@
 
 const { Pool } = require('pg');
 
+// Strip sslmode from connection string — we configure SSL via the ssl object instead
+const connStr = (process.env.DATABASE_URL || '').replace(/[?&]sslmode=[^&]*/g, '');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: connStr,
   ssl: { rejectUnauthorized: false },
   max: 3,
   idleTimeoutMillis: 5000,
