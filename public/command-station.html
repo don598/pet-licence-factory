@@ -7,7 +7,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <!-- Supabase CDN removed: all DB ops go through admin-api Netlify Function -->
+  <!-- Background removal (IS-Net via @imgly, loaded as ES module) -->
+  <script type="module">
+    import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.1/dist/index.js';
+    window._imglyRemoveBg = removeBackground;
+  </script>
   <style>
 /* ── Reset & Variables ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -963,26 +967,21 @@ async function saveOrderChanges() {
 }
 
 // ── Background Removal (IS-Net via @imgly/background-removal) ────────────────
-let _removeBg = null;           // cached module function
 let _bgRemovedCache = {};       // photo_url hash → object URL of transparent PNG
-
-async function getRemoveBg() {
-  if (_removeBg) return _removeBg;
-  const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.1.20/dist/browser.mjs');
-  _removeBg = mod.removeBackground || mod.default;
-  return _removeBg;
-}
 
 async function removePhotoBackground(dataUrl) {
   // Return cached result if available
   if (_bgRemovedCache[dataUrl]) return _bgRemovedCache[dataUrl];
 
-  const removeBg = await getRemoveBg();
+  // Wait for the module to load (preloaded via <script type="module"> in head)
+  const removeBg = window._imglyRemoveBg;
+  if (!removeBg) throw new Error('Background removal library not loaded yet');
+
   const resp = await fetch(dataUrl);
   const blob = await resp.blob();
   const out = await removeBg(blob, {
     debug: false,
-    publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.1.20/dist/',
+    publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.1/dist/',
   });
   const url = URL.createObjectURL(out);
   _bgRemovedCache[dataUrl] = url;
