@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>BG Removal Test</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.bundle.min.mjs",
+      "onnxruntime-web/webgpu": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.bundle.min.mjs"
+    }
+  }
+  </script>
+  <script type="module">
+    try {
+      const ort = await import('onnxruntime-web');
+      if (ort.env) {
+        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
+        ort.env.wasm.numThreads = 1;
+      }
+      window._ort = ort;
+      document.getElementById('log').textContent += 'ONNX runtime loaded OK\n';
+
+      const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/index.mjs');
+      window._removeBg = mod.removeBackground || mod.default;
+      document.getElementById('log').textContent += 'Background removal library loaded OK\n';
+    } catch (e) {
+      document.getElementById('log').textContent += 'LOAD ERROR: ' + e.message + '\n' + e.stack + '\n';
+    }
+  </script>
+</head>
+<body style="font-family:monospace;padding:20px;background:#111;color:#0f0">
+  <h2>BG Removal Test Page</h2>
+  <pre id="log">Loading libraries...\n</pre>
+  <br>
+  <input type="file" id="fileInput" accept="image/*">
+  <button id="runBtn" onclick="runTest()" style="padding:8px 16px;margin-left:10px">Remove Background</button>
+  <br><br>
+  <div style="display:flex;gap:20px">
+    <div><h3>Original</h3><canvas id="origCanvas" width="300" height="300" style="border:1px solid #333"></canvas></div>
+    <div><h3>Result</h3><canvas id="resultCanvas" width="300" height="300" style="border:1px solid #333"></canvas></div>
+  </div>
+  <script>
+    let loadedBlob = null;
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      loadedBlob = file;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const c = document.getElementById('origCanvas');
+        c.width = img.width; c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+      };
+      img.src = url;
+      document.getElementById('log').textContent += 'Image loaded: ' + file.name + ' (' + file.size + ' bytes)\n';
+    });
+
+    async function runTest() {
+      const log = document.getElementById('log');
+      if (!loadedBlob) { log.textContent += 'ERROR: No image loaded\n'; return; }
+      if (!window._removeBg) { log.textContent += 'ERROR: Library not loaded yet\n'; return; }
+
+      try {
+        log.textContent += 'Starting background removal...\n';
+        const start = Date.now();
+        const result = await window._removeBg(loadedBlob, { debug: true });
+        const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+        log.textContent += 'SUCCESS! Took ' + elapsed + 's\n';
+
+        const url = URL.createObjectURL(result);
+        const img = new Image();
+        img.onload = () => {
+          const c = document.getElementById('resultCanvas');
+          c.width = img.width; c.height = img.height;
+          const ctx = c.getContext('2d');
+          // checkerboard background to show transparency
+          for (let y = 0; y < c.height; y += 10) {
+            for (let x = 0; x < c.width; x += 10) {
+              ctx.fillStyle = (x + y) % 20 === 0 ? '#444' : '#222';
+              ctx.fillRect(x, y, 10, 10);
+            }
+          }
+          ctx.drawImage(img, 0, 0);
+        };
+        img.src = url;
+      } catch (err) {
+        log.textContent += 'FAILED: ' + err.message + '\n' + err.stack + '\n';
+      }
+    }
+  </script>
+</body>
+</html>
