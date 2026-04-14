@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS pet_orders (
   lic_class        TEXT,
   restrict         TEXT,
   signature        TEXT,
+  pet_species      TEXT,
 
   -- Order details
   pack_count       INTEGER DEFAULT 1,
@@ -81,6 +82,11 @@ CREATE TABLE IF NOT EXISTS admin_tasks (
   done        BOOLEAN      NOT NULL DEFAULT FALSE,
   created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+
+-- ================================================================
+--  Migrations for existing deployments — safe to re-run
+-- ================================================================
+ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS pet_species TEXT;
 
 -- ================================================================
 --  Done! Tables: pet_orders, admin_tasks

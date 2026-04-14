@@ -55,11 +55,11 @@ export async function onRequest(context) {
       `INSERT INTO pet_orders (
         order_id, status, pet_first_name, pet_last_name, dl_number, dob, exp_date, iss_date,
         addr_line1, addr_line2, sex, height, weight, eyes, lic_class, restrict, signature,
-        photo_url, pack_count, total, chip_size, add_on
+        photo_url, pack_count, total, chip_size, add_on, pet_species
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
         $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22
+        $18, $19, $20, $21, $22, $23
       )`,
       [
         orderId,
@@ -84,6 +84,7 @@ export async function onRequest(context) {
         '$' + (parseFloat(body.total) || 0).toFixed(2),
         s(body.chipSize, 'mini'),
         body.wantsDecal ? 'car_decal' : null,
+        s(body.species).toLowerCase() || null,
       ]
     );
 

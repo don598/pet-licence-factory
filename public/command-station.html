@@ -1622,54 +1622,56 @@ const SENDER_ADDRESS = {
   zip:   '77054',
 };
 
-// Pet-specific deduction pools for the driving-test certificate
+// Pet-specific MINOR deductions for the driving-test certificate.
+// Keyed to the six pet types selectable in the game's Station 1 form.
+// Max point values capped so every pet earns at least an A-.
 const PET_JOKES = {
   dog: [
-    { pts: 5, reason: 'Distracted by squirrels mid-turn' },
-    { pts: 3, reason: 'Pulled over to sniff every fire hydrant' },
-    { pts: 5, reason: 'Barked continuously at the examining officer' },
-    { pts: 2, reason: 'Used tongue as a turn signal' },
-    { pts: 4, reason: 'Refused to release the steering wheel chew toy' },
-    { pts: 3, reason: 'Stopped to greet every other car' },
+    { pts: 2, reason: 'Briefly distracted by a squirrel at mile 4' },
+    { pts: 1, reason: 'Wagged tail during parallel parking' },
+    { pts: 2, reason: 'Tongue protruded through the driver-side window' },
+    { pts: 3, reason: 'Investigated a fire hydrant at a red light' },
+    { pts: 1, reason: 'Greeted another dog in the next lane' },
+    { pts: 2, reason: 'Hung head out the window on the highway' },
   ],
-  bird: [
-    { pts: 4, reason: 'Exceeded speed limit by flying over it' },
-    { pts: 3, reason: 'Insisted on using the sunroof as an exit' },
-    { pts: 5, reason: 'Collided with own reflection in side mirror' },
-    { pts: 4, reason: 'Tried to nest in the glove compartment' },
-    { pts: 3, reason: 'Chirped at every red light' },
-    { pts: 2, reason: 'Preened during the entire parallel parking test' },
-  ],
-  deer: [
-    { pts: 5, reason: 'Froze in headlights (their own)' },
-    { pts: 4, reason: 'Leapt over the speed bumps instead of going around' },
-    { pts: 3, reason: 'Antlers obstructed the rearview mirror' },
-    { pts: 4, reason: 'Stopped in the middle of a busy road for no reason' },
-    { pts: 2, reason: 'Blinked at oncoming traffic' },
-  ],
-  duck: [
-    { pts: 5, reason: 'Waddled in the fast lane at 0.2 mph' },
-    { pts: 3, reason: 'Followed every passing car in a single file' },
-    { pts: 4, reason: 'Pulled over for breadcrumbs on the shoulder' },
-    { pts: 4, reason: 'Attempted a splash-landing in the parking lot' },
-    { pts: 3, reason: 'Quacked incessantly at every pedestrian' },
-  ],
-  bear: [
-    { pts: 5, reason: 'Began hibernating at a four-way stop' },
-    { pts: 3, reason: 'Detoured for honey (three times)' },
-    { pts: 4, reason: 'Tried to fit the car into a tree hollow' },
-    { pts: 5, reason: 'Stood up on hind legs during the road test' },
-    { pts: 2, reason: 'Growled at the DMV examiner' },
+  cat: [
+    { pts: 2, reason: 'Groomed one paw during a lane change' },
+    { pts: 1, reason: 'Judged the examiner with prolonged eye contact' },
+    { pts: 3, reason: 'Briefly napped at a red light' },
+    { pts: 2, reason: 'Preferred the dashboard over the driver seat' },
+    { pts: 1, reason: 'Kneaded the steering wheel at a stop sign' },
+    { pts: 2, reason: 'Refused to acknowledge the turn signal' },
   ],
   rabbit: [
-    { pts: 4, reason: 'Hopped over the median strip' },
-    { pts: 3, reason: 'Exceeded lane-change frequency by 400%' },
-    { pts: 5, reason: 'Distracted by carrots at every vegetable stand' },
-    { pts: 4, reason: 'Tunnelled under a parallel parking cone' },
-    { pts: 3, reason: 'Zigzagged to evade imaginary hawks' },
+    { pts: 2, reason: 'Hopped over a speed bump instead of driving across' },
+    { pts: 1, reason: 'Paused at each intersection to survey for predators' },
+    { pts: 3, reason: 'Detoured past a farmers-market carrot stand' },
+    { pts: 2, reason: 'Twitched whiskers excessively during merges' },
+    { pts: 1, reason: 'Favoured narrow burrow-like side streets' },
+  ],
+  hamster: [
+    { pts: 2, reason: 'Stored orientation notes in cheek pouches' },
+    { pts: 1, reason: 'Ran a brief wheel cycle before starting the engine' },
+    { pts: 3, reason: 'Took a sunflower-seed break at mile 2' },
+    { pts: 2, reason: 'Required a booster cushion for clear visibility' },
+    { pts: 1, reason: 'Spun the steering wheel enthusiastically during merges' },
+  ],
+  bird: [
+    { pts: 2, reason: 'Tilted head questioningly at every stop sign' },
+    { pts: 1, reason: 'Chirped in response to the turn signal' },
+    { pts: 3, reason: 'Attempted to preen during a highway merge' },
+    { pts: 2, reason: 'Requested a perch on the rearview mirror' },
+    { pts: 1, reason: 'Whistled along with the examiner\u2019s radio' },
+  ],
+  other: [
+    { pts: 2, reason: 'Brought a set of unconventional driving techniques' },
+    { pts: 1, reason: 'Required clarification on what a "lane" technically is' },
+    { pts: 3, reason: 'Applied wildlife instincts to suburban traffic' },
+    { pts: 2, reason: 'Took a creative approach to the roundabout' },
+    { pts: 1, reason: 'Displayed impressive but unorthodox parking style' },
   ],
 };
-const PET_TYPES = ['dog', 'bird', 'deer', 'duck', 'bear', 'rabbit'];
+const PET_TYPES = ['dog', 'cat', 'rabbit', 'hamster', 'bird', 'other'];
 
 // Deterministic hash so the same order always gets the same pet type & score
 function cheapHash(s) {
@@ -1682,6 +1684,10 @@ function cheapHash(s) {
 const _petTypeOverrides = {};
 function pickPetType(order) {
   if (_petTypeOverrides[order.id]) return _petTypeOverrides[order.id];
+  // Real data from the game's Station 1 species selector (preferred)
+  const fromDb = (order.pet_species || '').toString().toLowerCase().trim();
+  if (fromDb && PET_TYPES.includes(fromDb)) return fromDb;
+  // Fallback for legacy orders without pet_species: deterministic hash
   return PET_TYPES[cheapHash(order.order_id || order.id) % PET_TYPES.length];
 }
 function setPetType(orderId, type) { _petTypeOverrides[orderId] = type; }
@@ -1696,37 +1702,51 @@ function generateDrivingScore(order, petType) {
   return { score: 100 - total, deductions: picked };
 }
 
-// ── Species track stamps (real PNGs in /images/paw-prints/) ──────────────────
+// ── Species track stamps (PNGs in /images/paw-prints/) ───────────────────────
+// Mapping: the 6 pet types selectable in the game's Station 1 (DOG/CAT/RABBIT/
+// HAMSTER/BIRD/OTHER) are each matched to the best-fitting print from the
+// uploaded set. Cat reuses the classic paw (same carnivore toe-pad shape),
+// hamster reuses the small elongated-foot print, and 'other' rotates through
+// the wildlife prints (bear/deer/duck) based on the pet-name hash.
 const TRACK_IMG = {
-  dog:    '/images/paw-prints/dog.png',
-  bird:   '/images/paw-prints/bird.png',
-  deer:   '/images/paw-prints/deer.png',
-  duck:   '/images/paw-prints/duck.png',
-  bear:   '/images/paw-prints/bear.png',
-  rabbit: '/images/paw-prints/rabbit.png',
+  dog:     '/images/paw-prints/dog.png',
+  cat:     '/images/paw-prints/dog.png',     // same carnivore toe-pad silhouette
+  rabbit:  '/images/paw-prints/rabbit.png',
+  hamster: '/images/paw-prints/rabbit.png',  // small elongated mammal foot
+  bird:    '/images/paw-prints/bird.png',
 };
+const OTHER_TRACKS = [
+  '/images/paw-prints/bear.png',
+  '/images/paw-prints/deer.png',
+  '/images/paw-prints/duck.png',
+];
+function trackImageFor(species, seed) {
+  if (species === 'other') return OTHER_TRACKS[cheapHash(seed || 'other') % OTHER_TRACKS.length];
+  return TRACK_IMG[species] || TRACK_IMG.dog;
+}
 
-// Fun animal "employee" roster — 2 employees per species, each stamps with
-// their species' track on the receipt
+// Fun animal "employee" roster — 2+ per species, each stamps with their
+// species' paw on the receipt
 const ANIMAL_EMPLOYEES = [
   // Dogs 🐕
   { name: 'Sir Barksalot',          title: 'Chief Security Officer',      species: 'dog' },
   { name: 'Duchess Barkington',     title: 'Director of Happiness',       species: 'dog' },
+  // Cats 🐈
+  { name: 'Whiskers McFluffington', title: 'Head of Quality Control',     species: 'cat' },
+  { name: 'Lady Mewington',         title: 'Principal Auditor',           species: 'cat' },
+  // Rabbits 🐰
+  { name: 'Baron von Hopsworth',    title: 'VP of Licences',              species: 'rabbit' },
+  { name: 'Lady Thumperton',        title: 'Senior Document Specialist',  species: 'rabbit' },
+  // Hamsters 🐹
+  { name: 'Mr. Cheeksworth',        title: 'Chief Logistics Officer',     species: 'hamster' },
+  { name: 'Madame Scamperton',      title: 'Head of Fulfilment',          species: 'hamster' },
   // Birds 🐦
   { name: 'Captain Beaksley',       title: 'Chief Packaging Officer',     species: 'bird' },
-  { name: 'Professor Featherbeak',  title: 'Senior Document Specialist',  species: 'bird' },
-  // Deer 🦌
-  { name: 'Lord Antlerton',         title: 'Inspector General',           species: 'deer' },
-  { name: 'Dame Fawnsworth',        title: 'Head of Shipping Routes',     species: 'deer' },
-  // Ducks 🦆
-  { name: 'Mr. Quackworth',         title: 'Director of Shipping',        species: 'duck' },
-  { name: 'Madame Mallard',         title: 'Chief Logistics Officer',     species: 'duck' },
-  // Bears 🐻
-  { name: 'Colonel Pawsington',     title: 'Inspector General of Audit',  species: 'bear' },
-  { name: 'Sheriff Grizzworth',     title: 'Head of Security',            species: 'bear' },
-  // Rabbits 🐰
-  { name: 'Baron von Hopsworth',    title: 'Principal Auditor',           species: 'rabbit' },
-  { name: 'Lady Thumperton',        title: 'Head of Quality Control',     species: 'rabbit' },
+  { name: 'Professor Featherbeak',  title: 'Director of Examinations',    species: 'bird' },
+  // Other (exotic) — paw print randomised per order from bear/deer/duck
+  { name: 'Sheriff Grizzworth',     title: 'Inspector General',           species: 'other' },
+  { name: 'Lord Antlerton',         title: 'Head of Wildlife Affairs',    species: 'other' },
+  { name: 'Mr. Quackworth',         title: 'Director of Shipping',        species: 'other' },
 ];
 function randomAnimalEmployee() {
   return ANIMAL_EMPLOYEES[Math.floor(Math.random() * ANIMAL_EMPLOYEES.length)];
@@ -1740,7 +1760,7 @@ function renderEnvelopeLabel(o) {
   const cityLine = [o.ship_city, o.ship_state].filter(Boolean).join(', ') + (o.ship_zip ? ' ' + o.ship_zip : '');
   const country = (o.ship_country && o.ship_country !== 'US') ? o.ship_country : '';
   const petType = pickPetType(o);
-  const pawSrc = TRACK_IMG[petType] || TRACK_IMG.dog;
+  const pawSrc = trackImageFor(petType, o.order_id || o.id);
   const senderCity = [SENDER_ADDRESS.city, SENDER_ADDRESS.state].filter(Boolean).join(', ') + (SENDER_ADDRESS.zip ? ' ' + SENDER_ADDRESS.zip : '');
   return `
     <div class="label-page landscape label-envelope">
@@ -1777,7 +1797,8 @@ function renderCertificateLabel(o) {
   const petType = pickPetType(o);
   const emp = randomAnimalEmployee();
   const { score, deductions } = generateDrivingScore(o, petType);
-  const pawSrc = TRACK_IMG[petType] || TRACK_IMG.dog;
+  // Certificate paw = pet's species (it's a cert ABOUT the pet)
+  const pawSrc = trackImageFor(petType, o.order_id || o.id);
   return `
     <div class="label-page portrait label-certificate">
       <div class="lc-header">Pet Licence Factory</div>
@@ -1829,7 +1850,7 @@ function renderReceiptLabel(o) {
       <div class="lr-total">Total: ${esc(o.total || '—')}</div>
       <div class="lr-signoff">
         <div class="lr-tagline">Handcrafted with care by:</div>
-        <div class="lr-paw" style="margin:8px 0;">${TRACK_IMG[emp.species] ? `<img src="${TRACK_IMG[emp.species]}" alt="${esc(emp.species)} paw print">` : ''}</div>
+        <div class="lr-paw" style="margin:8px 0;"><img src="${trackImageFor(emp.species, emp.name)}" alt="${esc(emp.species)} paw print"></div>
         <div class="lr-employee">${esc(emp.name)}</div>
         <div class="lr-title-txt">${esc(emp.title)}</div>
       </div>

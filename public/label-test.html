@@ -121,55 +121,59 @@ const SENDER_ADDRESS = {
 };
 
 const TRACK_IMG = {
-  dog:    '/images/paw-prints/dog.png',
-  bird:   '/images/paw-prints/bird.png',
-  deer:   '/images/paw-prints/deer.png',
-  duck:   '/images/paw-prints/duck.png',
-  bear:   '/images/paw-prints/bear.png',
-  rabbit: '/images/paw-prints/rabbit.png',
+  dog:     '/images/paw-prints/dog.png',
+  cat:     '/images/paw-prints/dog.png',
+  rabbit:  '/images/paw-prints/rabbit.png',
+  hamster: '/images/paw-prints/rabbit.png',
+  bird:    '/images/paw-prints/bird.png',
 };
+const OTHER_TRACKS = ['/images/paw-prints/bear.png', '/images/paw-prints/deer.png', '/images/paw-prints/duck.png'];
 
+// Minor deductions only (1-3 pts). Pick 3 → everyone scores 91+ (A-).
 const PET_JOKES = {
   dog: [
-    { pts: 5, reason: 'Distracted by squirrels mid-turn' },
-    { pts: 3, reason: 'Pulled over to sniff every fire hydrant' },
-    { pts: 5, reason: 'Barked continuously at the examining officer' },
-    { pts: 2, reason: 'Used tongue as a turn signal' },
-    { pts: 4, reason: 'Refused to release the steering wheel chew toy' },
+    { pts: 2, reason: 'Briefly distracted by a squirrel at mile 4' },
+    { pts: 1, reason: 'Wagged tail during parallel parking' },
+    { pts: 2, reason: 'Tongue protruded through the driver-side window' },
+    { pts: 3, reason: 'Investigated a fire hydrant at a red light' },
+    { pts: 1, reason: 'Greeted another dog in the next lane' },
   ],
-  bird: [
-    { pts: 4, reason: 'Exceeded speed limit by flying over it' },
-    { pts: 3, reason: 'Insisted on using the sunroof as an exit' },
-    { pts: 5, reason: 'Collided with own reflection in side mirror' },
-    { pts: 4, reason: 'Tried to nest in the glove compartment' },
-    { pts: 3, reason: 'Chirped at every red light' },
-  ],
-  deer: [
-    { pts: 5, reason: 'Froze in headlights (their own)' },
-    { pts: 4, reason: 'Leapt over the speed bumps' },
-    { pts: 3, reason: 'Antlers obstructed the rearview mirror' },
-    { pts: 4, reason: 'Stopped in the middle of a busy road' },
-    { pts: 2, reason: 'Blinked at oncoming traffic' },
-  ],
-  duck: [
-    { pts: 5, reason: 'Waddled in the fast lane at 0.2 mph' },
-    { pts: 3, reason: 'Followed passing cars in single file' },
-    { pts: 4, reason: 'Pulled over for breadcrumbs on the shoulder' },
-    { pts: 4, reason: 'Attempted a splash-landing in the lot' },
-  ],
-  bear: [
-    { pts: 5, reason: 'Began hibernating at a four-way stop' },
-    { pts: 3, reason: 'Detoured for honey (three times)' },
-    { pts: 4, reason: 'Tried to fit the car into a tree hollow' },
-    { pts: 5, reason: 'Stood up on hind legs during the road test' },
+  cat: [
+    { pts: 2, reason: 'Groomed one paw during a lane change' },
+    { pts: 1, reason: 'Judged the examiner with prolonged eye contact' },
+    { pts: 3, reason: 'Briefly napped at a red light' },
+    { pts: 2, reason: 'Preferred the dashboard over the driver seat' },
+    { pts: 1, reason: 'Kneaded the steering wheel at a stop sign' },
   ],
   rabbit: [
-    { pts: 4, reason: 'Hopped over the median strip' },
-    { pts: 3, reason: 'Exceeded lane-change frequency by 400%' },
-    { pts: 5, reason: 'Distracted by carrots at every vegetable stand' },
-    { pts: 4, reason: 'Tunnelled under a parking cone' },
+    { pts: 2, reason: 'Hopped over a speed bump instead of driving across' },
+    { pts: 1, reason: 'Paused at each intersection to survey for predators' },
+    { pts: 3, reason: 'Detoured past a farmers-market carrot stand' },
+    { pts: 2, reason: 'Twitched whiskers excessively during merges' },
+  ],
+  hamster: [
+    { pts: 2, reason: 'Stored orientation notes in cheek pouches' },
+    { pts: 1, reason: 'Ran a brief wheel cycle before starting the engine' },
+    { pts: 3, reason: 'Took a sunflower-seed break at mile 2' },
+    { pts: 2, reason: 'Required a booster cushion for clear visibility' },
+  ],
+  bird: [
+    { pts: 2, reason: 'Tilted head questioningly at every stop sign' },
+    { pts: 1, reason: 'Chirped in response to the turn signal' },
+    { pts: 3, reason: 'Attempted to preen during a highway merge' },
+    { pts: 2, reason: 'Requested a perch on the rearview mirror' },
+  ],
+  other: [
+    { pts: 2, reason: 'Brought a set of unconventional driving techniques' },
+    { pts: 1, reason: 'Required clarification on what a "lane" technically is' },
+    { pts: 3, reason: 'Applied wildlife instincts to suburban traffic' },
+    { pts: 2, reason: 'Took a creative approach to the roundabout' },
   ],
 };
+function trackFor(species, seed) {
+  if (species === 'other') return OTHER_TRACKS[cheapHash(seed || 'other') % OTHER_TRACKS.length];
+  return TRACK_IMG[species] || TRACK_IMG.dog;
+}
 
 function cheapHash(s) { let h = 0; s = String(s); for (let i=0;i<s.length;i++) h = ((h<<5)-h)+s.charCodeAt(i)|0; return Math.abs(h); }
 
@@ -183,12 +187,12 @@ function generateScore(seed, petType) {
 }
 
 const SAMPLES = [
-  { species: 'dog',    emp: { name: 'Sir Barksalot',      title: 'Chief Security Officer' },     order_id: 'PLF-00101', pet_first_name: 'Max',    pet_last_name: 'Woofington',    customer_name: 'Emma Thompson',  addr1: '42 Bone Boulevard',    city: 'Kibble',     state: 'CA', zip: '90210' },
-  { species: 'bird',   emp: { name: 'Captain Beaksley',   title: 'Chief Packaging Officer' },    order_id: 'PLF-00102', pet_first_name: 'Luna',   pet_last_name: 'Whiskers',      customer_name: 'Ryan Chen',      addr1: '8 Tweet Terrace',      city: 'Nestwick',   state: 'OR', zip: '97201' },
-  { species: 'deer',   emp: { name: 'Lord Antlerton',     title: 'Inspector General' },          order_id: 'PLF-00103', pet_first_name: 'Oliver', pet_last_name: 'Pawsley',       customer_name: 'Sarah Jenkins',  addr1: '12 Whisker Way',       city: 'Furton',     state: 'NY', zip: '10001' },
-  { species: 'duck',   emp: { name: 'Mr. Quackworth',     title: 'Director of Shipping' },       order_id: 'PLF-00104', pet_first_name: 'Bella',  pet_last_name: 'Fluffernutter', customer_name: 'Marcus Rivera', addr1: '5 Pond Plaza',         city: 'Quackville', state: 'MN', zip: '55401' },
-  { species: 'bear',   emp: { name: 'Sheriff Grizzworth', title: 'Head of Security' },           order_id: 'PLF-00105', pet_first_name: 'Rocky',  pet_last_name: 'Barksworth',    customer_name: 'Lauren Park',    addr1: '99 Den Drive',         city: 'Grizburg',   state: 'WY', zip: '82001' },
-  { species: 'rabbit', emp: { name: 'Lady Thumperton',    title: 'Head of Quality Control' },    order_id: 'PLF-00106', pet_first_name: 'Cotton', pet_last_name: 'Hopkins',       customer_name: 'Dev Patel',      addr1: '17 Burrow Lane',       city: 'Hoppington', state: 'VT', zip: '05401' },
+  { species: 'dog',     emp: { name: 'Sir Barksalot',          title: 'Chief Security Officer' },   order_id: 'PLF-00101', pet_first_name: 'Max',    pet_last_name: 'Woofington',    customer_name: 'Emma Thompson',  addr1: '42 Bone Boulevard',    city: 'Kibble',     state: 'CA', zip: '90210' },
+  { species: 'cat',     emp: { name: 'Whiskers McFluffington', title: 'Head of Quality Control' },  order_id: 'PLF-00102', pet_first_name: 'Luna',   pet_last_name: 'Whiskers',      customer_name: 'Ryan Chen',      addr1: '8 Tabby Terrace',      city: 'Purrfield',  state: 'OR', zip: '97201' },
+  { species: 'rabbit',  emp: { name: 'Lady Thumperton',        title: 'Senior Document Specialist' }, order_id: 'PLF-00103', pet_first_name: 'Cotton', pet_last_name: 'Hopkins',       customer_name: 'Sarah Jenkins',  addr1: '17 Burrow Lane',       city: 'Hoppington', state: 'VT', zip: '05401' },
+  { species: 'hamster', emp: { name: 'Mr. Cheeksworth',        title: 'Chief Logistics Officer' },  order_id: 'PLF-00104', pet_first_name: 'Biscuit', pet_last_name: 'Cheekworth',   customer_name: 'Marcus Rivera', addr1: '5 Wheel Way',          city: 'Tinytown',   state: 'MN', zip: '55401' },
+  { species: 'bird',    emp: { name: 'Captain Beaksley',       title: 'Chief Packaging Officer' },  order_id: 'PLF-00105', pet_first_name: 'Pip',    pet_last_name: 'Featherbottom',  customer_name: 'Lauren Park',    addr1: '22 Perch Place',       city: 'Nestwick',   state: 'WY', zip: '82001' },
+  { species: 'other',   emp: { name: 'Sheriff Grizzworth',     title: 'Inspector General' },        order_id: 'PLF-00106', pet_first_name: 'Oliver', pet_last_name: 'Pawsley',       customer_name: 'Dev Patel',      addr1: '99 Wilderness Way',    city: 'Exotica',    state: 'NY', zip: '10001' },
 ];
 
 function envelopeLabel(s) {
@@ -212,7 +216,7 @@ function envelopeLabel(s) {
           <div class="eb-title">Pet Licence Factory</div>
           <div style="font-style:italic;font-size:7pt;">Handcrafted with care</div>
         </div>
-        <img src="${TRACK_IMG[s.species]}" alt="paw print">
+        <img src="${trackFor(s.species, s.order_id)}" alt="paw print">
       </div>
     </div>`;
 }
@@ -235,7 +239,7 @@ function receiptLabel(s) {
       <div class="lr-total">Total: $39.99</div>
       <div class="lr-signoff">
         <div class="lr-tagline">Handcrafted with care by:</div>
-        <div class="lr-paw"><img src="${TRACK_IMG[s.species]}" alt="${esc(s.species)} paw print"></div>
+        <div class="lr-paw"><img src="${trackFor(s.species, s.order_id)}" alt="${esc(s.species)} paw print"></div>
         <div class="lr-employee">${esc(s.emp.name)}</div>
         <div class="lr-title-txt">${esc(s.emp.title)}</div>
       </div>
@@ -261,7 +265,7 @@ function certificateLabel(s) {
           <div class="lcs-emp">${esc(s.emp.name)}</div>
           <div class="lcs-title">${esc(s.emp.title)}</div>
         </div>
-        <img src="${TRACK_IMG[s.species]}" alt="${esc(s.species)} paw print">
+        <img src="${trackFor(s.species, s.order_id)}" alt="${esc(s.species)} paw print">
         <div class="lcs-brand">Order ${esc(s.order_id)}</div>
       </div>
     </div>`;
