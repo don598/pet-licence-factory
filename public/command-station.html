@@ -579,6 +579,118 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   background: var(--accent); border-radius: 50%; cursor: pointer;
 }
 
+/* ── Orders Table Selection ──────────────────────────────────────── */
+.orders-table th.cb-col, .orders-table td.cb-col { width: 28px; text-align: center; padding: 0 6px; }
+.orders-table td.cb-col input[type="checkbox"],
+.orders-table th.cb-col input[type="checkbox"] {
+  cursor: pointer; accent-color: var(--accent);
+}
+.bulk-action-bar {
+  display: none; align-items: center; gap: 10px; padding: 8px 14px; margin-bottom: 8px;
+  background: rgba(255,204,0,.08); border: 1px solid var(--accent);
+  border-radius: 6px; font-size: 12px; color: var(--text);
+}
+.bulk-action-bar.visible { display: flex; }
+.bulk-action-bar .bulk-count { color: var(--accent); font-weight: 600; }
+
+/* ── Label Printer Modal ─────────────────────────────────────────── */
+.label-preview-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 250;
+  background: rgba(0,0,0,.92); align-items: center; justify-content: center; flex-direction: column;
+}
+.label-preview-backdrop.open { display: flex; }
+.label-preview-inner {
+  display: flex; flex-direction: column;
+  width: 95vw; max-width: 900px; height: 92vh;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+}
+.label-preview-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface2);
+}
+.label-preview-area {
+  flex: 1; overflow-y: auto; padding: 20px; background: #1a1a1a;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+.label-preview-actions {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2);
+}
+
+/* Each label renders as a 4x6 page (812x1218 @ 203 DPI); scaled on screen */
+.label-page {
+  width: 4in; height: 6in; background: #fff; color: #000;
+  position: relative; overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  page-break-after: always; break-after: page;
+}
+.label-page:last-child { page-break-after: auto; }
+
+/* Address label layout */
+.label-address {
+  display: flex; flex-direction: column; padding: 0.3in 0.35in 0.25in;
+  justify-content: space-between;
+}
+.label-address .la-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 9pt; color: #555; border-bottom: 1px dashed #bbb; padding-bottom: 8px;
+}
+.label-address .la-header .la-logo { font-weight: 700; color: #000; font-size: 10pt; letter-spacing: .5px; }
+.label-address .la-body {
+  flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 0;
+}
+.label-address .la-pet-name {
+  font-size: 14pt; font-weight: 700; color: #666; margin-bottom: 6px; text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.label-address .la-customer { font-size: 18pt; font-weight: 700; margin-bottom: 4px; line-height: 1.1; }
+.label-address .la-address  { font-size: 14pt; line-height: 1.3; }
+.label-address .la-footer {
+  font-size: 8pt; color: #888; text-align: center; border-top: 1px dashed #bbb; padding-top: 6px;
+}
+
+/* Receipt label layout */
+.label-receipt {
+  display: flex; flex-direction: column; padding: 0.3in 0.35in;
+}
+.label-receipt .lr-header {
+  text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px;
+}
+.label-receipt .lr-title { font-size: 22pt; font-weight: 700; letter-spacing: 2px; }
+.label-receipt .lr-subtitle { font-size: 9pt; color: #666; margin-top: 3px; letter-spacing: 1px; }
+.label-receipt .lr-row {
+  display: flex; justify-content: space-between; font-size: 10pt; padding: 3px 0;
+  border-bottom: 1px dotted #ccc;
+}
+.label-receipt .lr-row .lr-k { color: #666; }
+.label-receipt .lr-row .lr-v { font-weight: 600; }
+.label-receipt .lr-divider { border-top: 1px dashed #aaa; margin: 10px 0; }
+.label-receipt .lr-items { font-size: 10pt; }
+.label-receipt .lr-items-title { font-size: 9pt; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+.label-receipt .lr-item { padding: 2px 0; }
+.label-receipt .lr-total { font-size: 14pt; font-weight: 700; text-align: right; margin-top: 8px; border-top: 2px solid #000; padding-top: 6px; }
+.label-receipt .lr-signoff {
+  margin-top: auto; padding-top: 14px; text-align: center; font-size: 10pt;
+  border-top: 1px solid #000;
+}
+.label-receipt .lr-signoff .lr-tagline { font-style: italic; color: #555; margin-bottom: 4px; font-size: 9pt; }
+.label-receipt .lr-signoff .lr-employee { font-weight: 700; }
+.label-receipt .lr-signoff .lr-title-txt { font-size: 8pt; color: #666; }
+.label-receipt .lr-paw { font-size: 24pt; margin: 6px 0; }
+
+/* ── Print CSS — hide everything except label pages ───────────────── */
+@media print {
+  @page { size: 4in 6in; margin: 0; }
+  body > *:not(.label-preview-backdrop) { display: none !important; }
+  .label-preview-backdrop { position: static !important; background: none !important; display: block !important; }
+  .label-preview-backdrop .label-preview-header,
+  .label-preview-backdrop .label-preview-actions { display: none !important; }
+  .label-preview-inner { border: none !important; box-shadow: none !important; width: auto !important; height: auto !important; max-width: none !important; background: #fff !important; }
+  .label-preview-area { background: #fff !important; padding: 0 !important; gap: 0 !important; display: block !important; }
+  .label-page { box-shadow: none !important; width: 4in !important; height: 6in !important; }
+}
+
 /* SAM mask preview overlay */
 .sam-confirm-bar {
   position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
@@ -653,10 +765,16 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         </div>
         <input class="search-input" id="search-input" type="text" placeholder="Search name / email…" oninput="renderTable()" />
       </div>
+      <div class="bulk-action-bar" id="bulk-action-bar">
+        <span class="bulk-count" id="bulk-count">0 selected</span>
+        <button class="btn btn-accent" onclick="printSelected()">🖨 Print Documents</button>
+        <button class="btn btn-ghost" onclick="clearSelection()">Clear</button>
+      </div>
       <div class="orders-table-wrap">
         <table class="orders-table">
           <thead>
             <tr>
+              <th class="cb-col"><input type="checkbox" id="select-all-cb" onclick="toggleSelectAll(this.checked)"></th>
               <th onclick="setSort('created_at')">Date <span class="sort-icon">↕</span></th>
               <th onclick="setSort('pet_first_name')">Pet Name <span class="sort-icon">↕</span></th>
               <th>Customer</th>
@@ -666,7 +784,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
             </tr>
           </thead>
           <tbody id="orders-tbody">
-            <tr><td colspan="6" class="loading-row"><span class="spinner"></span> Loading orders…</td></tr>
+            <tr><td colspan="7" class="loading-row"><span class="spinner"></span> Loading orders…</td></tr>
           </tbody>
         </table>
       </div>
@@ -722,6 +840,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <button class="btn btn-accent" id="gen-btn" onclick="generateLicence()">⚙ Generate Card</button>
           <button class="btn btn-blue"   id="edit-photo-btn" onclick="openPhotoEditor()" style="display:none">✎ Edit Photo</button>
           <button class="btn btn-blue"   id="dl-btn"  onclick="downloadLicence()" style="display:none">⬇ Download PNG</button>
+          <button class="btn btn-ghost"  onclick="printSingleOrder()">🖨 Print Docs</button>
           <a      class="btn btn-ghost"  id="admin-link" href="/admin.html" target="_blank">Open in Editor ↗</a>
         </div>
       </div>
@@ -807,6 +926,27 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ── Label Preview Modal ────────────────────────────────────── -->
+<div class="label-preview-backdrop" id="label-preview-modal">
+  <div class="label-preview-inner" onclick="event.stopPropagation()">
+    <div class="label-preview-header">
+      <div>
+        <div class="modal-title">PRINT DOCUMENTS</div>
+        <div class="modal-sub" id="label-preview-sub">0 orders · 0 labels</div>
+      </div>
+      <button class="modal-close" onclick="closeLabelPreview()">✕</button>
+    </div>
+    <div class="label-preview-area" id="label-preview-area">
+      <div class="loading-row"><span class="spinner"></span> Preparing labels…</div>
+    </div>
+    <div class="label-preview-actions">
+      <div style="flex:1;font-size:11px;color:var(--muted)">4×6 label printer — each order produces an address sticker + a receipt sticker</div>
+      <button class="btn btn-ghost" onclick="closeLabelPreview()">Cancel</button>
+      <button class="btn btn-green" onclick="printLabels()">🖨 Print All</button>
+    </div>
   </div>
 </div>
 
@@ -898,14 +1038,14 @@ async function loadAll() {
 
 async function loadOrders() {
   const tbody = document.getElementById('orders-tbody');
-  tbody.innerHTML = '<tr><td colspan="6"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
 
   let data;
   try {
     const res = await adminAPI('list_orders', { limit: 500 });
     data = res.orders || [];
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
     return;
   }
 
@@ -989,20 +1129,22 @@ function renderTable() {
 
   const tbody = document.getElementById('orders-tbody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr class="empty"><td colspan="6">No orders found</td></tr>';
+    tbody.innerHTML = '<tr class="empty"><td colspan="7">No orders found</td></tr>';
     return;
   }
 
   tbody.innerHTML = rows.map(o => `
-    <tr onclick="openOrder(${o.id})">
-      <td title="${o.created_at}">${fmtDate(o.created_at)}</td>
-      <td>${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>
-      <td title="${esc(o.customer_email || '')}">${esc(o.customer_email || '—')}</td>
-      <td>${fmtShipping(o.shipping_option)}</td>
-      <td><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
-      <td>${o.total || '—'}</td>
+    <tr>
+      <td class="cb-col" onclick="event.stopPropagation()"><input type="checkbox" class="order-cb" data-id="${o.id}" ${selectedOrderIds.has(o.id) ? 'checked' : ''} onclick="toggleOrderSelected(${o.id}, this.checked)"></td>
+      <td onclick="openOrder(${o.id})" title="${o.created_at}">${fmtDate(o.created_at)}</td>
+      <td onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>
+      <td onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}">${esc(o.customer_email || '—')}</td>
+      <td onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
+      <td onclick="openOrder(${o.id})"><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
+      <td onclick="openOrder(${o.id})">${o.total || '—'}</td>
     </tr>
   `).join('');
+  updateBulkBar();
 }
 
 function fmtDate(ts) {
@@ -1369,6 +1511,173 @@ function downloadLicence() {
   a.download = name;
   a.href     = licenceCanvas.toDataURL('image/png');
   a.click();
+}
+
+// ── Label Printer ────────────────────────────────────────────────────────────
+let selectedOrderIds = new Set();
+
+function toggleOrderSelected(id, checked) {
+  if (checked) selectedOrderIds.add(id); else selectedOrderIds.delete(id);
+  updateBulkBar();
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.order-cb').forEach(cb => {
+    cb.checked = checked;
+    const id = +cb.dataset.id;
+    if (checked) selectedOrderIds.add(id); else selectedOrderIds.delete(id);
+  });
+  updateBulkBar();
+}
+
+function clearSelection() {
+  selectedOrderIds.clear();
+  document.querySelectorAll('.order-cb').forEach(cb => cb.checked = false);
+  const sa = document.getElementById('select-all-cb'); if (sa) sa.checked = false;
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-action-bar');
+  const count = selectedOrderIds.size;
+  if (count > 0) {
+    bar.classList.add('visible');
+    document.getElementById('bulk-count').textContent = `${count} selected`;
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+// Fun animal "employee" roster used for receipt sign-offs
+const ANIMAL_EMPLOYEES = [
+  { name: 'Whiskers McFluffington', title: 'Head of Quality Control' },
+  { name: 'Captain Beaksley',       title: 'Chief Packaging Officer' },
+  { name: 'Sir Barksalot',          title: 'Inspector General' },
+  { name: 'Admiral Flipperton',     title: 'Director of Shipping' },
+  { name: 'Duchess Hoptail',        title: 'VP of Licences' },
+  { name: 'Colonel Pawsington',     title: 'Chief Security Officer' },
+  { name: 'Professor Featherbeak',  title: 'Senior Document Specialist' },
+  { name: 'Madame Twitcherton',     title: 'Head of Fulfilment' },
+  { name: 'Mr. Splashworth',        title: 'Aquatic Quality Lead' },
+  { name: 'Dame Fuzzybottom',       title: 'Chief Happiness Officer' },
+  { name: 'Baron von Whiskersworth', title: 'Principal Auditor' },
+  { name: 'Lady Snoutsmith',        title: 'Lead Packing Engineer' },
+];
+function randomAnimalEmployee() {
+  return ANIMAL_EMPLOYEES[Math.floor(Math.random() * ANIMAL_EMPLOYEES.length)];
+}
+
+function renderAddressLabel(o) {
+  const petName = [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet';
+  const customerName = o.customer_name || `Pet Parent of ${petName}`;
+  const line1 = o.ship_addr_line1 || '';
+  const line2 = o.ship_addr_line2 || '';
+  const cityLine = [o.ship_city, o.ship_state].filter(Boolean).join(', ') + (o.ship_zip ? ' ' + o.ship_zip : '');
+  const country = (o.ship_country && o.ship_country !== 'US') ? o.ship_country : '';
+  const shipMethod = (o.shipping_option || 'stamp').toUpperCase();
+  return `
+    <div class="label-page label-address">
+      <div class="la-header">
+        <div class="la-logo">🐾 PLF</div>
+        <div>Order ${esc(o.order_id || '')}</div>
+      </div>
+      <div class="la-body">
+        <div class="la-pet-name">For: ${esc(petName)}</div>
+        <div class="la-customer">${esc(customerName)}</div>
+        <div class="la-address">
+          ${line1 ? esc(line1) + '<br>' : ''}
+          ${line2 ? esc(line2) + '<br>' : ''}
+          ${cityLine ? esc(cityLine) + '<br>' : ''}
+          ${country ? esc(country) : ''}
+        </div>
+      </div>
+      <div class="la-footer">Ship method: ${esc(shipMethod)} · ${fmtDate(o.created_at)}</div>
+    </div>
+  `;
+}
+
+function renderReceiptLabel(o) {
+  const petName = [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet';
+  const emp = randomAnimalEmployee();
+  const items = [];
+  const pack = parseInt(o.pack_count) || 1;
+  items.push(`${pack}-Pack Pet Licence` + (pack > 1 ? ' Skin' : ' Skin'));
+  if (o.chip_size) items.push(`Chip: ${o.chip_size}`);
+  if (o.add_on) items.push('Bonus Decal Add-on');
+  const shipMethod = (o.shipping_option || 'stamp').toUpperCase();
+  return `
+    <div class="label-page label-receipt">
+      <div class="lr-header">
+        <div class="lr-title">PLF</div>
+        <div class="lr-subtitle">PET LICENCE FACTORY</div>
+      </div>
+      <div class="lr-row"><span class="lr-k">Order</span><span class="lr-v">${esc(o.order_id || '—')}</span></div>
+      <div class="lr-row"><span class="lr-k">Date</span><span class="lr-v">${esc(fmtDate(o.created_at))}</span></div>
+      <div class="lr-row"><span class="lr-k">Pet</span><span class="lr-v">${esc(petName)}</span></div>
+      <div class="lr-row"><span class="lr-k">Shipping</span><span class="lr-v">${esc(shipMethod)}</span></div>
+      <div class="lr-divider"></div>
+      <div class="lr-items">
+        <div class="lr-items-title">Items</div>
+        ${items.map(i => `<div class="lr-item">• ${esc(i)}</div>`).join('')}
+      </div>
+      <div class="lr-total">Total: ${esc(o.total || '—')}</div>
+      <div class="lr-signoff">
+        <div class="lr-tagline">Handcrafted with care by:</div>
+        <div class="lr-paw">🐾</div>
+        <div class="lr-employee">${esc(emp.name)}</div>
+        <div class="lr-title-txt">${esc(emp.title)}</div>
+      </div>
+    </div>
+  `;
+}
+
+async function openLabelPreview(orderIds) {
+  if (!orderIds.length) { showToast('Select at least one order', 'err'); return; }
+  const modal = document.getElementById('label-preview-modal');
+  const area  = document.getElementById('label-preview-area');
+  const sub   = document.getElementById('label-preview-sub');
+  modal.classList.add('open');
+  area.innerHTML = '<div class="loading-row"><span class="spinner"></span> Loading orders…</div>';
+  sub.textContent = `${orderIds.length} order${orderIds.length === 1 ? '' : 's'} · fetching details…`;
+
+  // Fetch full records (the list API doesn't include ship_addr fields either)
+  const orders = [];
+  for (const id of orderIds) {
+    try {
+      const res = await adminAPI('get_order', { id });
+      if (res.order) orders.push(res.order);
+    } catch (err) {
+      console.warn('[PLF] Failed to load order for labels:', id, err);
+    }
+  }
+
+  if (!orders.length) {
+    area.innerHTML = '<div class="loading-row" style="color:var(--red)">Failed to load any orders</div>';
+    return;
+  }
+
+  // Render all labels — address then receipt per order
+  area.innerHTML = orders.map(o => renderAddressLabel(o) + renderReceiptLabel(o)).join('');
+  sub.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'} · ${orders.length * 2} labels`;
+}
+
+function closeLabelPreview() {
+  document.getElementById('label-preview-modal').classList.remove('open');
+}
+
+function printLabels() {
+  window.print();
+}
+
+function printSelected() {
+  const ids = Array.from(selectedOrderIds);
+  if (!ids.length) { showToast('Select at least one order first', 'err'); return; }
+  openLabelPreview(ids);
+}
+
+function printSingleOrder() {
+  if (!modalOrder) { showToast('No order open', 'err'); return; }
+  openLabelPreview([modalOrder.id]);
 }
 
 // ── Photo Editor ─────────────────────────────────────────────────────────────
