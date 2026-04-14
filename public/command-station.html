@@ -22,7 +22,11 @@
     try {
       // Configure ONNX runtime WASM paths before loading the library
       const ort = await import('onnxruntime-web');
-      if (ort.env) ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
+      if (ort.env) {
+        ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
+        ort.env.wasm.numThreads = 1;  // Single-threaded — multi-thread needs cross-origin isolation
+        ort.env.wasm.proxy = false;   // Don't use web worker proxy (avoids blob: issues)
+      }
 
       const mod = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/index.mjs');
       window._imglyRemoveBg = mod.removeBackground || mod.default;
