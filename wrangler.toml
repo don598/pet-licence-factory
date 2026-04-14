@@ -7,3 +7,8 @@ compatibility_flags = ["nodejs_compat"]
 # Non-secret env vars (secrets set via dashboard or `wrangler pages secret put`)
 [vars]
 URL = "https://pet-licence-factory.pages.dev"
+
+# Hyperdrive binding for AWS RDS PostgreSQL
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "ab7308b07e2448f18af81c0a1169a3cb"
