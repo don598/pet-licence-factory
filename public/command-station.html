@@ -1426,11 +1426,10 @@ async function openPhotoEditor() {
     stack.appendChild(overlayC);
     area.appendChild(stack);
 
-    // Draw checkerboard
+    // Draw checkerboard (bottom layer)
     drawCheckerboard(checkerC);
-
-    // Draw original photo on photo canvas (hidden behind overlay composite)
-    photoC.getContext('2d').drawImage(originalImg, 0, 0, dw, dh);
+    // photo canvas will hold the COMPOSITED (masked) photo - populated by renderEditorOverlay()
+    // overlay canvas is for brush cursor + SAM preview only
 
     // Build state
     editorState = {
@@ -1492,9 +1491,9 @@ function drawCheckerboard(canvas) {
 function renderEditorOverlay() {
   if (!editorState) return;
   const { originalImg, maskCanvas, pw, ph, dw, dh } = editorState;
+  const photoC = document.getElementById('editor-photo');
   const overlayC = document.getElementById('editor-overlay');
-  if (!overlayC) return;
-  const ctx = overlayC.getContext('2d');
+  if (!photoC || !overlayC) return;
 
   // Composite: original photo masked by alpha mask
   const comp = document.createElement('canvas');
@@ -1505,18 +1504,23 @@ function renderEditorOverlay() {
   cx.drawImage(maskCanvas, 0, 0);
   cx.globalCompositeOperation = 'source-over';
 
-  // Draw composite onto overlay at display scale
-  ctx.clearRect(0, 0, dw, dh);
-  ctx.drawImage(comp, 0, 0, dw, dh);
+  // Draw the masked composite onto the photo canvas (checkerboard shows through transparent areas)
+  const pctx = photoC.getContext('2d');
+  pctx.clearRect(0, 0, dw, dh);
+  pctx.drawImage(comp, 0, 0, dw, dh);
+
+  // Clear overlay canvas — it's only used for brush cursor and SAM mask preview
+  const octx = overlayC.getContext('2d');
+  octx.clearRect(0, 0, dw, dh);
 
   // Draw SAM pending mask preview if present
   if (editorState.samPendingMask) {
     const tmpC = document.createElement('canvas');
     tmpC.width = pw; tmpC.height = ph;
     tmpC.getContext('2d').putImageData(editorState.samPendingMask, 0, 0);
-    ctx.globalAlpha = 0.4;
-    ctx.drawImage(tmpC, 0, 0, dw, dh);
-    ctx.globalAlpha = 1;
+    octx.globalAlpha = 0.6;
+    octx.drawImage(tmpC, 0, 0, dw, dh);
+    octx.globalAlpha = 1;
   }
 }
 
@@ -1608,13 +1612,24 @@ function drawBrushCursor(e) {
   if (!editorState || editorState.tool === 'sam') return;
   const overlayC = document.getElementById('editor-overlay');
   if (!overlayC) return;
-  renderEditorOverlay(); // redraw composite first
   const ctx = overlayC.getContext('2d');
+  const { dw, dh } = editorState;
+  // Clear overlay (cursor-only layer)
+  ctx.clearRect(0, 0, dw, dh);
+  // Redraw SAM pending mask if present
+  if (editorState.samPendingMask) {
+    const tmpC = document.createElement('canvas');
+    tmpC.width = editorState.pw; tmpC.height = editorState.ph;
+    tmpC.getContext('2d').putImageData(editorState.samPendingMask, 0, 0);
+    ctx.globalAlpha = 0.6;
+    ctx.drawImage(tmpC, 0, 0, dw, dh);
+    ctx.globalAlpha = 1;
+  }
   const rect = overlayC.getBoundingClientRect();
   const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
   const r = (editorState.brushSize / 2) * editorState.displayScale;
   ctx.save();
-  ctx.strokeStyle = editorState.tool === 'restore' ? 'rgba(100,180,255,.8)' : 'rgba(255,80,80,.8)';
+  ctx.strokeStyle = editorState.tool === 'restore' ? 'rgba(100,180,255,.9)' : 'rgba(255,80,80,.9)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -1696,11 +1711,11 @@ function applyPhotoEdit() {
 
 // ── SAM (Segment Anything Model) Integration ─────────────────────────────────
 const SAM_CONFIG = {
-  // SAM ViT-B quantized ONNX models (smallest official SAM)
-  encoderUrl: 'https://huggingface.co/vietanhdev/segment-anything-onnx-models/resolve/main/sam_vit_b_encoder.onnx',
-  decoderUrl: 'https://huggingface.co/vietanhdev/segment-anything-onnx-models/resolve/main/sam_vit_b_decoder.onnx',
+  // SAM ViT-B quantized ONNX models from Xenova/sam-vit-base (Transformers.js format)
+  encoderUrl: 'https://huggingface.co/Xenova/sam-vit-base/resolve/main/onnx/vision_encoder_quantized.onnx',
+  decoderUrl: 'https://huggingface.co/Xenova/sam-vit-base/resolve/main/onnx/prompt_encoder_mask_decoder_quantized.onnx',
   dbName: 'plf-sam-cache',
-  dbVersion: 1,
+  dbVersion: 2,
   storeName: 'models',
   inputSize: 1024,
 };
@@ -1860,7 +1875,10 @@ async function runSAMEncoder(img) {
   }
 
   const inputTensor = new ort.Tensor('float32', float32, [1, 3, S, S]);
-  const results = await editorState.samEncoderSession.run({ 'input_image': inputTensor });
+  // Encoder input name: Xenova uses 'pixel_values', others use 'input_image'
+  const encInputName = editorState.samEncoderSession.inputNames[0];
+  const feeds = {}; feeds[encInputName] = inputTensor;
+  const results = await editorState.samEncoderSession.run(feeds);
 
   // Store embedding + scale info
   editorState.samEmbedding = results[editorState.samEncoderSession.outputNames[0]];
@@ -1868,7 +1886,7 @@ async function runSAMEncoder(img) {
   editorState.samPadding = { x: padX, y: padY };
 
   statusEl.textContent = 'SAM ready — click to segment ✓';
-  console.log('[PLF] SAM encoder done, embedding shape:', editorState.samEmbedding.dims);
+  console.log('[PLF] SAM encoder done. Input:', encInputName, 'Outputs:', editorState.samEncoderSession.outputNames, 'Embedding shape:', editorState.samEmbedding.dims);
 }
 
 async function runSAMDecoder(photoX, photoY) {
