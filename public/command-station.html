@@ -657,8 +657,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .label-receipt .lr-header {
   text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px;
 }
-.label-receipt .lr-title { font-size: 22pt; font-weight: 700; letter-spacing: 2px; }
-.label-receipt .lr-subtitle { font-size: 9pt; color: #666; margin-top: 3px; letter-spacing: 1px; }
+.label-receipt .lr-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11pt; line-height: 1.2; color: #000;
+  white-space: nowrap;
+}
+.label-receipt .lr-paw img { width: 52px; height: 52px; display: block; margin: 0 auto; }
 .label-receipt .lr-row {
   display: flex; justify-content: space-between; font-size: 10pt; padding: 3px 0;
   border-bottom: 1px dotted #ccc;
@@ -1548,20 +1552,37 @@ function updateBulkBar() {
   }
 }
 
-// Fun animal "employee" roster used for receipt sign-offs
+// ── Species track stamps (real PNGs in /images/paw-prints/) ──────────────────
+const TRACK_IMG = {
+  dog:    '/images/paw-prints/dog.png',
+  bird:   '/images/paw-prints/bird.png',
+  deer:   '/images/paw-prints/deer.png',
+  duck:   '/images/paw-prints/duck.png',
+  bear:   '/images/paw-prints/bear.png',
+  rabbit: '/images/paw-prints/rabbit.png',
+};
+
+// Fun animal "employee" roster — 2 employees per species, each stamps with
+// their species' track on the receipt
 const ANIMAL_EMPLOYEES = [
-  { name: 'Whiskers McFluffington', title: 'Head of Quality Control' },
-  { name: 'Captain Beaksley',       title: 'Chief Packaging Officer' },
-  { name: 'Sir Barksalot',          title: 'Inspector General' },
-  { name: 'Admiral Flipperton',     title: 'Director of Shipping' },
-  { name: 'Duchess Hoptail',        title: 'VP of Licences' },
-  { name: 'Colonel Pawsington',     title: 'Chief Security Officer' },
-  { name: 'Professor Featherbeak',  title: 'Senior Document Specialist' },
-  { name: 'Madame Twitcherton',     title: 'Head of Fulfilment' },
-  { name: 'Mr. Splashworth',        title: 'Aquatic Quality Lead' },
-  { name: 'Dame Fuzzybottom',       title: 'Chief Happiness Officer' },
-  { name: 'Baron von Whiskersworth', title: 'Principal Auditor' },
-  { name: 'Lady Snoutsmith',        title: 'Lead Packing Engineer' },
+  // Dogs 🐕
+  { name: 'Sir Barksalot',          title: 'Chief Security Officer',      species: 'dog' },
+  { name: 'Duchess Barkington',     title: 'Director of Happiness',       species: 'dog' },
+  // Birds 🐦
+  { name: 'Captain Beaksley',       title: 'Chief Packaging Officer',     species: 'bird' },
+  { name: 'Professor Featherbeak',  title: 'Senior Document Specialist',  species: 'bird' },
+  // Deer 🦌
+  { name: 'Lord Antlerton',         title: 'Inspector General',           species: 'deer' },
+  { name: 'Dame Fawnsworth',        title: 'Head of Shipping Routes',     species: 'deer' },
+  // Ducks 🦆
+  { name: 'Mr. Quackworth',         title: 'Director of Shipping',        species: 'duck' },
+  { name: 'Madame Mallard',         title: 'Chief Logistics Officer',     species: 'duck' },
+  // Bears 🐻
+  { name: 'Colonel Pawsington',     title: 'Inspector General of Audit',  species: 'bear' },
+  { name: 'Sheriff Grizzworth',     title: 'Head of Security',            species: 'bear' },
+  // Rabbits 🐰
+  { name: 'Baron von Hopsworth',    title: 'Principal Auditor',           species: 'rabbit' },
+  { name: 'Lady Thumperton',        title: 'Head of Quality Control',     species: 'rabbit' },
 ];
 function randomAnimalEmployee() {
   return ANIMAL_EMPLOYEES[Math.floor(Math.random() * ANIMAL_EMPLOYEES.length)];
@@ -1608,8 +1629,7 @@ function renderReceiptLabel(o) {
   return `
     <div class="label-page label-receipt">
       <div class="lr-header">
-        <div class="lr-title">PLF</div>
-        <div class="lr-subtitle">PET LICENCE FACTORY</div>
+        <div class="lr-title">Pet Licence Factory</div>
       </div>
       <div class="lr-row"><span class="lr-k">Order</span><span class="lr-v">${esc(o.order_id || '—')}</span></div>
       <div class="lr-row"><span class="lr-k">Date</span><span class="lr-v">${esc(fmtDate(o.created_at))}</span></div>
@@ -1623,7 +1643,7 @@ function renderReceiptLabel(o) {
       <div class="lr-total">Total: ${esc(o.total || '—')}</div>
       <div class="lr-signoff">
         <div class="lr-tagline">Handcrafted with care by:</div>
-        <div class="lr-paw">🐾</div>
+        <div class="lr-paw" style="margin:8px 0;">${TRACK_IMG[emp.species] ? `<img src="${TRACK_IMG[emp.species]}" alt="${esc(emp.species)} paw print">` : ''}</div>
         <div class="lr-employee">${esc(emp.name)}</div>
         <div class="lr-title-txt">${esc(emp.title)}</div>
       </div>

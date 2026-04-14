@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PLF Label Test Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: #333; color: #eee; padding: 24px; }
+.intro { max-width: 900px; margin: 0 auto 24px; line-height: 1.5; font-size: 14px; }
+.intro h1 { font-size: 20px; margin-bottom: 8px; }
+.intro code { background: #222; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+
+.sheet { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+.label-page {
+  width: 4in; height: 6in; background: #fff; color: #000;
+  position: relative; overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  page-break-after: always; break-after: page;
+}
+.label-page:last-child { page-break-after: auto; }
+
+/* Address label */
+.label-address { display: flex; flex-direction: column; padding: 0.3in 0.35in 0.25in; justify-content: space-between; }
+.label-address .la-header { display: flex; justify-content: space-between; align-items: center; font-size: 9pt; color: #555; border-bottom: 1px dashed #bbb; padding-bottom: 8px; }
+.label-address .la-logo { font-weight: 700; color: #000; font-size: 10pt; letter-spacing: .5px; }
+.label-address .la-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 0; }
+.label-address .la-pet-name { font-size: 14pt; font-weight: 700; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+.label-address .la-customer { font-size: 18pt; font-weight: 700; margin-bottom: 4px; line-height: 1.1; }
+.label-address .la-address { font-size: 14pt; line-height: 1.3; }
+.label-address .la-footer { font-size: 8pt; color: #888; text-align: center; border-top: 1px dashed #bbb; padding-top: 6px; }
+
+/* Receipt label */
+.label-receipt { display: flex; flex-direction: column; padding: 0.3in 0.35in; }
+.lr-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px; }
+.lr-title { font-family: 'Press Start 2P', monospace; font-size: 11pt; line-height: 1.2; color: #000; white-space: nowrap; }
+.lr-row { display: flex; justify-content: space-between; font-size: 10pt; padding: 3px 0; border-bottom: 1px dotted #ccc; }
+.lr-row .lr-k { color: #666; }
+.lr-row .lr-v { font-weight: 600; }
+.lr-divider { border-top: 1px dashed #aaa; margin: 10px 0; }
+.lr-items-title { font-size: 9pt; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+.lr-item { padding: 2px 0; font-size: 10pt; }
+.lr-total { font-size: 14pt; font-weight: 700; text-align: right; margin-top: 8px; border-top: 2px solid #000; padding-top: 6px; }
+.lr-signoff { margin-top: auto; padding-top: 14px; text-align: center; font-size: 10pt; border-top: 1px solid #000; }
+.lr-tagline { font-style: italic; color: #555; margin-bottom: 4px; font-size: 9pt; }
+.lr-paw img { width: 52px; height: 52px; display: block; margin: 8px auto; }
+.lr-employee { font-weight: 700; }
+.lr-title-txt { font-size: 8pt; color: #666; }
+
+@media print {
+  @page { size: 4in 6in; margin: 0; }
+  body { background: #fff; padding: 0; }
+  .intro, .print-controls { display: none !important; }
+  .sheet { gap: 0; }
+  .label-page { box-shadow: none; }
+}
+
+.print-controls {
+  position: fixed; top: 20px; right: 20px; z-index: 10;
+  background: #222; padding: 12px; border-radius: 8px; border: 1px solid #444;
+}
+.print-controls button { background: #ffcc00; color: #000; border: 0; padding: 10px 18px; font-weight: 600; border-radius: 4px; cursor: pointer; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>🐾 PLF Label Test Sheet</h1>
+  <p>This page has a sample <strong>address sticker + receipt sticker</strong> for every one of the six species in the employee roster (12 labels total). Open in Chrome → <strong>⌘P / Ctrl+P</strong> → choose <strong>Save as PDF</strong> to export, or send directly to your 4×6 thermal printer to confirm real-world alignment & text sharpness before you run a real order batch.</p>
+</div>
+
+<div class="print-controls">
+  <button onclick="window.print()">🖨 Print / Save PDF</button>
+</div>
+
+<div class="sheet" id="sheet"></div>
+
+<script>
+function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+    + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+const TRACK_IMG = {
+  dog:    '/images/paw-prints/dog.png',
+  bird:   '/images/paw-prints/bird.png',
+  deer:   '/images/paw-prints/deer.png',
+  duck:   '/images/paw-prints/duck.png',
+  bear:   '/images/paw-prints/bear.png',
+  rabbit: '/images/paw-prints/rabbit.png',
+};
+
+const SAMPLES = [
+  { species: 'dog',    emp: { name: 'Sir Barksalot',      title: 'Chief Security Officer' },     order_id: 'PLF-00101', pet_first_name: 'Max',     pet_last_name: 'Woofington',   customer_name: 'Emma Thompson',   addr1: '42 Bone Boulevard',    city: 'Kibble',    state: 'CA', zip: '90210' },
+  { species: 'bird',   emp: { name: 'Captain Beaksley',   title: 'Chief Packaging Officer' },    order_id: 'PLF-00102', pet_first_name: 'Luna',    pet_last_name: 'Whiskers',     customer_name: 'Ryan Chen',       addr1: '8 Tweet Terrace',     city: 'Nestwick',  state: 'OR', zip: '97201' },
+  { species: 'deer',   emp: { name: 'Lord Antlerton',     title: 'Inspector General' },          order_id: 'PLF-00103', pet_first_name: 'Oliver',  pet_last_name: 'Pawsley',      customer_name: 'Sarah Jenkins',   addr1: '12 Whisker Way',      city: 'Furton',    state: 'NY', zip: '10001' },
+  { species: 'duck',   emp: { name: 'Mr. Quackworth',     title: 'Director of Shipping' },       order_id: 'PLF-00104', pet_first_name: 'Bella',   pet_last_name: 'Fluffernutter', customer_name: 'Marcus Rivera',  addr1: '5 Pond Plaza',        city: 'Quackville', state: 'MN', zip: '55401' },
+  { species: 'bear',   emp: { name: 'Sheriff Grizzworth', title: 'Head of Security' },           order_id: 'PLF-00105', pet_first_name: 'Rocky',   pet_last_name: 'Barksworth',   customer_name: 'Lauren Park',     addr1: '99 Den Drive',        city: 'Grizburg',  state: 'WY', zip: '82001' },
+  { species: 'rabbit', emp: { name: 'Lady Thumperton',    title: 'Head of Quality Control' },    order_id: 'PLF-00106', pet_first_name: 'Cotton',  pet_last_name: 'Hopkins',      customer_name: 'Dev Patel',       addr1: '17 Burrow Lane',      city: 'Hoppington', state: 'VT', zip: '05401' },
+];
+
+function addressLabel(s) {
+  return `
+    <div class="label-page label-address">
+      <div class="la-header">
+        <div class="la-logo">🐾 PLF</div>
+        <div>Order ${esc(s.order_id)}</div>
+      </div>
+      <div class="la-body">
+        <div class="la-pet-name">For: ${esc(s.pet_first_name + ' ' + s.pet_last_name)}</div>
+        <div class="la-customer">${esc(s.customer_name)}</div>
+        <div class="la-address">
+          ${esc(s.addr1)}<br>
+          ${esc(s.city + ', ' + s.state + ' ' + s.zip)}
+        </div>
+      </div>
+      <div class="la-footer">Ship method: STAMP · ${fmtDate(new Date().toISOString())}</div>
+    </div>
+  `;
+}
+
+function receiptLabel(s) {
+  return `
+    <div class="label-page label-receipt">
+      <div class="lr-header">
+        <div class="lr-title">Pet Licence Factory</div>
+      </div>
+      <div class="lr-row"><span class="lr-k">Order</span><span class="lr-v">${esc(s.order_id)}</span></div>
+      <div class="lr-row"><span class="lr-k">Date</span><span class="lr-v">${esc(fmtDate(new Date().toISOString()))}</span></div>
+      <div class="lr-row"><span class="lr-k">Pet</span><span class="lr-v">${esc(s.pet_first_name + ' ' + s.pet_last_name)}</span></div>
+      <div class="lr-row"><span class="lr-k">Shipping</span><span class="lr-v">STAMP</span></div>
+      <div class="lr-divider"></div>
+      <div>
+        <div class="lr-items-title">Items</div>
+        <div class="lr-item">• 2-Pack Pet Licence Skin</div>
+        <div class="lr-item">• Chip: Mini</div>
+        <div class="lr-item">• Bonus Decal Add-on</div>
+      </div>
+      <div class="lr-total">Total: $39.99</div>
+      <div class="lr-signoff">
+        <div class="lr-tagline">Handcrafted with care by:</div>
+        <div class="lr-paw"><img src="${TRACK_IMG[s.species]}" alt="${esc(s.species)} paw print"></div>
+        <div class="lr-employee">${esc(s.emp.name)}</div>
+        <div class="lr-title-txt">${esc(s.emp.title)}</div>
+      </div>
+    </div>
+  `;
+}
+
+document.getElementById('sheet').innerHTML = SAMPLES.map(s => addressLabel(s) + receiptLabel(s)).join('');
+</script>
+
+</body>
+</html>
