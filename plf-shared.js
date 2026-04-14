@@ -278,7 +278,7 @@ function refreshLicPreview() {
     { k: 'weight',    v: petData.weight || '',             c: '#1a0a00' },
     { k: 'eyes',      v: petData.eyeColor || '',           c: '#1a0a00' },
     { k: 'licClass',  v: petData.licenceClass || '',       c: '#1a0a00' },
-    { k: 'restrict',  v: petData.restrictions || 'NONE',   c: '#1a0a00' }
+    { k: 'restrict',  v: petData.restrictions || 'ALL',   c: '#1a0a00' }
   ];
   licCtx.textBaseline = 'middle';
   const pxFloor = 4 * _licDPR, pxCap = 9 * _licDPR;
