@@ -611,6 +611,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   <header class="cs-header">
     <div class="cs-logo">🐾 PLF COMMAND STATION <em>v1.0</em></div>
     <div class="cs-header-right">
+      <span id="bg-prerun-status" style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;"></span>
       <span id="last-sync" style="font-size:11px;color:var(--muted);"></span>
       <button class="cs-refresh-btn" onclick="loadAll()">↺ Refresh</button>
       <button class="cs-logout-btn"  onclick="logout()">Logout</button>
@@ -913,6 +914,9 @@ async function loadOrders() {
   renderTable();
 
   document.getElementById('last-sync').textContent = 'Synced ' + new Date().toLocaleTimeString();
+
+  // Kick off background BG-removal pre-run (non-blocking)
+  setTimeout(() => preRunBgQueue(allOrders), 500);
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
@@ -1126,8 +1130,18 @@ async function saveOrderChanges() {
 let _bgRemovedCache = {};       // photo_url hash → object URL of transparent PNG
 
 async function removePhotoBackground(dataUrl) {
-  // Return cached result if available
+  // 1. Session memory cache
   if (_bgRemovedCache[dataUrl]) return _bgRemovedCache[dataUrl];
+
+  // 2. Persistent IndexedDB cache (survives reloads)
+  try {
+    const cachedBlob = await bgCacheGet(dataUrl);
+    if (cachedBlob) {
+      const url = URL.createObjectURL(cachedBlob);
+      _bgRemovedCache[dataUrl] = url;
+      return url;
+    }
+  } catch { /* bgCacheGet may not be defined yet during early init; fall through */ }
 
   // Wait up to 10s for the module to load (preloaded via <script type="module"> in head)
   let removeBg = window._imglyRemoveBg;
@@ -1162,6 +1176,8 @@ async function removePhotoBackground(dataUrl) {
   const out = await removeBg(blob, { debug: false });
   const url = URL.createObjectURL(out);
   _bgRemovedCache[dataUrl] = url;
+  // Persist to IDB so future sessions skip the ~5-20s inference
+  try { await bgCacheSet(dataUrl, out); } catch { /* non-critical */ }
   return url;
 }
 
@@ -1726,11 +1742,13 @@ const SAM_CONFIG = {
   encoderUrl: 'https://huggingface.co/Xenova/sam-vit-base/resolve/main/onnx/vision_encoder_quantized.onnx',
   decoderUrl: 'https://huggingface.co/Xenova/sam-vit-base/resolve/main/onnx/prompt_encoder_mask_decoder_quantized.onnx',
   dbName: 'plf-sam-cache',
-  dbVersion: 3, // bumped to add embeddings store
+  dbVersion: 4, // bumped to add bgremoved store
   storeName: 'models',
   embStoreName: 'embeddings',
+  bgStoreName: 'bgremoved',
   inputSize: 1024,
   maxEmbeddings: 100, // LRU cap
+  maxBgCache: 100,    // LRU cap for BG-removed photos
 };
 
 function samCacheOpen() {
@@ -1741,6 +1759,10 @@ function samCacheOpen() {
       if (!db.objectStoreNames.contains(SAM_CONFIG.storeName)) db.createObjectStore(SAM_CONFIG.storeName);
       if (!db.objectStoreNames.contains(SAM_CONFIG.embStoreName)) {
         const store = db.createObjectStore(SAM_CONFIG.embStoreName, { keyPath: 'key' });
+        store.createIndex('lastUsed', 'lastUsed');
+      }
+      if (!db.objectStoreNames.contains(SAM_CONFIG.bgStoreName)) {
+        const store = db.createObjectStore(SAM_CONFIG.bgStoreName, { keyPath: 'key' });
         store.createIndex('lastUsed', 'lastUsed');
       }
     };
@@ -1818,6 +1840,118 @@ async function samEmbSet(key, embData, embDims, posData, posDims, scale, padding
       }
     };
   } catch (e) { console.warn('[PLF] emb cache write failed:', e); }
+}
+
+// ── BG-removed photo cache (persistent, survives reloads) ────────────────────
+async function bgCacheGet(photoUrl) {
+  try {
+    const key = await hashKey(photoUrl);
+    const db = await samCacheOpen();
+    return new Promise((resolve) => {
+      const tx = db.transaction(SAM_CONFIG.bgStoreName, 'readwrite');
+      const store = tx.objectStore(SAM_CONFIG.bgStoreName);
+      const req = store.get(key);
+      req.onsuccess = () => {
+        const entry = req.result;
+        if (entry) { entry.lastUsed = Date.now(); store.put(entry); resolve(entry.blob); }
+        else resolve(null);
+      };
+      req.onerror = () => resolve(null);
+    });
+  } catch { return null; }
+}
+
+async function bgCacheSet(photoUrl, blob) {
+  try {
+    const key = await hashKey(photoUrl);
+    const db = await samCacheOpen();
+    const tx = db.transaction(SAM_CONFIG.bgStoreName, 'readwrite');
+    const store = tx.objectStore(SAM_CONFIG.bgStoreName);
+    store.put({ key, blob, lastUsed: Date.now() });
+    // LRU eviction
+    const countReq = store.count();
+    countReq.onsuccess = () => {
+      if (countReq.result > SAM_CONFIG.maxBgCache) {
+        const excess = countReq.result - SAM_CONFIG.maxBgCache;
+        const idx = store.index('lastUsed');
+        const cursorReq = idx.openCursor();
+        let deleted = 0;
+        cursorReq.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor && deleted < excess) {
+            store.delete(cursor.primaryKey); deleted++; cursor.continue();
+          }
+        };
+      }
+    };
+  } catch (e) { console.warn('[PLF] bg cache write failed:', e); }
+}
+
+// ── Background pre-run queue ──────────────────────────────────────────────────
+// After the orders list loads, silently process photos in the background so
+// the admin sees instant BG removal when they click into any order.
+let _bgPreRunState = { running: false, queue: [], processed: 0, total: 0, active: 0 };
+const BG_CONCURRENCY = 2; // @imgly is heavy; 2 concurrent is safe
+
+async function preRunBgQueue(orders) {
+  if (_bgPreRunState.running) return;
+  // Only orders we haven't already cached this session (in-memory)
+  const candidates = orders.filter(o => !_bgRemovedCache[o.id] && !_bgRemovedCache['row-' + o.id]);
+  if (!candidates.length) return;
+
+  _bgPreRunState.running = true;
+  _bgPreRunState.queue = candidates.slice();
+  _bgPreRunState.total = candidates.length;
+  _bgPreRunState.processed = 0;
+  _bgPreRunState.active = 0;
+  updateBgPreRunIndicator();
+
+  const workers = [];
+  for (let i = 0; i < BG_CONCURRENCY; i++) workers.push(bgPreRunWorker());
+  await Promise.all(workers);
+
+  _bgPreRunState.running = false;
+  updateBgPreRunIndicator();
+}
+
+async function bgPreRunWorker() {
+  while (_bgPreRunState.queue.length) {
+    const order = _bgPreRunState.queue.shift();
+    _bgPreRunState.active++;
+    updateBgPreRunIndicator();
+    try {
+      // Mark in-memory so we don't re-enqueue
+      _bgRemovedCache['row-' + order.id] = 'pending';
+      // Fetch full order (photo_url isn't in list response)
+      const res = await adminAPI('get_order', { id: order.id });
+      const full = res.order;
+      if (full && full.photo_url) {
+        // Check persistent cache first
+        const cached = await bgCacheGet(full.photo_url);
+        if (cached) {
+          _bgRemovedCache[full.photo_url] = URL.createObjectURL(cached);
+        } else {
+          // Actually run BG removal (this is the expensive step)
+          await removePhotoBackground(full.photo_url);
+        }
+      }
+      delete _bgRemovedCache['row-' + order.id];
+    } catch (err) {
+      console.warn('[PLF] bg pre-run failed for order', order.id, err);
+    }
+    _bgPreRunState.processed++;
+    _bgPreRunState.active--;
+    updateBgPreRunIndicator();
+  }
+}
+
+function updateBgPreRunIndicator() {
+  const el = document.getElementById('bg-prerun-status');
+  if (!el) return;
+  const { running, processed, total, active } = _bgPreRunState;
+  if (!running && !active) { el.textContent = ''; return; }
+  const remaining = total - processed;
+  el.innerHTML = `<span class="spinner" style="width:10px;height:10px;border-width:1.5px"></span> Pre-processing photos: ${processed}/${total}`;
 }
 
 function fetchWithProgress(url, cacheKey, onProgress) {
