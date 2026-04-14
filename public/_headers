@@ -14,5 +14,8 @@
 /command-station.html
   X-Robots-Tag: noindex, nofollow
 
+/test-bg.html
+  Content-Security-Policy:
+
 /images/*
   Cache-Control: public, max-age=31536000, immutable
