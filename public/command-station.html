@@ -617,38 +617,94 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2);
 }
 
-/* Each label renders as a 4x6 page (812x1218 @ 203 DPI); scaled on screen */
+/* Each label renders as a physical page; scaled on screen */
 .label-page {
-  width: 4in; height: 6in; background: #fff; color: #000;
+  background: #fff; color: #000;
   position: relative; overflow: hidden;
   font-family: 'Inter', system-ui, sans-serif;
   box-shadow: 0 4px 20px rgba(0,0,0,.5);
   page-break-after: always; break-after: page;
 }
 .label-page:last-child { page-break-after: auto; }
+.label-page.portrait { width: 4in; height: 6in; }
+.label-page.landscape { width: 6in; height: 4in; }
 
-/* Address label layout */
-.label-address {
-  display: flex; flex-direction: column; padding: 0.3in 0.35in 0.25in;
-  justify-content: space-between;
+/* Envelope sticker — 6x4 landscape, sender TL / recipient center / branding BR */
+.label-envelope {
+  padding: 0.3in; position: relative;
 }
-.label-address .la-header {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 9pt; color: #555; border-bottom: 1px dashed #bbb; padding-bottom: 8px;
+.label-envelope .env-sender {
+  position: absolute; top: 0.3in; left: 0.3in;
+  font-size: 9pt; line-height: 1.35; color: #333;
+  max-width: 2.2in;
 }
-.label-address .la-header .la-logo { font-weight: 700; color: #000; font-size: 10pt; letter-spacing: .5px; }
-.label-address .la-body {
-  flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 0;
+.label-envelope .env-sender .es-name { font-weight: 700; color: #000; margin-bottom: 2px; }
+.label-envelope .env-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; width: 4in;
 }
-.label-address .la-pet-name {
-  font-size: 14pt; font-weight: 700; color: #666; margin-bottom: 6px; text-transform: uppercase;
-  letter-spacing: 1px;
+.label-envelope .env-cursive {
+  font-family: 'Sacramento', cursive;
+  font-size: 22pt; color: #555; margin-bottom: 10px; line-height: 1;
 }
-.label-address .la-customer { font-size: 18pt; font-weight: 700; margin-bottom: 4px; line-height: 1.1; }
-.label-address .la-address  { font-size: 14pt; line-height: 1.3; }
-.label-address .la-footer {
-  font-size: 8pt; color: #888; text-align: center; border-top: 1px dashed #bbb; padding-top: 6px;
+.label-envelope .env-customer { font-size: 18pt; font-weight: 700; line-height: 1.15; margin-bottom: 4px; }
+.label-envelope .env-addr { font-size: 14pt; line-height: 1.35; }
+.label-envelope .env-brand {
+  position: absolute; bottom: 0.25in; right: 0.3in;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 8pt; color: #555;
 }
+.label-envelope .env-brand img { width: 28px; height: 28px; }
+.label-envelope .env-brand .eb-stack { text-align: right; line-height: 1.3; }
+.label-envelope .env-brand .eb-title { font-family: 'Press Start 2P', monospace; font-size: 7pt; color: #000; white-space: nowrap; margin-bottom: 2px; }
+.label-envelope .env-petname {
+  position: absolute; bottom: 0.25in; left: 0.3in;
+  font-size: 8pt; color: #888; letter-spacing: .5px; text-transform: uppercase;
+}
+
+/* Certificate page — 4x6 portrait */
+.label-certificate {
+  padding: 0.3in 0.35in; display: flex; flex-direction: column;
+  border: 6px double #000; border-radius: 4px;
+}
+.label-certificate::after {
+  content: ''; position: absolute; inset: 0.15in; border: 1px solid #999; pointer-events: none;
+}
+.label-certificate .lc-header {
+  text-align: center; font-family: 'Press Start 2P', monospace; font-size: 9pt;
+  line-height: 1.3; color: #000; margin-bottom: 8px; padding-top: 6px;
+}
+.label-certificate .lc-subheader {
+  text-align: center; font-size: 8pt; color: #666; margin-bottom: 14px;
+  text-transform: uppercase; letter-spacing: 2px;
+}
+.label-certificate .lc-intro { text-align: center; font-style: italic; color: #555; font-size: 10pt; margin-bottom: 6px; }
+.label-certificate .lc-petname {
+  text-align: center; font-family: 'Sacramento', cursive;
+  font-size: 30pt; line-height: 1; margin-bottom: 10px; color: #000;
+}
+.label-certificate .lc-achievement { text-align: center; font-size: 10pt; color: #333; margin-bottom: 14px; line-height: 1.35; }
+.label-certificate .lc-score-label { text-align: center; font-size: 8pt; color: #666; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+.label-certificate .lc-score {
+  text-align: center; font-family: 'Press Start 2P', monospace; font-size: 22pt; color: #000;
+  margin-bottom: 12px;
+}
+.label-certificate .lc-dedtitle {
+  font-size: 8pt; color: #555; text-align: center;
+  border-top: 1px dashed #999; border-bottom: 1px dashed #999;
+  padding: 4px 0; margin-bottom: 8px; letter-spacing: 1.5px; text-transform: uppercase;
+}
+.label-certificate .lc-ded { font-size: 9pt; display: flex; gap: 8px; padding: 3px 0; }
+.label-certificate .lc-ded .lc-pts { font-weight: 700; color: #a00; min-width: 28px; }
+.label-certificate .lc-ded .lc-reason { color: #222; }
+.label-certificate .lc-sig {
+  margin-top: auto; padding-top: 12px; border-top: 1.5px solid #000;
+  display: flex; justify-content: space-between; align-items: flex-end; font-size: 8pt;
+}
+.label-certificate .lc-sig .lcs-emp { font-weight: 700; font-size: 9pt; }
+.label-certificate .lc-sig .lcs-title { color: #666; }
+.label-certificate .lc-sig img { width: 36px; height: 36px; }
+.label-certificate .lc-sig .lcs-brand { font-family: 'Press Start 2P', monospace; font-size: 6.5pt; color: #000; white-space: nowrap; text-align: right; }
 
 /* Receipt label layout */
 .label-receipt {
@@ -685,14 +741,17 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 /* ── Print CSS — hide everything except label pages ───────────────── */
 @media print {
-  @page { size: 4in 6in; margin: 0; }
+  @page portrait-page  { size: 4in 6in; margin: 0; }
+  @page landscape-page { size: 6in 4in; margin: 0; }
+  .label-page.portrait  { page: portrait-page; }
+  .label-page.landscape { page: landscape-page; }
   body > *:not(.label-preview-backdrop) { display: none !important; }
   .label-preview-backdrop { position: static !important; background: none !important; display: block !important; }
   .label-preview-backdrop .label-preview-header,
   .label-preview-backdrop .label-preview-actions { display: none !important; }
   .label-preview-inner { border: none !important; box-shadow: none !important; width: auto !important; height: auto !important; max-width: none !important; background: #fff !important; }
   .label-preview-area { background: #fff !important; padding: 0 !important; gap: 0 !important; display: block !important; }
-  .label-page { box-shadow: none !important; width: 4in !important; height: 6in !important; }
+  .label-page { box-shadow: none !important; }
 }
 
 /* SAM mask preview overlay */
@@ -1552,6 +1611,91 @@ function updateBulkBar() {
   }
 }
 
+// ── Sender address (return address on envelope stickers) ────────────────────
+// TODO: fill with your real return address before mailing real orders
+const SENDER_ADDRESS = {
+  name:  'Pet Licence Factory',
+  line1: '7900 Cambridge St.',
+  line2: 'Apt 28-1G',
+  city:  'Houston',
+  state: 'TX',
+  zip:   '77054',
+};
+
+// Pet-specific deduction pools for the driving-test certificate
+const PET_JOKES = {
+  dog: [
+    { pts: 5, reason: 'Distracted by squirrels mid-turn' },
+    { pts: 3, reason: 'Pulled over to sniff every fire hydrant' },
+    { pts: 5, reason: 'Barked continuously at the examining officer' },
+    { pts: 2, reason: 'Used tongue as a turn signal' },
+    { pts: 4, reason: 'Refused to release the steering wheel chew toy' },
+    { pts: 3, reason: 'Stopped to greet every other car' },
+  ],
+  bird: [
+    { pts: 4, reason: 'Exceeded speed limit by flying over it' },
+    { pts: 3, reason: 'Insisted on using the sunroof as an exit' },
+    { pts: 5, reason: 'Collided with own reflection in side mirror' },
+    { pts: 4, reason: 'Tried to nest in the glove compartment' },
+    { pts: 3, reason: 'Chirped at every red light' },
+    { pts: 2, reason: 'Preened during the entire parallel parking test' },
+  ],
+  deer: [
+    { pts: 5, reason: 'Froze in headlights (their own)' },
+    { pts: 4, reason: 'Leapt over the speed bumps instead of going around' },
+    { pts: 3, reason: 'Antlers obstructed the rearview mirror' },
+    { pts: 4, reason: 'Stopped in the middle of a busy road for no reason' },
+    { pts: 2, reason: 'Blinked at oncoming traffic' },
+  ],
+  duck: [
+    { pts: 5, reason: 'Waddled in the fast lane at 0.2 mph' },
+    { pts: 3, reason: 'Followed every passing car in a single file' },
+    { pts: 4, reason: 'Pulled over for breadcrumbs on the shoulder' },
+    { pts: 4, reason: 'Attempted a splash-landing in the parking lot' },
+    { pts: 3, reason: 'Quacked incessantly at every pedestrian' },
+  ],
+  bear: [
+    { pts: 5, reason: 'Began hibernating at a four-way stop' },
+    { pts: 3, reason: 'Detoured for honey (three times)' },
+    { pts: 4, reason: 'Tried to fit the car into a tree hollow' },
+    { pts: 5, reason: 'Stood up on hind legs during the road test' },
+    { pts: 2, reason: 'Growled at the DMV examiner' },
+  ],
+  rabbit: [
+    { pts: 4, reason: 'Hopped over the median strip' },
+    { pts: 3, reason: 'Exceeded lane-change frequency by 400%' },
+    { pts: 5, reason: 'Distracted by carrots at every vegetable stand' },
+    { pts: 4, reason: 'Tunnelled under a parallel parking cone' },
+    { pts: 3, reason: 'Zigzagged to evade imaginary hawks' },
+  ],
+};
+const PET_TYPES = ['dog', 'bird', 'deer', 'duck', 'bear', 'rabbit'];
+
+// Deterministic hash so the same order always gets the same pet type & score
+function cheapHash(s) {
+  let h = 0; s = String(s);
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
+  return Math.abs(h);
+}
+
+// Per-order pet-type overrides (session only; admin can change before printing)
+const _petTypeOverrides = {};
+function pickPetType(order) {
+  if (_petTypeOverrides[order.id]) return _petTypeOverrides[order.id];
+  return PET_TYPES[cheapHash(order.order_id || order.id) % PET_TYPES.length];
+}
+function setPetType(orderId, type) { _petTypeOverrides[orderId] = type; }
+
+function generateDrivingScore(order, petType) {
+  const pool = PET_JOKES[petType] || PET_JOKES.dog;
+  const rand = cheapHash((order.order_id || '') + petType);
+  // Pick 3 non-duplicate deductions deterministically
+  const shuffled = [...pool].sort((a, b) => ((a.reason.length * rand) % 7) - ((b.reason.length * rand) % 7));
+  const picked = shuffled.slice(0, 3);
+  const total = picked.reduce((sum, p) => sum + p.pts, 0);
+  return { score: 100 - total, deductions: picked };
+}
+
 // ── Species track stamps (real PNGs in /images/paw-prints/) ──────────────────
 const TRACK_IMG = {
   dog:    '/images/paw-prints/dog.png',
@@ -1588,31 +1732,73 @@ function randomAnimalEmployee() {
   return ANIMAL_EMPLOYEES[Math.floor(Math.random() * ANIMAL_EMPLOYEES.length)];
 }
 
-function renderAddressLabel(o) {
+function renderEnvelopeLabel(o) {
   const petName = [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet';
   const customerName = o.customer_name || `Pet Parent of ${petName}`;
   const line1 = o.ship_addr_line1 || '';
   const line2 = o.ship_addr_line2 || '';
   const cityLine = [o.ship_city, o.ship_state].filter(Boolean).join(', ') + (o.ship_zip ? ' ' + o.ship_zip : '');
   const country = (o.ship_country && o.ship_country !== 'US') ? o.ship_country : '';
-  const shipMethod = (o.shipping_option || 'stamp').toUpperCase();
+  const petType = pickPetType(o);
+  const pawSrc = TRACK_IMG[petType] || TRACK_IMG.dog;
+  const senderCity = [SENDER_ADDRESS.city, SENDER_ADDRESS.state].filter(Boolean).join(', ') + (SENDER_ADDRESS.zip ? ' ' + SENDER_ADDRESS.zip : '');
   return `
-    <div class="label-page label-address">
-      <div class="la-header">
-        <div class="la-logo">🐾 PLF</div>
-        <div>Order ${esc(o.order_id || '')}</div>
+    <div class="label-page landscape label-envelope">
+      <div class="env-sender">
+        <div class="es-name">${esc(SENDER_ADDRESS.name)}</div>
+        ${SENDER_ADDRESS.line1 ? esc(SENDER_ADDRESS.line1) + '<br>' : ''}
+        ${SENDER_ADDRESS.line2 ? esc(SENDER_ADDRESS.line2) + '<br>' : ''}
+        ${esc(senderCity)}
       </div>
-      <div class="la-body">
-        <div class="la-pet-name">For: ${esc(petName)}</div>
-        <div class="la-customer">${esc(customerName)}</div>
-        <div class="la-address">
+      <div class="env-center">
+        <div class="env-cursive">Deliver to the order of</div>
+        <div class="env-customer">${esc(customerName)}</div>
+        <div class="env-addr">
           ${line1 ? esc(line1) + '<br>' : ''}
           ${line2 ? esc(line2) + '<br>' : ''}
-          ${cityLine ? esc(cityLine) + '<br>' : ''}
-          ${country ? esc(country) : ''}
+          ${cityLine ? esc(cityLine) : ''}
+          ${country ? '<br>' + esc(country) : ''}
         </div>
       </div>
-      <div class="la-footer">Ship method: ${esc(shipMethod)} · ${fmtDate(o.created_at)}</div>
+      <div class="env-petname">For: ${esc(petName)}</div>
+      <div class="env-brand">
+        <div class="eb-stack">
+          <div class="eb-title">Pet Licence Factory</div>
+          <div style="font-style:italic;font-size:7pt;">Handcrafted with care</div>
+        </div>
+        <img src="${pawSrc}" alt="paw print">
+      </div>
+    </div>
+  `;
+}
+
+function renderCertificateLabel(o) {
+  const petName = [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet';
+  const petType = pickPetType(o);
+  const emp = randomAnimalEmployee();
+  const { score, deductions } = generateDrivingScore(o, petType);
+  const pawSrc = TRACK_IMG[petType] || TRACK_IMG.dog;
+  return `
+    <div class="label-page portrait label-certificate">
+      <div class="lc-header">Pet Licence Factory</div>
+      <div class="lc-subheader">Certificate of Licensure</div>
+      <div class="lc-intro">This certifies that</div>
+      <div class="lc-petname">${esc(petName)}</div>
+      <div class="lc-achievement">has successfully completed the<br>PLF Practical Driving Examination.</div>
+      <div class="lc-score-label">Final Score</div>
+      <div class="lc-score">${score} / 100</div>
+      <div class="lc-dedtitle">Notable Deductions</div>
+      ${deductions.map(d => `
+        <div class="lc-ded"><span class="lc-pts">-${d.pts}</span><span class="lc-reason">${esc(d.reason)}</span></div>
+      `).join('')}
+      <div class="lc-sig">
+        <div>
+          <div class="lcs-emp">${esc(emp.name)}</div>
+          <div class="lcs-title">${esc(emp.title)}</div>
+        </div>
+        <img src="${pawSrc}" alt="${esc(petType)} paw print">
+        <div class="lcs-brand">Order ${esc(o.order_id || '—')}</div>
+      </div>
     </div>
   `;
 }
@@ -1627,7 +1813,7 @@ function renderReceiptLabel(o) {
   if (o.add_on) items.push('Bonus Decal Add-on');
   const shipMethod = (o.shipping_option || 'stamp').toUpperCase();
   return `
-    <div class="label-page label-receipt">
+    <div class="label-page portrait label-receipt">
       <div class="lr-header">
         <div class="lr-title">Pet Licence Factory</div>
       </div>
@@ -1677,7 +1863,7 @@ async function openLabelPreview(orderIds) {
   }
 
   // Render all labels — address then receipt per order
-  area.innerHTML = orders.map(o => renderAddressLabel(o) + renderReceiptLabel(o)).join('');
+  area.innerHTML = orders.map(o => renderEnvelopeLabel(o) + renderReceiptLabel(o) + renderCertificateLabel(o)).join('');
   sub.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'} · ${orders.length * 2} labels`;
 }
 
