@@ -1726,15 +1726,24 @@ const SAM_CONFIG = {
   encoderUrl: 'https://huggingface.co/Xenova/sam-vit-base/resolve/main/onnx/vision_encoder_quantized.onnx',
   decoderUrl: 'https://huggingface.co/Xenova/sam-vit-base/resolve/main/onnx/prompt_encoder_mask_decoder_quantized.onnx',
   dbName: 'plf-sam-cache',
-  dbVersion: 2,
+  dbVersion: 3, // bumped to add embeddings store
   storeName: 'models',
+  embStoreName: 'embeddings',
   inputSize: 1024,
+  maxEmbeddings: 100, // LRU cap
 };
 
 function samCacheOpen() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(SAM_CONFIG.dbName, SAM_CONFIG.dbVersion);
-    req.onupgradeneeded = () => req.result.createObjectStore(SAM_CONFIG.storeName);
+    req.onupgradeneeded = (e) => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(SAM_CONFIG.storeName)) db.createObjectStore(SAM_CONFIG.storeName);
+      if (!db.objectStoreNames.contains(SAM_CONFIG.embStoreName)) {
+        const store = db.createObjectStore(SAM_CONFIG.embStoreName, { keyPath: 'key' });
+        store.createIndex('lastUsed', 'lastUsed');
+      }
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -1758,6 +1767,57 @@ async function samCacheSet(key, buffer) {
     const tx = db.transaction(SAM_CONFIG.storeName, 'readwrite');
     tx.objectStore(SAM_CONFIG.storeName).put(buffer, key);
   } catch { /* cache write failure is non-critical */ }
+}
+
+// Per-photo embedding cache (skips the 3-10s encoder run on repeat edits)
+async function hashKey(str) {
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+
+async function samEmbGet(key) {
+  try {
+    const db = await samCacheOpen();
+    return new Promise((resolve) => {
+      const tx = db.transaction(SAM_CONFIG.embStoreName, 'readwrite'); // rw so we can bump lastUsed
+      const store = tx.objectStore(SAM_CONFIG.embStoreName);
+      const req = store.get(key);
+      req.onsuccess = () => {
+        const entry = req.result;
+        if (entry) { entry.lastUsed = Date.now(); store.put(entry); }
+        resolve(entry || null);
+      };
+      req.onerror = () => resolve(null);
+    });
+  } catch { return null; }
+}
+
+async function samEmbSet(key, embData, embDims, posData, posDims, scale, padding) {
+  try {
+    const db = await samCacheOpen();
+    const tx = db.transaction(SAM_CONFIG.embStoreName, 'readwrite');
+    const store = tx.objectStore(SAM_CONFIG.embStoreName);
+    store.put({ key, embData, embDims, posData, posDims, scale, padding, lastUsed: Date.now() });
+    // LRU eviction: count entries, drop oldest if over cap
+    const countReq = store.count();
+    countReq.onsuccess = () => {
+      if (countReq.result > SAM_CONFIG.maxEmbeddings) {
+        const excess = countReq.result - SAM_CONFIG.maxEmbeddings;
+        const idx = store.index('lastUsed');
+        const cursorReq = idx.openCursor();
+        let deleted = 0;
+        cursorReq.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor && deleted < excess) {
+            store.delete(cursor.primaryKey);
+            deleted++;
+            cursor.continue();
+          }
+        };
+      }
+    };
+  } catch (e) { console.warn('[PLF] emb cache write failed:', e); }
 }
 
 function fetchWithProgress(url, cacheKey, onProgress) {
@@ -1830,13 +1890,15 @@ async function loadSAMModels() {
       } catch { /* already locked */ }
     }
 
+    // Prefer WebGPU for 4-10x speedup; fall back to WASM
+    const providers = ['webgpu', 'wasm'];
     editorState.samEncoderSession = await ort.InferenceSession.create(encBuf, {
-      executionProviders: ['wasm']
+      executionProviders: providers
     });
     progBar.style.width = '90%';
 
     editorState.samDecoderSession = await ort.InferenceSession.create(decBuf, {
-      executionProviders: ['wasm']
+      executionProviders: providers
     });
     progBar.style.width = '100%';
 
@@ -1859,19 +1921,33 @@ async function loadSAMModels() {
   }
 }
 
-async function runSAMEncoder(img) {
+async function runSAMEncoder(img, photoUrl) {
   if (!editorState || !editorState.samEncoderSession) return;
   const statusEl = document.getElementById('sam-status');
-  statusEl.textContent = 'Encoding image…';
-
   const ort = await import('onnxruntime-web');
   const S = SAM_CONFIG.inputSize; // 1024
   const { pw, ph } = editorState;
 
-  // Resize with aspect-ratio padding to 1024x1024
+  // Resize with aspect-ratio padding to 1024x1024 (needed for both cache and fresh run)
   const scale = Math.min(S / pw, S / ph);
+  const padX = Math.round((S - Math.round(pw * scale)) / 2);
+  const padY = Math.round((S - Math.round(ph * scale)) / 2);
+
+  // Try embedding cache first
+  const cacheKey = await hashKey(photoUrl);
+  const cached = await samEmbGet(cacheKey);
+  if (cached && cached.embData && cached.posData) {
+    editorState.samEmbedding = new ort.Tensor('float32', cached.embData, cached.embDims);
+    editorState.samPositionalEmbedding = new ort.Tensor('float32', cached.posData, cached.posDims);
+    editorState.samImgScale = cached.scale;
+    editorState.samPadding = cached.padding;
+    statusEl.textContent = 'SAM ready (cached) — click to segment ✓';
+    console.log('[PLF] SAM embedding restored from cache');
+    return;
+  }
+
+  statusEl.textContent = 'Encoding image (~3-10s)…';
   const sw = Math.round(pw * scale), sh = Math.round(ph * scale);
-  const padX = Math.round((S - sw) / 2), padY = Math.round((S - sh) / 2);
 
   const tmpC = document.createElement('canvas');
   tmpC.width = S; tmpC.height = S;
@@ -1883,8 +1959,8 @@ async function runSAMEncoder(img) {
   const imgData = tmpX.getImageData(0, 0, S, S);
   const pixels = imgData.data;
 
-  // ImageNet normalization: (pixel/255 - mean) / std  →  NCHW format
-  const mean = [123.675, 116.28, 103.53]; // already in 0-255 scale
+  // ImageNet normalization: (pixel - mean) / std  →  NCHW format
+  const mean = [123.675, 116.28, 103.53];
   const std  = [58.395, 57.12, 57.375];
   const float32 = new Float32Array(3 * S * S);
   for (let i = 0; i < S * S; i++) {
@@ -1894,18 +1970,34 @@ async function runSAMEncoder(img) {
   }
 
   const inputTensor = new ort.Tensor('float32', float32, [1, 3, S, S]);
-  // Encoder input name: Xenova uses 'pixel_values', others use 'input_image'
-  const encInputName = editorState.samEncoderSession.inputNames[0];
+  const encInputName = editorState.samEncoderSession.inputNames[0]; // Xenova: 'pixel_values'
   const feeds = {}; feeds[encInputName] = inputTensor;
   const results = await editorState.samEncoderSession.run(feeds);
 
-  // Store embedding + scale info
-  editorState.samEmbedding = results[editorState.samEncoderSession.outputNames[0]];
+  // Xenova's vision_encoder outputs BOTH 'image_embeddings' and 'image_positional_embeddings'
+  const outNames = editorState.samEncoderSession.outputNames;
+  const embName = outNames.find(n => n.includes('positional') === false && n.includes('embed')) || outNames[0];
+  const posName = outNames.find(n => n.includes('positional')) || outNames[1];
+  editorState.samEmbedding = results[embName];
+  editorState.samPositionalEmbedding = results[posName] || null;
   editorState.samImgScale = scale;
   editorState.samPadding = { x: padX, y: padY };
 
+  // Cache embedding for next time this photo is edited
+  if (editorState.samEmbedding && editorState.samPositionalEmbedding) {
+    await samEmbSet(
+      cacheKey,
+      editorState.samEmbedding.data, editorState.samEmbedding.dims,
+      editorState.samPositionalEmbedding.data, editorState.samPositionalEmbedding.dims,
+      scale, { x: padX, y: padY }
+    );
+  }
+
   statusEl.textContent = 'SAM ready — click to segment ✓';
-  console.log('[PLF] SAM encoder done. Input:', encInputName, 'Outputs:', editorState.samEncoderSession.outputNames, 'Embedding shape:', editorState.samEmbedding.dims);
+  console.log('[PLF] SAM encoder done. Inputs:', editorState.samEncoderSession.inputNames,
+              'Outputs:', outNames,
+              'Embedding dims:', editorState.samEmbedding?.dims,
+              'Positional dims:', editorState.samPositionalEmbedding?.dims);
 }
 
 async function runSAMDecoder(photoX, photoY) {
@@ -1920,50 +2012,78 @@ async function runSAMDecoder(photoX, photoY) {
   const samX = photoX * samImgScale + samPadding.x;
   const samY = photoY * samImgScale + samPadding.y;
 
-  // Build decoder inputs
-  const pointCoords = new ort.Tensor('float32', new Float32Array([samX, samY, 0, 0]), [1, 2, 2]);
-  const pointLabels = new ort.Tensor('float32', new Float32Array([1, -1]), [1, 2]);
-  const hasMaskInput = new ort.Tensor('float32', new Float32Array([0]), [1]);
-  const maskInput = new ort.Tensor('float32', new Float32Array(256 * 256).fill(0), [1, 1, 256, 256]);
-  const origImSize = new ort.Tensor('float32', new Float32Array([SAM_CONFIG.inputSize, SAM_CONFIG.inputSize]), [2]);
+  // Xenova SAM decoder inputs:
+  //   input_points: float32 [batch=1, point_batch=1, num_points=1, 2]
+  //   input_labels: float32 [batch=1, point_batch=1, num_points=1]   (1 = positive)
+  //   image_embeddings + image_positional_embeddings from encoder
+  const inputPoints = new ort.Tensor('float32', new Float32Array([samX, samY]), [1, 1, 1, 2]);
+  const inputLabels = new ort.Tensor('float32', new Float32Array([1]), [1, 1, 1]);
 
-  const feeds = {
-    'image_embeddings': editorState.samEmbedding,
-    'point_coords': pointCoords,
-    'point_labels': pointLabels,
-    'mask_input': maskInput,
-    'has_mask_input': hasMaskInput,
-    'orig_im_size': origImSize,
-  };
+  // Build feeds by matching each input name to the right tensor
+  const decInputs = editorState.samDecoderSession.inputNames;
+  const feeds = {};
+  for (const name of decInputs) {
+    const lower = name.toLowerCase();
+    if (lower.includes('positional')) feeds[name] = editorState.samPositionalEmbedding;
+    else if (lower.includes('embed'))  feeds[name] = editorState.samEmbedding;
+    else if (lower.includes('point') && !lower.includes('label')) feeds[name] = inputPoints;
+    else if (lower.includes('label'))  feeds[name] = inputLabels;
+    // Legacy Meta SAM inputs — supply zeros if the model asks for them
+    else if (lower === 'mask_input')   feeds[name] = new ort.Tensor('float32', new Float32Array(256*256), [1,1,256,256]);
+    else if (lower === 'has_mask_input') feeds[name] = new ort.Tensor('float32', new Float32Array([0]), [1]);
+    else if (lower === 'orig_im_size') feeds[name] = new ort.Tensor('float32', new Float32Array([SAM_CONFIG.inputSize, SAM_CONFIG.inputSize]), [2]);
+  }
 
-  const results = await editorState.samDecoderSession.run(feeds);
+  let results;
+  try {
+    results = await editorState.samDecoderSession.run(feeds);
+  } catch (err) {
+    console.error('[PLF] SAM decoder run failed.', 'Inputs:', decInputs, 'Feeds:', Object.keys(feeds), err);
+    statusEl.textContent = 'SAM decoder error — see console';
+    showToast('SAM decoder failed: ' + err.message, 'err');
+    return null;
+  }
 
-  // Get mask output — shape is [1, numMasks, H, W] typically [1, 3, 1024, 1024]
-  const maskKey = editorState.samDecoderSession.outputNames.find(n => n.includes('mask')) || editorState.samDecoderSession.outputNames[0];
+  // Find mask output — Xenova emits 'pred_masks' and 'iou_scores'
+  const outNames = editorState.samDecoderSession.outputNames;
+  const maskKey = outNames.find(n => n.toLowerCase().includes('mask')) || outNames[0];
   const maskTensor = results[maskKey];
-  const maskData = maskTensor.data;
-  const maskH = maskTensor.dims[2], maskW = maskTensor.dims[3];
+  const dims = maskTensor.dims;
+  console.log('[PLF] SAM decoder outputs:', outNames, 'mask dims:', dims);
 
-  // Use first mask (highest confidence), threshold > 0
+  // Xenova mask shape: [batch, point_batch, num_masks, H, W] — 5D
+  // Meta original: [batch, num_masks, H, W] — 4D
+  // Pick the first mask slice (highest confidence) and get its H, W
+  let maskH, maskW, maskOffset;
+  if (dims.length === 5) {
+    maskH = dims[3]; maskW = dims[4]; maskOffset = 0; // first mask of first point batch
+  } else {
+    maskH = dims[dims.length - 2]; maskW = dims[dims.length - 1]; maskOffset = 0;
+  }
+  const maskData = maskTensor.data;
+
+  // Build mask ImageData at photo resolution
   const maskPixels = new ImageData(pw, ph);
   for (let y = 0; y < ph; y++) {
     for (let x = 0; x < pw; x++) {
-      // Map photo coords back to SAM mask coords
-      const sx = Math.round(x * samImgScale + samPadding.x);
-      const sy = Math.round(y * samImgScale + samPadding.y);
+      // Map photo coords → SAM input space (1024) → mask coords (maskW/H)
+      const sxF = (x * samImgScale + samPadding.x) * (maskW / SAM_CONFIG.inputSize);
+      const syF = (y * samImgScale + samPadding.y) * (maskH / SAM_CONFIG.inputSize);
+      const sx = Math.round(sxF), sy = Math.round(syF);
       if (sx >= 0 && sx < maskW && sy >= 0 && sy < maskH) {
-        const val = maskData[sy * maskW + sx]; // first mask slice
-        const selected = val > 0;
-        const idx = (y * pw + x) * 4;
-        maskPixels.data[idx]     = selected ? 60 : 0;   // R - blue tint for selected
-        maskPixels.data[idx + 1] = selected ? 120 : 0;  // G
-        maskPixels.data[idx + 2] = selected ? 255 : 0;  // B
-        maskPixels.data[idx + 3] = selected ? 180 : 0;  // A
+        const val = maskData[maskOffset + sy * maskW + sx];
+        if (val > 0) {
+          const idx = (y * pw + x) * 4;
+          maskPixels.data[idx]     = 60;
+          maskPixels.data[idx + 1] = 120;
+          maskPixels.data[idx + 2] = 255;
+          maskPixels.data[idx + 3] = 180;
+        }
       }
     }
   }
 
-  statusEl.textContent = 'Click Apply or Cancel the selection';
+  statusEl.textContent = 'Apply or cancel the selection';
   return maskPixels;
 }
 
@@ -1977,9 +2097,9 @@ async function handleSAMClick(e) {
     if (!editorState || !editorState.samReady) return;
   }
 
-  // Run encoder if not yet done for this image
+  // Run encoder if not yet done for this image (cached per photo_url)
   if (!editorState.samEmbedding) {
-    await runSAMEncoder(editorState.originalImg);
+    await runSAMEncoder(editorState.originalImg, modalOrder?.photo_url || 'unknown');
     if (!editorState || !editorState.samEmbedding) return;
   }
 
