@@ -1018,7 +1018,15 @@ async function removePhotoBackground(dataUrl) {
   const arr = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   const blob = new Blob([arr], { type: mime });
-  // No publicPath — library uses its own CDN at staticimgly.com by default
+  // Configure ONNX runtime just before inference
+  try {
+    const ort = await import('onnxruntime-web');
+    if (ort.env) {
+      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.proxy = false;
+    }
+  } catch (e) { /* ort config optional */ }
   const out = await removeBg(blob, { debug: false });
   const url = URL.createObjectURL(out);
   _bgRemovedCache[dataUrl] = url;
