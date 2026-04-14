@@ -66,6 +66,10 @@
       try {
         log.textContent += 'Starting background removal...\n';
         const start = Date.now();
+        // Force WASM paths to CDN right before inference (ort.all.min.mjs overwrites with blob URLs)
+        if (window._ort && window._ort.env) {
+          window._ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
+        }
         const result = await window._removeBg(loadedBlob, { debug: true });
         const elapsed = ((Date.now() - start) / 1000).toFixed(1);
         log.textContent += 'SUCCESS! Took ' + elapsed + 's\n';
