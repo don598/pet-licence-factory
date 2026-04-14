@@ -1075,6 +1075,7 @@ async function openOrder(dbId) {
 
   // Reset licence preview and editor state
   _editedPhotoUrl = null;
+  _savedMaskImageData = null;
   document.getElementById('licence-preview').innerHTML = '<div class="licence-placeholder">Click "Generate" to render the licence card</div>';
   document.getElementById('dl-btn').style.display = 'none';
   document.getElementById('edit-photo-btn').style.display = 'none';
@@ -1356,7 +1357,8 @@ function downloadLicence() {
 
 // ── Photo Editor ─────────────────────────────────────────────────────────────
 let editorState = null;
-let _editedPhotoUrl = null; // data URL of editor output, used by generateLicence()
+let _editedPhotoUrl = null;    // data URL of editor output, used by generateLicence()
+let _savedMaskImageData = null; // persisted mask so reopening the editor restores your work
 
 async function openPhotoEditor() {
   if (!modalOrder || !modalOrder.photo_url) {
@@ -1384,22 +1386,25 @@ async function openPhotoEditor() {
     maskCanvas.width = pw; maskCanvas.height = ph;
     const maskCtx = maskCanvas.getContext('2d');
 
-    // Initialize mask from BG-removed alpha channel
-    const tmpC = document.createElement('canvas');
-    tmpC.width = pw; tmpC.height = ph;
-    const tmpX = tmpC.getContext('2d');
-    tmpX.drawImage(bgRemovedImg, 0, 0, pw, ph);
-    const bgData = tmpX.getImageData(0, 0, pw, ph);
-    // Build mask: white where opaque, black where transparent
-    const maskImgData = maskCtx.createImageData(pw, ph);
-    for (let i = 0; i < bgData.data.length; i += 4) {
-      const a = bgData.data[i + 3];
-      maskImgData.data[i]     = 255;
-      maskImgData.data[i + 1] = 255;
-      maskImgData.data[i + 2] = 255;
-      maskImgData.data[i + 3] = a;
+    // Initialize mask — restore from prior edit session if dimensions match,
+    // otherwise derive from BG-removed alpha channel
+    if (_savedMaskImageData && _savedMaskImageData.width === pw && _savedMaskImageData.height === ph) {
+      maskCtx.putImageData(_savedMaskImageData, 0, 0);
+    } else {
+      const tmpC = document.createElement('canvas');
+      tmpC.width = pw; tmpC.height = ph;
+      const tmpX = tmpC.getContext('2d');
+      tmpX.drawImage(bgRemovedImg, 0, 0, pw, ph);
+      const bgData = tmpX.getImageData(0, 0, pw, ph);
+      const maskImgData = maskCtx.createImageData(pw, ph);
+      for (let i = 0; i < bgData.data.length; i += 4) {
+        maskImgData.data[i]     = 255;
+        maskImgData.data[i + 1] = 255;
+        maskImgData.data[i + 2] = 255;
+        maskImgData.data[i + 3] = bgData.data[i + 3];
+      }
+      maskCtx.putImageData(maskImgData, 0, 0);
     }
-    maskCtx.putImageData(maskImgData, 0, 0);
 
     // Calculate display scale to fit in editor area
     const areaRect = document.getElementById('photo-editor-modal').querySelector('.photo-editor-inner').getBoundingClientRect();
@@ -1690,13 +1695,15 @@ function editorReset() {
     maskImgData.data[i + 3] = bgData.data[i + 3];
   }
   maskCtx.putImageData(maskImgData, 0, 0);
+  // Clear the persisted mask too — Reset means start fresh
+  _savedMaskImageData = null;
   renderEditorOverlay();
   showToast('Reset to auto BG removal', 'ok');
 }
 
-function applyPhotoEdit() {
+async function applyPhotoEdit() {
   if (!editorState) return;
-  const { originalImg, maskCanvas, pw, ph } = editorState;
+  const { originalImg, maskCanvas, maskCtx, pw, ph } = editorState;
   // Composite: original photo + mask alpha
   const comp = document.createElement('canvas');
   comp.width = pw; comp.height = ph;
@@ -1705,8 +1712,12 @@ function applyPhotoEdit() {
   cx.globalCompositeOperation = 'destination-in';
   cx.drawImage(maskCanvas, 0, 0);
   _editedPhotoUrl = comp.toDataURL('image/png');
+  // Persist mask so re-opening the editor restores the work
+  _savedMaskImageData = maskCtx.getImageData(0, 0, pw, ph);
   closePhotoEditor();
-  showToast('Photo edited — click Regenerate to see changes', 'ok');
+  showToast('Photo updated — refreshing card…', 'ok');
+  // Auto-regenerate so the card preview reflects the new photo immediately
+  try { await generateLicence(); } catch (e) { console.error('auto-regen failed:', e); }
 }
 
 // ── SAM (Segment Anything Model) Integration ─────────────────────────────────
