@@ -1755,19 +1755,27 @@ function fetchWithProgress(url, cacheKey, onProgress) {
     const cached = await samCacheGet(cacheKey);
     if (cached) { resolve(cached); return; }
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(e.loaded, e.total); };
-    xhr.onload = async () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const buf = xhr.response;
-        await samCacheSet(cacheKey, buf);
-        resolve(buf);
-      } else reject(new Error(`HTTP ${xhr.status}`));
-    };
-    xhr.onerror = () => reject(new Error('Network error'));
-    xhr.send();
+    try {
+      const resp = await fetch(url, { mode: 'cors' });
+      if (!resp.ok) { reject(new Error(`HTTP ${resp.status} ${resp.statusText} fetching ${url}`)); return; }
+      const total = +resp.headers.get('Content-Length') || 0;
+      const reader = resp.body.getReader();
+      const chunks = []; let loaded = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); loaded += value.length;
+        if (onProgress && total) onProgress(loaded, total);
+      }
+      const buf = new Uint8Array(loaded);
+      let offset = 0;
+      for (const chunk of chunks) { buf.set(chunk, offset); offset += chunk.length; }
+      await samCacheSet(cacheKey, buf.buffer);
+      resolve(buf.buffer);
+    } catch (err) {
+      console.error('[PLF] SAM fetch failed:', url, err);
+      reject(new Error(`Fetch failed: ${err.message} (check CSP/CORS for ${new URL(url).hostname})`));
+    }
   });
 }
 
