@@ -518,6 +518,74 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 #toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
 #toast.ok   { border-left: 3px solid var(--green); }
 #toast.err  { border-left: 3px solid var(--red); }
+
+/* ── Photo Editor Modal ─────────────────────────────────────────── */
+.photo-editor-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.92); align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.photo-editor-backdrop.open { display: flex; }
+.photo-editor-inner {
+  display: flex; flex-direction: column;
+  width: 95vw; max-width: 1100px; height: 92vh;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden;
+}
+.photo-editor-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+.photo-editor-header .modal-title { font-size: 13px; }
+.photo-editor-header .modal-sub   { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+.editor-canvas-area {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; background: #1a1a1a; position: relative;
+  min-height: 0;
+}
+.editor-canvas-stack {
+  position: relative; display: inline-block; cursor: crosshair;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.editor-canvas-stack canvas {
+  display: block;
+}
+.editor-canvas-stack canvas:not(:first-child) {
+  position: absolute; top: 0; left: 0;
+}
+
+.editor-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  padding: 10px 16px; border-top: 1px solid var(--border);
+  background: var(--surface2); min-height: 48px;
+}
+.editor-tool-group {
+  display: flex; align-items: center; gap: 6px;
+  padding-left: 10px; border-left: 1px solid var(--border);
+}
+.editor-tool-group:first-child { border-left: none; padding-left: 0; }
+.editor-tool-btn.active {
+  color: var(--accent) !important; border-color: var(--accent) !important;
+  background: rgba(255,204,0,.1) !important;
+}
+.editor-slider {
+  width: 80px; height: 4px; -webkit-appearance: none; appearance: none;
+  background: var(--surface3); border-radius: 2px; outline: none;
+}
+.editor-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  background: var(--accent); border-radius: 50%; cursor: pointer;
+}
+
+/* SAM mask preview overlay */
+.sam-confirm-bar {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; padding: 8px 14px;
+  background: rgba(10,10,10,.85); border: 1px solid var(--border);
+  border-radius: 8px; z-index: 10;
+}
   </style>
 </head>
 <body>
@@ -651,6 +719,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         </div>
         <div class="licence-actions">
           <button class="btn btn-accent" id="gen-btn" onclick="generateLicence()">⚙ Generate Card</button>
+          <button class="btn btn-blue"   id="edit-photo-btn" onclick="openPhotoEditor()" style="display:none">✎ Edit Photo</button>
           <button class="btn btn-blue"   id="dl-btn"  onclick="downloadLicence()" style="display:none">⬇ Download PNG</button>
           <a      class="btn btn-ghost"  id="admin-link" href="/admin.html" target="_blank">Open in Editor ↗</a>
         </div>
@@ -685,6 +754,60 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     </div><!-- /modal-body -->
   </div><!-- /modal-inner -->
 </div><!-- /modal-backdrop -->
+
+<!-- ── Photo Editor Modal ────────────────────────────────────── -->
+<div class="photo-editor-backdrop" id="photo-editor-modal">
+  <div class="photo-editor-inner" onclick="event.stopPropagation()">
+
+    <div class="photo-editor-header">
+      <div>
+        <div class="modal-title">PHOTO EDITOR</div>
+        <div class="modal-sub" id="editor-sub">Restore &amp; remove brush tools</div>
+      </div>
+      <button class="modal-close" onclick="closePhotoEditor()">✕</button>
+    </div>
+
+    <div class="editor-canvas-area" id="editor-canvas-area">
+      <div class="editor-canvas-stack" id="editor-canvas-stack">
+        <canvas id="editor-checker"></canvas>
+        <canvas id="editor-photo"></canvas>
+        <canvas id="editor-overlay"></canvas>
+      </div>
+    </div>
+
+    <div class="editor-toolbar">
+      <div class="editor-tool-group">
+        <button class="btn btn-ghost editor-tool-btn active" id="tool-restore" onclick="setEditorTool('restore')">🔵 Restore</button>
+        <button class="btn btn-ghost editor-tool-btn" id="tool-remove" onclick="setEditorTool('remove')">🔴 Remove</button>
+      </div>
+      <div class="editor-tool-group">
+        <label style="font-size:11px;color:var(--muted)">Size</label>
+        <input type="range" id="brush-size" class="editor-slider" min="3" max="120" value="25" oninput="editorState&&(editorState.brushSize=+this.value);document.getElementById('brush-size-label').textContent=this.value">
+        <span id="brush-size-label" style="font-size:11px;color:var(--muted);min-width:28px">25</span>
+      </div>
+      <div class="editor-tool-group">
+        <button class="btn btn-ghost editor-tool-btn" id="tool-sam" onclick="setEditorTool('sam')">✦ SAM Select</button>
+        <span id="sam-status" style="font-size:10px;color:var(--muted)"></span>
+      </div>
+      <div class="editor-tool-group">
+        <button class="btn btn-ghost" id="tool-undo" onclick="editorUndo()" disabled>↩ Undo</button>
+        <button class="btn btn-ghost" id="tool-redo" onclick="editorRedo()" disabled>↪ Redo</button>
+      </div>
+      <div class="editor-tool-group" style="margin-left:auto">
+        <button class="btn btn-ghost" id="tool-reset" onclick="editorReset()">⟲ Reset</button>
+        <button class="btn btn-green" id="tool-apply" onclick="applyPhotoEdit()">✓ Apply</button>
+      </div>
+    </div>
+
+    <div id="sam-progress-wrap" style="display:none;padding:0 16px 10px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px" id="sam-progress-label">Downloading SAM model…</div>
+      <div style="height:4px;background:var(--surface3);border-radius:2px;overflow:hidden">
+        <div id="sam-progress-bar" style="height:100%;background:var(--accent);width:0%;transition:width .2s"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <!-- Toast -->
 <div id="toast"></div>
@@ -950,9 +1073,11 @@ async function openOrder(dbId) {
     ['Tracking #',    order.tracking_number],
   ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
 
-  // Reset licence preview
+  // Reset licence preview and editor state
+  _editedPhotoUrl = null;
   document.getElementById('licence-preview').innerHTML = '<div class="licence-placeholder">Click "Generate" to render the licence card</div>';
   document.getElementById('dl-btn').style.display = 'none';
+  document.getElementById('edit-photo-btn').style.display = 'none';
   document.getElementById('gen-btn').disabled = false;
   document.getElementById('gen-btn').textContent = '⚙ Generate Card';
 
@@ -1142,19 +1267,25 @@ async function generateLicence() {
     // 3. Draw pet photo (main + watermark) with background removed
     if (o.photo_url) {
       try {
-        let photoSrc = o.photo_url;
-        try {
-          btn.textContent = '⌛ Removing background…';
-          document.getElementById('licence-preview').innerHTML =
-            '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px;color:var(--muted)">' +
-            '<span class="spinner" style="width:28px;height:28px;border-width:3px"></span>' +
-            '<span style="font-size:12px">Removing background with IS-Net…</span>' +
-            '<span style="font-size:10px;opacity:.6">First run downloads ~30MB model (cached after)</span></div>';
-          photoSrc = await removePhotoBackground(o.photo_url);
-          showToast('Background removed ✓', 'ok');
-        } catch (bgErr) {
-          console.warn('Background removal failed, using original photo:', bgErr);
-          showToast('BG removal skipped: ' + bgErr.message, 'err', true);
+        let photoSrc;
+        if (_editedPhotoUrl) {
+          // Use manually edited photo (already has transparency applied)
+          photoSrc = _editedPhotoUrl;
+        } else {
+          photoSrc = o.photo_url;
+          try {
+            btn.textContent = '⌛ Removing background…';
+            document.getElementById('licence-preview').innerHTML =
+              '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px;color:var(--muted)">' +
+              '<span class="spinner" style="width:28px;height:28px;border-width:3px"></span>' +
+              '<span style="font-size:12px">Removing background with IS-Net…</span>' +
+              '<span style="font-size:10px;opacity:.6">First run downloads ~30MB model (cached after)</span></div>';
+            photoSrc = await removePhotoBackground(o.photo_url);
+            showToast('Background removed ✓', 'ok');
+          } catch (bgErr) {
+            console.warn('Background removal failed, using original photo:', bgErr);
+            showToast('BG removal skipped: ' + bgErr.message, 'err', true);
+          }
         }
         btn.textContent = '⌛ Rendering…';
         const photo = await loadImg(photoSrc);
@@ -1202,6 +1333,7 @@ async function generateLicence() {
     wrap.appendChild(preview);
 
     document.getElementById('dl-btn').style.display = 'inline-flex';
+    if (o.photo_url) document.getElementById('edit-photo-btn').style.display = 'inline-flex';
     btn.textContent = '↺ Regenerate';
     btn.disabled    = false;
 
@@ -1220,6 +1352,667 @@ function downloadLicence() {
   a.download = name;
   a.href     = licenceCanvas.toDataURL('image/png');
   a.click();
+}
+
+// ── Photo Editor ─────────────────────────────────────────────────────────────
+let editorState = null;
+let _editedPhotoUrl = null; // data URL of editor output, used by generateLicence()
+
+async function openPhotoEditor() {
+  if (!modalOrder || !modalOrder.photo_url) {
+    showToast('No photo to edit', 'err'); return;
+  }
+  const modal = document.getElementById('photo-editor-modal');
+  modal.classList.add('open');
+
+  // Show loading state
+  const area = document.getElementById('editor-canvas-area');
+  area.innerHTML = '<div class="loading-row"><span class="spinner"></span> Loading photo &amp; removing background…</div>';
+
+  try {
+    // Load original photo
+    const originalImg = await loadImg(modalOrder.photo_url);
+    const pw = originalImg.naturalWidth, ph = originalImg.naturalHeight;
+
+    // Get BG-removed version (cached or compute)
+    let bgUrl = _bgRemovedCache[modalOrder.photo_url];
+    if (!bgUrl) bgUrl = await removePhotoBackground(modalOrder.photo_url);
+    const bgRemovedImg = await loadImg(bgUrl);
+
+    // Create mask canvas (same dims as photo, stores alpha)
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = pw; maskCanvas.height = ph;
+    const maskCtx = maskCanvas.getContext('2d');
+
+    // Initialize mask from BG-removed alpha channel
+    const tmpC = document.createElement('canvas');
+    tmpC.width = pw; tmpC.height = ph;
+    const tmpX = tmpC.getContext('2d');
+    tmpX.drawImage(bgRemovedImg, 0, 0, pw, ph);
+    const bgData = tmpX.getImageData(0, 0, pw, ph);
+    // Build mask: white where opaque, black where transparent
+    const maskImgData = maskCtx.createImageData(pw, ph);
+    for (let i = 0; i < bgData.data.length; i += 4) {
+      const a = bgData.data[i + 3];
+      maskImgData.data[i]     = 255;
+      maskImgData.data[i + 1] = 255;
+      maskImgData.data[i + 2] = 255;
+      maskImgData.data[i + 3] = a;
+    }
+    maskCtx.putImageData(maskImgData, 0, 0);
+
+    // Calculate display scale to fit in editor area
+    const areaRect = document.getElementById('photo-editor-modal').querySelector('.photo-editor-inner').getBoundingClientRect();
+    const maxW = areaRect.width * 0.92, maxH = areaRect.height - 140; // leave room for header + toolbar
+    const displayScale = Math.min(1, maxW / pw, maxH / ph);
+    const dw = Math.round(pw * displayScale), dh = Math.round(ph * displayScale);
+
+    // Restore canvas stack in DOM
+    area.innerHTML = '';
+    const stack = document.createElement('div');
+    stack.className = 'editor-canvas-stack';
+    stack.id = 'editor-canvas-stack';
+
+    const checkerC = document.createElement('canvas'); checkerC.id = 'editor-checker';
+    checkerC.width = dw; checkerC.height = dh;
+    const photoC = document.createElement('canvas'); photoC.id = 'editor-photo';
+    photoC.width = dw; photoC.height = dh;
+    const overlayC = document.createElement('canvas'); overlayC.id = 'editor-overlay';
+    overlayC.width = dw; overlayC.height = dh;
+    overlayC.style.cursor = 'crosshair';
+
+    stack.appendChild(checkerC);
+    stack.appendChild(photoC);
+    stack.appendChild(overlayC);
+    area.appendChild(stack);
+
+    // Draw checkerboard
+    drawCheckerboard(checkerC);
+
+    // Draw original photo on photo canvas (hidden behind overlay composite)
+    photoC.getContext('2d').drawImage(originalImg, 0, 0, dw, dh);
+
+    // Build state
+    editorState = {
+      originalImg, bgRemovedImg, maskCanvas, maskCtx,
+      pw, ph, dw, dh, displayScale,
+      undoStack: [], redoStack: [],
+      tool: 'restore', brushSize: 25,
+      painting: false, lastX: 0, lastY: 0,
+      samReady: false, samEncoderSession: null, samDecoderSession: null,
+      samEmbedding: null, samPendingMask: null, samLoading: false,
+      samImgScale: null, samPadding: null,
+    };
+
+    // Push initial mask state
+    editorState.undoStack.push(maskCtx.getImageData(0, 0, pw, ph));
+
+    // Render composite overlay
+    renderEditorOverlay();
+
+    // Attach pointer events
+    overlayC.addEventListener('pointerdown', editorPointerDown);
+    overlayC.addEventListener('pointermove', editorPointerMove);
+    overlayC.addEventListener('pointerup',   editorPointerUp);
+    overlayC.addEventListener('pointerleave', editorPointerUp);
+
+    // Reset tool buttons
+    setEditorTool('restore');
+    document.getElementById('brush-size').value = 25;
+    document.getElementById('brush-size-label').textContent = '25';
+    updateUndoRedoButtons();
+
+    document.getElementById('editor-sub').textContent = `${pw}×${ph} — Restore & remove brush tools`;
+
+  } catch (err) {
+    console.error('Photo editor failed to open:', err);
+    area.innerHTML = '<div class="loading-row" style="color:var(--red)">Failed to load: ' + err.message + '</div>';
+  }
+}
+
+function closePhotoEditor() {
+  document.getElementById('photo-editor-modal').classList.remove('open');
+  // Clean up SAM confirm bar if present
+  const bar = document.querySelector('.sam-confirm-bar');
+  if (bar) bar.remove();
+  editorState = null;
+}
+
+function drawCheckerboard(canvas) {
+  const ctx = canvas.getContext('2d');
+  const tile = 10;
+  for (let y = 0; y < canvas.height; y += tile) {
+    for (let x = 0; x < canvas.width; x += tile) {
+      ctx.fillStyle = ((x / tile + y / tile) & 1) ? '#333' : '#444';
+      ctx.fillRect(x, y, tile, tile);
+    }
+  }
+}
+
+function renderEditorOverlay() {
+  if (!editorState) return;
+  const { originalImg, maskCanvas, pw, ph, dw, dh } = editorState;
+  const overlayC = document.getElementById('editor-overlay');
+  if (!overlayC) return;
+  const ctx = overlayC.getContext('2d');
+
+  // Composite: original photo masked by alpha mask
+  const comp = document.createElement('canvas');
+  comp.width = pw; comp.height = ph;
+  const cx = comp.getContext('2d');
+  cx.drawImage(originalImg, 0, 0, pw, ph);
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(maskCanvas, 0, 0);
+  cx.globalCompositeOperation = 'source-over';
+
+  // Draw composite onto overlay at display scale
+  ctx.clearRect(0, 0, dw, dh);
+  ctx.drawImage(comp, 0, 0, dw, dh);
+
+  // Draw SAM pending mask preview if present
+  if (editorState.samPendingMask) {
+    const tmpC = document.createElement('canvas');
+    tmpC.width = pw; tmpC.height = ph;
+    tmpC.getContext('2d').putImageData(editorState.samPendingMask, 0, 0);
+    ctx.globalAlpha = 0.4;
+    ctx.drawImage(tmpC, 0, 0, dw, dh);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ── Brush Painting ───────────────────────────────────────────────────────────
+function setEditorTool(tool) {
+  if (editorState) editorState.tool = tool;
+  document.getElementById('tool-restore').classList.toggle('active', tool === 'restore');
+  document.getElementById('tool-remove').classList.toggle('active', tool === 'remove');
+  document.getElementById('tool-sam').classList.toggle('active', tool === 'sam');
+  const overlayC = document.getElementById('editor-overlay');
+  if (overlayC) overlayC.style.cursor = tool === 'sam' ? 'crosshair' : 'none';
+  // Clear SAM pending mask when switching away
+  if (tool !== 'sam' && editorState && editorState.samPendingMask) {
+    editorState.samPendingMask = null;
+    const bar = document.querySelector('.sam-confirm-bar');
+    if (bar) bar.remove();
+    renderEditorOverlay();
+  }
+}
+
+function canvasToPhoto(e) {
+  const c = e.target;
+  const rect = c.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / editorState.displayScale;
+  const y = (e.clientY - rect.top) / editorState.displayScale;
+  return { x, y };
+}
+
+function editorPointerDown(e) {
+  if (!editorState) return;
+  e.preventDefault();
+  if (editorState.tool === 'sam') {
+    handleSAMClick(e);
+    return;
+  }
+  editorState.painting = true;
+  const { x, y } = canvasToPhoto(e);
+  editorState.lastX = x; editorState.lastY = y;
+  // Save mask state for undo before this stroke
+  pushUndo();
+  paintAt(x, y);
+  renderEditorOverlay();
+  drawBrushCursor(e);
+}
+
+function editorPointerMove(e) {
+  if (!editorState) return;
+  e.preventDefault();
+  if (editorState.painting && editorState.tool !== 'sam') {
+    const { x, y } = canvasToPhoto(e);
+    paintLine(editorState.lastX, editorState.lastY, x, y);
+    editorState.lastX = x; editorState.lastY = y;
+    renderEditorOverlay();
+  }
+  drawBrushCursor(e);
+}
+
+function editorPointerUp(e) {
+  if (!editorState) return;
+  editorState.painting = false;
+}
+
+function paintAt(px, py) {
+  const { maskCtx, tool, brushSize } = editorState;
+  maskCtx.save();
+  if (tool === 'remove') {
+    maskCtx.globalCompositeOperation = 'destination-out';
+  } else {
+    maskCtx.globalCompositeOperation = 'source-over';
+    maskCtx.fillStyle = 'rgba(255,255,255,1)';
+  }
+  maskCtx.beginPath();
+  maskCtx.arc(px, py, brushSize / 2, 0, Math.PI * 2);
+  maskCtx.fill();
+  maskCtx.restore();
+}
+
+function paintLine(x0, y0, x1, y1) {
+  const dist = Math.hypot(x1 - x0, y1 - y0);
+  const step = Math.max(1, editorState.brushSize / 4);
+  const steps = Math.ceil(dist / step);
+  for (let i = 0; i <= steps; i++) {
+    const t = steps === 0 ? 0 : i / steps;
+    paintAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+  }
+}
+
+function drawBrushCursor(e) {
+  if (!editorState || editorState.tool === 'sam') return;
+  const overlayC = document.getElementById('editor-overlay');
+  if (!overlayC) return;
+  renderEditorOverlay(); // redraw composite first
+  const ctx = overlayC.getContext('2d');
+  const rect = overlayC.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const r = (editorState.brushSize / 2) * editorState.displayScale;
+  ctx.save();
+  ctx.strokeStyle = editorState.tool === 'restore' ? 'rgba(100,180,255,.8)' : 'rgba(255,80,80,.8)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Undo / Redo ──────────────────────────────────────────────────────────────
+function pushUndo() {
+  if (!editorState) return;
+  const { maskCtx, pw, ph, undoStack, redoStack } = editorState;
+  undoStack.push(maskCtx.getImageData(0, 0, pw, ph));
+  if (undoStack.length > 20) undoStack.shift();
+  redoStack.length = 0;
+  updateUndoRedoButtons();
+}
+
+function editorUndo() {
+  if (!editorState || editorState.undoStack.length <= 1) return;
+  const { maskCtx, pw, ph, undoStack, redoStack } = editorState;
+  redoStack.push(maskCtx.getImageData(0, 0, pw, ph));
+  const prev = undoStack.pop();
+  maskCtx.putImageData(prev, 0, 0);
+  renderEditorOverlay();
+  updateUndoRedoButtons();
+}
+
+function editorRedo() {
+  if (!editorState || editorState.redoStack.length === 0) return;
+  const { maskCtx, pw, ph, undoStack, redoStack } = editorState;
+  undoStack.push(maskCtx.getImageData(0, 0, pw, ph));
+  const next = redoStack.pop();
+  maskCtx.putImageData(next, 0, 0);
+  renderEditorOverlay();
+  updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+  document.getElementById('tool-undo').disabled = !editorState || editorState.undoStack.length <= 1;
+  document.getElementById('tool-redo').disabled = !editorState || editorState.redoStack.length === 0;
+}
+
+function editorReset() {
+  if (!editorState) return;
+  pushUndo();
+  // Re-derive mask from BG-removed alpha
+  const { bgRemovedImg, maskCtx, pw, ph } = editorState;
+  const tmpC = document.createElement('canvas');
+  tmpC.width = pw; tmpC.height = ph;
+  const tmpX = tmpC.getContext('2d');
+  tmpX.drawImage(bgRemovedImg, 0, 0, pw, ph);
+  const bgData = tmpX.getImageData(0, 0, pw, ph);
+  const maskImgData = maskCtx.createImageData(pw, ph);
+  for (let i = 0; i < bgData.data.length; i += 4) {
+    maskImgData.data[i]     = 255;
+    maskImgData.data[i + 1] = 255;
+    maskImgData.data[i + 2] = 255;
+    maskImgData.data[i + 3] = bgData.data[i + 3];
+  }
+  maskCtx.putImageData(maskImgData, 0, 0);
+  renderEditorOverlay();
+  showToast('Reset to auto BG removal', 'ok');
+}
+
+function applyPhotoEdit() {
+  if (!editorState) return;
+  const { originalImg, maskCanvas, pw, ph } = editorState;
+  // Composite: original photo + mask alpha
+  const comp = document.createElement('canvas');
+  comp.width = pw; comp.height = ph;
+  const cx = comp.getContext('2d');
+  cx.drawImage(originalImg, 0, 0, pw, ph);
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(maskCanvas, 0, 0);
+  _editedPhotoUrl = comp.toDataURL('image/png');
+  closePhotoEditor();
+  showToast('Photo edited — click Regenerate to see changes', 'ok');
+}
+
+// ── SAM (Segment Anything Model) Integration ─────────────────────────────────
+const SAM_CONFIG = {
+  // SAM ViT-B quantized ONNX models (smallest official SAM)
+  encoderUrl: 'https://huggingface.co/vietanhdev/segment-anything-onnx-models/resolve/main/sam_vit_b_encoder.onnx',
+  decoderUrl: 'https://huggingface.co/vietanhdev/segment-anything-onnx-models/resolve/main/sam_vit_b_decoder.onnx',
+  dbName: 'plf-sam-cache',
+  dbVersion: 1,
+  storeName: 'models',
+  inputSize: 1024,
+};
+
+function samCacheOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(SAM_CONFIG.dbName, SAM_CONFIG.dbVersion);
+    req.onupgradeneeded = () => req.result.createObjectStore(SAM_CONFIG.storeName);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function samCacheGet(key) {
+  try {
+    const db = await samCacheOpen();
+    return new Promise((resolve) => {
+      const tx = db.transaction(SAM_CONFIG.storeName, 'readonly');
+      const req = tx.objectStore(SAM_CONFIG.storeName).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch { return null; }
+}
+
+async function samCacheSet(key, buffer) {
+  try {
+    const db = await samCacheOpen();
+    const tx = db.transaction(SAM_CONFIG.storeName, 'readwrite');
+    tx.objectStore(SAM_CONFIG.storeName).put(buffer, key);
+  } catch { /* cache write failure is non-critical */ }
+}
+
+function fetchWithProgress(url, cacheKey, onProgress) {
+  return new Promise(async (resolve, reject) => {
+    // Check cache first
+    const cached = await samCacheGet(cacheKey);
+    if (cached) { resolve(cached); return; }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(e.loaded, e.total); };
+    xhr.onload = async () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const buf = xhr.response;
+        await samCacheSet(cacheKey, buf);
+        resolve(buf);
+      } else reject(new Error(`HTTP ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error('Network error'));
+    xhr.send();
+  });
+}
+
+async function loadSAMModels() {
+  if (!editorState || editorState.samReady || editorState.samLoading) return;
+  editorState.samLoading = true;
+  const progWrap = document.getElementById('sam-progress-wrap');
+  const progBar  = document.getElementById('sam-progress-bar');
+  const progLabel = document.getElementById('sam-progress-label');
+  const statusEl = document.getElementById('sam-status');
+  progWrap.style.display = 'block';
+
+  try {
+    // Download encoder
+    progLabel.textContent = 'Downloading SAM encoder (~180MB, cached after first load)…';
+    statusEl.textContent = 'Loading…';
+    const encBuf = await fetchWithProgress(SAM_CONFIG.encoderUrl, 'sam-encoder-v1', (loaded, total) => {
+      progBar.style.width = (loaded / total * 50) + '%'; // 0-50% for encoder
+    });
+    progBar.style.width = '50%';
+
+    // Download decoder
+    progLabel.textContent = 'Downloading SAM decoder (~16MB)…';
+    const decBuf = await fetchWithProgress(SAM_CONFIG.decoderUrl, 'sam-decoder-v1', (loaded, total) => {
+      progBar.style.width = (50 + loaded / total * 30) + '%'; // 50-80% for decoder
+    });
+    progBar.style.width = '80%';
+
+    // Create ONNX sessions
+    progLabel.textContent = 'Initializing ONNX sessions…';
+    const ort = await import('onnxruntime-web');
+    // Lock wasmPaths same as bg removal
+    if (ort.env) {
+      const cdnBase = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/';
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.proxy = false;
+      try {
+        Object.defineProperty(ort.env.wasm, 'wasmPaths', {
+          get() { return cdnBase; }, set() {}, configurable: false
+        });
+      } catch { /* already locked */ }
+    }
+
+    editorState.samEncoderSession = await ort.InferenceSession.create(encBuf, {
+      executionProviders: ['wasm']
+    });
+    progBar.style.width = '90%';
+
+    editorState.samDecoderSession = await ort.InferenceSession.create(decBuf, {
+      executionProviders: ['wasm']
+    });
+    progBar.style.width = '100%';
+
+    editorState.samReady = true;
+    editorState.samLoading = false;
+    statusEl.textContent = 'SAM ready ✓';
+    progLabel.textContent = 'SAM models loaded and cached!';
+    setTimeout(() => { progWrap.style.display = 'none'; }, 2000);
+    console.log('[PLF] SAM encoder inputs:', editorState.samEncoderSession.inputNames,
+                'outputs:', editorState.samEncoderSession.outputNames);
+    console.log('[PLF] SAM decoder inputs:', editorState.samDecoderSession.inputNames,
+                'outputs:', editorState.samDecoderSession.outputNames);
+
+  } catch (err) {
+    editorState.samLoading = false;
+    statusEl.textContent = 'SAM failed';
+    progLabel.textContent = 'Error: ' + err.message;
+    showToast('SAM model loading failed: ' + err.message, 'err');
+    console.error('[PLF] SAM load error:', err);
+  }
+}
+
+async function runSAMEncoder(img) {
+  if (!editorState || !editorState.samEncoderSession) return;
+  const statusEl = document.getElementById('sam-status');
+  statusEl.textContent = 'Encoding image…';
+
+  const ort = await import('onnxruntime-web');
+  const S = SAM_CONFIG.inputSize; // 1024
+  const { pw, ph } = editorState;
+
+  // Resize with aspect-ratio padding to 1024x1024
+  const scale = Math.min(S / pw, S / ph);
+  const sw = Math.round(pw * scale), sh = Math.round(ph * scale);
+  const padX = Math.round((S - sw) / 2), padY = Math.round((S - sh) / 2);
+
+  const tmpC = document.createElement('canvas');
+  tmpC.width = S; tmpC.height = S;
+  const tmpX = tmpC.getContext('2d');
+  tmpX.fillStyle = '#000';
+  tmpX.fillRect(0, 0, S, S);
+  tmpX.drawImage(img, padX, padY, sw, sh);
+
+  const imgData = tmpX.getImageData(0, 0, S, S);
+  const pixels = imgData.data;
+
+  // ImageNet normalization: (pixel/255 - mean) / std  →  NCHW format
+  const mean = [123.675, 116.28, 103.53]; // already in 0-255 scale
+  const std  = [58.395, 57.12, 57.375];
+  const float32 = new Float32Array(3 * S * S);
+  for (let i = 0; i < S * S; i++) {
+    float32[i]             = (pixels[i * 4]     - mean[0]) / std[0];
+    float32[S * S + i]     = (pixels[i * 4 + 1] - mean[1]) / std[1];
+    float32[2 * S * S + i] = (pixels[i * 4 + 2] - mean[2]) / std[2];
+  }
+
+  const inputTensor = new ort.Tensor('float32', float32, [1, 3, S, S]);
+  const results = await editorState.samEncoderSession.run({ 'input_image': inputTensor });
+
+  // Store embedding + scale info
+  editorState.samEmbedding = results[editorState.samEncoderSession.outputNames[0]];
+  editorState.samImgScale = scale;
+  editorState.samPadding = { x: padX, y: padY };
+
+  statusEl.textContent = 'SAM ready — click to segment ✓';
+  console.log('[PLF] SAM encoder done, embedding shape:', editorState.samEmbedding.dims);
+}
+
+async function runSAMDecoder(photoX, photoY) {
+  if (!editorState || !editorState.samDecoderSession || !editorState.samEmbedding) return null;
+  const statusEl = document.getElementById('sam-status');
+  statusEl.textContent = 'Segmenting…';
+
+  const ort = await import('onnxruntime-web');
+  const { pw, ph, samImgScale, samPadding } = editorState;
+
+  // Scale photo coords to 1024x1024 SAM space
+  const samX = photoX * samImgScale + samPadding.x;
+  const samY = photoY * samImgScale + samPadding.y;
+
+  // Build decoder inputs
+  const pointCoords = new ort.Tensor('float32', new Float32Array([samX, samY, 0, 0]), [1, 2, 2]);
+  const pointLabels = new ort.Tensor('float32', new Float32Array([1, -1]), [1, 2]);
+  const hasMaskInput = new ort.Tensor('float32', new Float32Array([0]), [1]);
+  const maskInput = new ort.Tensor('float32', new Float32Array(256 * 256).fill(0), [1, 1, 256, 256]);
+  const origImSize = new ort.Tensor('float32', new Float32Array([SAM_CONFIG.inputSize, SAM_CONFIG.inputSize]), [2]);
+
+  const feeds = {
+    'image_embeddings': editorState.samEmbedding,
+    'point_coords': pointCoords,
+    'point_labels': pointLabels,
+    'mask_input': maskInput,
+    'has_mask_input': hasMaskInput,
+    'orig_im_size': origImSize,
+  };
+
+  const results = await editorState.samDecoderSession.run(feeds);
+
+  // Get mask output — shape is [1, numMasks, H, W] typically [1, 3, 1024, 1024]
+  const maskKey = editorState.samDecoderSession.outputNames.find(n => n.includes('mask')) || editorState.samDecoderSession.outputNames[0];
+  const maskTensor = results[maskKey];
+  const maskData = maskTensor.data;
+  const maskH = maskTensor.dims[2], maskW = maskTensor.dims[3];
+
+  // Use first mask (highest confidence), threshold > 0
+  const maskPixels = new ImageData(pw, ph);
+  for (let y = 0; y < ph; y++) {
+    for (let x = 0; x < pw; x++) {
+      // Map photo coords back to SAM mask coords
+      const sx = Math.round(x * samImgScale + samPadding.x);
+      const sy = Math.round(y * samImgScale + samPadding.y);
+      if (sx >= 0 && sx < maskW && sy >= 0 && sy < maskH) {
+        const val = maskData[sy * maskW + sx]; // first mask slice
+        const selected = val > 0;
+        const idx = (y * pw + x) * 4;
+        maskPixels.data[idx]     = selected ? 60 : 0;   // R - blue tint for selected
+        maskPixels.data[idx + 1] = selected ? 120 : 0;  // G
+        maskPixels.data[idx + 2] = selected ? 255 : 0;  // B
+        maskPixels.data[idx + 3] = selected ? 180 : 0;  // A
+      }
+    }
+  }
+
+  statusEl.textContent = 'Click Apply or Cancel the selection';
+  return maskPixels;
+}
+
+async function handleSAMClick(e) {
+  if (!editorState) return;
+
+  // Load models if needed
+  if (!editorState.samReady) {
+    if (editorState.samLoading) { showToast('SAM is still loading…', 'err'); return; }
+    await loadSAMModels();
+    if (!editorState || !editorState.samReady) return;
+  }
+
+  // Run encoder if not yet done for this image
+  if (!editorState.samEmbedding) {
+    await runSAMEncoder(editorState.originalImg);
+    if (!editorState || !editorState.samEmbedding) return;
+  }
+
+  const { x, y } = canvasToPhoto(e);
+  const maskPixels = await runSAMDecoder(x, y);
+  if (!maskPixels || !editorState) return;
+
+  editorState.samPendingMask = maskPixels;
+  renderEditorOverlay();
+
+  // Show confirm bar
+  let bar = document.querySelector('.sam-confirm-bar');
+  if (bar) bar.remove();
+  bar = document.createElement('div');
+  bar.className = 'sam-confirm-bar';
+  bar.innerHTML = `
+    <button class="btn btn-ghost" onclick="samCancelMask()" style="font-size:11px">✕ Cancel</button>
+    <button class="btn btn-green" onclick="samApplyAsRemove()" style="font-size:11px">Remove Selected</button>
+    <button class="btn btn-blue" onclick="samApplyAsKeep()" style="font-size:11px">Keep Only Selected</button>
+  `;
+  document.getElementById('editor-canvas-area').appendChild(bar);
+}
+
+function samCancelMask() {
+  if (!editorState) return;
+  editorState.samPendingMask = null;
+  const bar = document.querySelector('.sam-confirm-bar');
+  if (bar) bar.remove();
+  renderEditorOverlay();
+  document.getElementById('sam-status').textContent = 'SAM ready — click to segment ✓';
+}
+
+function samApplyAsRemove() {
+  if (!editorState || !editorState.samPendingMask) return;
+  pushUndo();
+  // Set mask alpha to 0 where SAM selected
+  const { maskCtx, pw, ph, samPendingMask } = editorState;
+  const maskData = maskCtx.getImageData(0, 0, pw, ph);
+  for (let i = 0; i < pw * ph; i++) {
+    if (samPendingMask.data[i * 4 + 3] > 0) { // SAM selected this pixel
+      maskData.data[i * 4 + 3] = 0; // make transparent
+    }
+  }
+  maskCtx.putImageData(maskData, 0, 0);
+  editorState.samPendingMask = null;
+  const bar = document.querySelector('.sam-confirm-bar');
+  if (bar) bar.remove();
+  renderEditorOverlay();
+  updateUndoRedoButtons();
+  document.getElementById('sam-status').textContent = 'SAM ready — click to segment ✓';
+}
+
+function samApplyAsKeep() {
+  if (!editorState || !editorState.samPendingMask) return;
+  pushUndo();
+  // Set mask alpha to 0 everywhere EXCEPT where SAM selected
+  const { maskCtx, pw, ph, samPendingMask } = editorState;
+  const maskData = maskCtx.getImageData(0, 0, pw, ph);
+  for (let i = 0; i < pw * ph; i++) {
+    if (samPendingMask.data[i * 4 + 3] === 0) { // SAM did NOT select this pixel
+      maskData.data[i * 4 + 3] = 0; // make transparent
+    }
+  }
+  maskCtx.putImageData(maskData, 0, 0);
+  editorState.samPendingMask = null;
+  const bar = document.querySelector('.sam-confirm-bar');
+  if (bar) bar.remove();
+  renderEditorOverlay();
+  updateUndoRedoButtons();
+  document.getElementById('sam-status').textContent = 'SAM ready — click to segment ✓';
 }
 
 // ── Tasks ─────────────────────────────────────────────────────────────────────

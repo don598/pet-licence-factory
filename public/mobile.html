@@ -6,7 +6,7 @@
 <title>Pet Licence Factory</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&display=swap" rel="stylesheet"/>
-<!-- Supabase removed — orders now submitted via Netlify Function -->
+<!-- Orders submitted via serverless function -->
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#000d00;font-family:'Press Start 2P',monospace;-webkit-tap-highlight-color:transparent}
@@ -506,7 +506,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 'use strict';
 
 // ═══════════════════════════════════════════════════════════
-// ORDER SUBMISSION (server-side via Netlify Function)
+// ORDER SUBMISSION (server-side via Cloudflare Pages Function)
 // ═══════════════════════════════════════════════════════════
 async function submitOrder(orderData) {
   const resp = await fetch('/api/submit-order', {

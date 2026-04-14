@@ -2,11 +2,12 @@
   "name": "pet-licence-factory",
   "version": "1.0.0",
   "private": true,
-  "description": "Pet Licence Factory — Netlify Functions dependencies",
+  "description": "Pet Licence Factory — serverless function dependencies",
   "dependencies": {
-    "pg": "^8.13.0",
     "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
     "jsonwebtoken": "^9.0.3",
+    "pg": "^8.13.0",
     "sharp": "^0.34.5",
     "stripe": "^16.0.0"
   }

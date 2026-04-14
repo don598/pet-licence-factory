@@ -10,7 +10,7 @@ function setBg(el, url) { el.style.backgroundImage = `url('${url}')`; }
 function clamp(min, v, max) { return Math.max(min, Math.min(max, v)); }
 
 // ═══════════════════════════════════════════════════════════
-// ORDER SUBMISSION (server-side via Netlify Function)
+// ORDER SUBMISSION (server-side via Cloudflare Pages Function)
 // ═══════════════════════════════════════════════════════════
 async function submitOrder(orderData) {
   const resp = await fetch('/api/submit-order', {
