@@ -931,7 +931,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <label>Admin Notes</label>
           <textarea id="edit-notes" placeholder="Internal notes…"></textarea>
         </div>
-        <button class="btn btn-green" onclick="saveOrderChanges()">✓ Save Changes</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
+          <button class="btn btn-green" onclick="saveOrderChanges()">✓ Save Changes</button>
+          <button class="btn" id="generate-label-btn" onclick="generateShippingLabel()" style="background:#2a4a8a;border-color:#4a70c0">📦 Generate Shipping Label</button>
+          <span id="label-status" style="font-size:11px;color:#9e7a34"></span>
+        </div>
       </div>
 
     </div><!-- /modal-body -->
@@ -1296,6 +1300,26 @@ async function openOrder(dbId) {
   document.getElementById('edit-tracking').value = order.tracking_number || '';
   document.getElementById('edit-notes').value    = order.notes || '';
 
+  // Reset shipping-label button state for this order
+  const labelBtn  = document.getElementById('generate-label-btn');
+  const labelStat = document.getElementById('label-status');
+  const opt       = (order.shipping_option || 'stamp').toLowerCase();
+  labelBtn.disabled = false;
+  labelStat.textContent = '';
+  labelStat.style.color = '#9e7a34';
+  if (opt === 'stamp') {
+    labelBtn.style.display = 'none';
+  } else if (order.tracking_number && order.shipping_label_url) {
+    labelBtn.style.display = '';
+    labelBtn.textContent = '📂 Re-open Label';
+  } else if (order.tracking_number) {
+    labelBtn.style.display = '';
+    labelBtn.textContent = '📦 Generate Label (already has tracking)';
+  } else {
+    labelBtn.style.display = '';
+    labelBtn.textContent = '📦 Generate Shipping Label';
+  }
+
   document.getElementById('order-modal').classList.add('open');
 }
 
@@ -1329,6 +1353,77 @@ async function saveOrderChanges() {
   // Update modal badge
   document.getElementById('modal-sub').textContent = (modalOrder?.order_id || '') + ' · ' + fmtDate(modalOrder?.created_at);
   showToast('Order updated ✓', 'ok');
+}
+
+// ── Generate Shipping Label (EasyPost) ───────────────────────────────────────
+async function generateShippingLabel() {
+  if (!openOrderId || !modalOrder) return;
+
+  // Client-side preconditions — backend validates too
+  const opt = (modalOrder.shipping_option || 'stamp').toLowerCase();
+  if (opt === 'stamp') {
+    showToast('Stamp orders are hand-stamped — no label needed.', 'err');
+    return;
+  }
+  if (modalOrder.status !== 'paid' && modalOrder.status !== 'shipped') {
+    showToast(`Order must be paid first (current status: ${modalOrder.status}).`, 'err');
+    return;
+  }
+  if (modalOrder.tracking_number) {
+    if (!confirm(`This order already has tracking ${modalOrder.tracking_number}. Re-open the existing label?`)) return;
+    if (modalOrder.shipping_label_url) window.open(modalOrder.shipping_label_url, '_blank');
+    return;
+  }
+
+  const confirmed = confirm(
+    `Generate a real ${opt} USPS shipping label via EasyPost?\n\n` +
+    `To: ${modalOrder.customer_name || '(no name)'}\n` +
+    `    ${modalOrder.ship_addr_line1 || ''}\n` +
+    `    ${[modalOrder.ship_city, modalOrder.ship_state, modalOrder.ship_zip].filter(Boolean).join(', ')}\n\n` +
+    `This will charge your EasyPost account (test keys = free / no real postage).`
+  );
+  if (!confirmed) return;
+
+  const btn  = document.getElementById('generate-label-btn');
+  const stat = document.getElementById('label-status');
+  btn.disabled = true;
+  btn.textContent = '⌛ Generating…';
+  stat.textContent = '';
+
+  try {
+    const res = await adminAPI('create_shipping_label', { id: openOrderId });
+    stat.textContent = `✓ ${res.carrier} ${res.service} — ${res.currency} ${res.rate}`;
+    stat.style.color = '#4caf50';
+    btn.textContent = '✓ Label Generated';
+
+    // Update local state + UI
+    Object.assign(modalOrder, {
+      tracking_number:    res.tracking_number,
+      shipping_label_url: res.label_url,
+      status:             'shipped',
+    });
+    const idx = allOrders.findIndex(o => String(o.id) === String(openOrderId));
+    if (idx >= 0) Object.assign(allOrders[idx], {
+      tracking_number:    res.tracking_number,
+      shipping_label_url: res.label_url,
+      status:             'shipped',
+    });
+    document.getElementById('edit-status').value   = 'shipped';
+    document.getElementById('edit-tracking').value = res.tracking_number;
+    updateAnalytics();
+    renderTable();
+
+    // Open label PDF in a new tab for printing
+    if (res.label_url) window.open(res.label_url, '_blank');
+
+    showToast(`Label purchased · shipping email sent to ${modalOrder.customer_email || 'customer'}`, 'ok');
+  } catch (err) {
+    stat.textContent = '✕ ' + (err.message || 'Failed');
+    stat.style.color = '#e05555';
+    btn.disabled = false;
+    btn.textContent = '📦 Generate Shipping Label';
+    showToast('Label failed: ' + err.message, 'err');
+  }
 }
 
 // ── Background Removal (IS-Net via @imgly/background-removal) ────────────────

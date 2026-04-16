@@ -6,6 +6,7 @@
 
 import { getDb } from '../_shared/db.js';
 import { sendShippingNotificationEmail } from '../_shared/email.js';
+import { createAndBuyLabel } from '../_shared/easypost.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -182,6 +183,76 @@ export async function onRequest(context) {
       case 'delete_all_orders': {
         await db.query('DELETE FROM pet_orders');
         return json(200, { success: true });
+      }
+
+      // ── Shipping label (EasyPost) ──────────────────────────────────────
+      case 'create_shipping_label': {
+        const { id } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+
+        // Load full order — need shipping address, shipping_option, pack_count, etc.
+        const res = await db.query('SELECT * FROM pet_orders WHERE id = $1', [id]);
+        if (res.rows.length === 0) return json(404, { error: 'Order not found' });
+        const order = res.rows[0];
+
+        if (order.status !== 'paid' && order.status !== 'shipped') {
+          return json(400, { error: `Order status is "${order.status}" — must be paid first.` });
+        }
+        if ((order.shipping_option || 'stamp') === 'stamp') {
+          return json(400, { error: 'Stamp-tier orders are hand-stamped. No label is generated.' });
+        }
+        if (order.tracking_number) {
+          return json(400, { error: `Order already has tracking: ${order.tracking_number}` });
+        }
+        if (!order.ship_addr_line1 || !order.ship_city || !order.ship_state || !order.ship_zip) {
+          return json(400, { error: 'Order is missing a complete shipping address.' });
+        }
+
+        // Call EasyPost
+        let result;
+        try {
+          result = await createAndBuyLabel(env, order);
+        } catch (err) {
+          console.error('EasyPost error:', err);
+          return json(502, { error: err.message || 'EasyPost request failed' });
+        }
+
+        // Persist tracking + label URL, flip status to 'shipped'
+        await db.query(
+          `UPDATE pet_orders SET
+             tracking_number    = $1,
+             shipping_label_url = $2,
+             status             = 'shipped',
+             updated_at         = NOW()
+           WHERE id = $3`,
+          [result.tracking_number, result.label_url, id]
+        );
+
+        // Fire shipping-notification email — tracking just transitioned empty → set
+        if (order.customer_email) {
+          try {
+            await sendShippingNotificationEmail(env, {
+              orderId:        order.order_id,
+              customerEmail:  order.customer_email,
+              petFirstName:   order.pet_first_name,
+              petLastName:    order.pet_last_name,
+              trackingNumber: result.tracking_number,
+              shippingOption: order.shipping_option,
+            });
+          } catch (e) {
+            console.error('Shipping email failed (non-fatal):', e);
+          }
+        }
+
+        return json(200, {
+          success:         true,
+          tracking_number: result.tracking_number,
+          label_url:       result.label_url,
+          rate:            result.rate,
+          currency:        result.currency,
+          carrier:         result.carrier,
+          service:         result.service,
+        });
       }
 
       // ── Tasks ───────────────────────────────────────────────────────────
