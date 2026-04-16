@@ -60,23 +60,36 @@ export async function onRequest(context) {
     }
 
     // ── Determine which shipping option was selected ──────────────────────
+    // Match by amount instead of calling stripe.shippingRates.retrieve() —
+    // saves a Stripe API subrequest (Cloudflare Workers free plan has a 10ms
+    // CPU ceiling that TLS handshakes eat into quickly).
+    // Prices must match PRICES in create-checkout-session.js.
     let shippingOption = 'stamp';
-    try {
-      if (session.shipping_cost?.shipping_rate) {
-        const rate = await stripe.shippingRates.retrieve(session.shipping_cost.shipping_rate);
-        const name = (rate.display_name || '').toLowerCase();
-        if      (name.includes('priority')) shippingOption = 'priority';
-        else if (name.includes('standard')) shippingOption = 'standard';
-        else                                shippingOption = 'stamp';
-      }
-    } catch (e) {
-      console.warn('Could not retrieve shipping rate:', e.message);
-    }
+    const shipAmt = session.shipping_cost?.amount_total
+                 ?? session.shipping_cost?.amount_subtotal
+                 ?? 0;
+    if      (shipAmt >= 700) shippingOption = 'priority';   // $7.99
+    else if (shipAmt >= 300) shippingOption = 'standard';   // $3.99
+    else                     shippingOption = 'stamp';      // $0.95 or unknown
 
     // ── Extract customer and address data ─────────────────────────────────
-    const addr         = session.shipping_details?.address   || {};
+    // Handle both the legacy `session.shipping_details` and the newer
+    // `session.collected_information.shipping_details` path — Stripe is in
+    // the middle of that migration depending on API version.
+    const ship         = session.shipping_details
+                      || session.collected_information?.shipping_details
+                      || {};
+    const addr         = ship.address || {};
     const email        = session.customer_details?.email     || '';
-    const customerName = session.customer_details?.name      || '';
+    const customerName = session.customer_details?.name      || ship.name || '';
+
+    console.log('[webhook] session.completed', {
+      orderId,
+      shipAmt, shippingOption,
+      hasShipping: !!ship,
+      hasAddr:     !!addr?.line1,
+      email,
+    });
 
     try {
       const result = await db.query(

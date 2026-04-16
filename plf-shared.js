@@ -191,7 +191,7 @@ function validateAndBuildPetData() {
   const classMap = { DOG: 'D', CAT: 'C', RABBIT: 'R', HAMSTER: 'H', BIRD: 'B', OTHER: 'X' };
   return {
     data: {
-      petFirstName: first.toUpperCase(), petLastName: last.toUpperCase(),
+      petFirstName: first, petLastName: last,
       dlNumber: String(Math.floor(1000000000 + Math.random() * 8999999999)),
       dob, issDate: iss, expDate: expS, sex, species, eyeColor: eyes, weight,
       height: height.toUpperCase(), licenceClass: classMap[species] || 'D',
@@ -270,8 +270,8 @@ function refreshLicPreview() {
     { k: 'expDate',   v: `EXP ${petData.expDate || ''}`,  c: '#1a0a00' },
     { k: 'issDate',   v: `ISS ${petData.issDate || ''}`,  c: '#1a0a00' },
     { k: 'dob',       v: petData.dob || '',                c: '#c0200a' },
-    { k: 'firstName', v: petData.petFirstName || '',       c: '#1a0a00' },
-    { k: 'lastName',  v: petData.petLastName || '',        c: '#1a0a00' },
+    { k: 'firstName', v: (petData.petFirstName || '').toUpperCase(), c: '#1a0a00' },
+    { k: 'lastName',  v: (petData.petLastName  || '').toUpperCase(), c: '#1a0a00' },
     { k: 'addrLine1', v: addr.l1,                         c: '#1a0a00' },
     { k: 'addrLine2', v: addr.l2,                         c: '#1a0a00' },
     { k: 'height',    v: petData.height || '',             c: '#1a0a00' },

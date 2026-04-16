@@ -844,7 +844,7 @@ function submitForm() {
   const expS = `${pad(exp.getMonth()+1)}/${pad(exp.getDate())}/${String(exp.getFullYear()).slice(2)}`;
   const classMap = {DOG:'D',CAT:'C',RABBIT:'R',HAMSTER:'H',BIRD:'B',OTHER:'X'};
   petData = {
-    petFirstName: first.toUpperCase(), petLastName: last.toUpperCase(),
+    petFirstName: first, petLastName: last,
     dlNumber: String(Math.floor(1000000000 + Math.random() * 8999999999)),
     dob, issDate: iss, expDate: expS, sex, species, eyeColor: eyes, weight,
     height: height.toUpperCase(), licenceClass: classMap[species]||'D',
@@ -1619,6 +1619,22 @@ async function s5Checkout() {
     typewrite(5, 'Couldn\'t save your order. Please try again.', () => {});
     return;
   }
+
+  // Stash a snapshot of the rendered licence card so the success page
+  // can display a personalized preview on return from Stripe.
+  try {
+    const licCanvas = document.getElementById('licence-canvas');
+    const dataUrl = licCanvas ? licCanvas.toDataURL('image/jpeg', 0.85) : null;
+    if (dataUrl) {
+      localStorage.setItem('plf_last_preview', JSON.stringify({
+        orderId,
+        petFirstName: petData.petFirstName || '',
+        petLastName:  petData.petLastName  || '',
+        cardDataUrl:  dataUrl,
+        ts:           Date.now(),
+      }));
+    }
+  } catch (e) { /* localStorage full or disabled — skip */ }
 
   // Create Stripe Checkout session and redirect
   try {

@@ -47,20 +47,21 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:       #0a0a0a;
-  --surface:  #141414;
-  --surface2: #1c1c1c;
-  --surface3: #242424;
-  --border:   #2a2a2a;
-  --text:     #f0f0f0;
-  --muted:    #888;
-  --accent:   #f0c050;
-  --accent2:  #c8922a;
+  --bg:       #060808;
+  --surface:  #0a1410;
+  --surface2: #0f2018;
+  --surface3: #14301f;
+  --border:   #1f3a2a;
+  --text:     #e8ffee;
+  --muted:    #7a9a7a;
+  --accent:   #00ff41;
+  --accent2:  #00cc33;
   --green:    #22c55e;
   --red:      #ef4444;
   --amber:    #f59e0b;
   --blue:     #3b82f6;
   --purple:   #a855f7;
+  --pink:     #ec4899;
   --pixel:    'Press Start 2P', monospace;
   --sans:     'Inter', system-ui, sans-serif;
 }
@@ -208,6 +209,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .filter-tab:hover    { color: var(--text); border-color: var(--accent2); }
 .filter-tab.active   { background: var(--accent2); color: var(--bg); border-color: var(--accent2); }
 .filter-tab.t-paid   { --hi: var(--green); }
+.filter-tab.t-proc   { --hi: var(--accent); }
 .filter-tab.t-ship   { --hi: var(--blue); }
 .filter-tab.t-done   { --hi: var(--purple); }
 
@@ -271,9 +273,65 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .badge-pending  { background: rgba(245,158,11,.15);  color: var(--amber); }
 .badge-paid     { background: rgba(34,197,94,.15);   color: var(--green); }
+.badge-processed{ background: rgba(0,255,65,.18);    color: var(--accent); }
 .badge-shipped  { background: rgba(59,130,246,.15);  color: var(--blue); }
 .badge-complete { background: rgba(168,85,247,.15);  color: var(--purple); }
 .badge-cancelled{ background: rgba(239,68,68,.15);   color: var(--red); }
+
+/* Decal alert — high-visibility ribbon on orders that include a car decal */
+.decal-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, rgba(236,72,153,.18), rgba(168,85,247,.12));
+  border: 1px solid var(--pink);
+  color: #ffd1e8;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: .3px;
+  margin-bottom: 14px;
+  box-shadow: 0 0 24px rgba(236,72,153,.2);
+  animation: decalPulse 2.4s ease-in-out infinite;
+}
+.decal-alert .decal-icon {
+  font-size: 22px;
+  filter: drop-shadow(0 0 6px rgba(236,72,153,.7));
+}
+@keyframes decalPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(236,72,153,.2); }
+  50%      { box-shadow: 0 0 36px rgba(236,72,153,.45); }
+}
+
+/* Collapsible <details> sections in the order modal */
+.detail-section[open] > summary .chevron { transform: rotate(90deg); }
+.detail-section summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  user-select: none;
+}
+.detail-section summary::-webkit-details-marker { display: none; }
+.detail-section .chevron {
+  color: var(--accent2);
+  font-size: 11px;
+  transition: transform .15s ease;
+  display: inline-block;
+  width: 12px;
+}
+.detail-section summary .section-title { margin-bottom: 0; flex: 1; }
+.detail-section summary .summary-hint {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.detail-section > :not(summary) { margin-top: 12px; }
 
 /* ── Tasks Panel ─────────────────────────────────────────────────── */
 .tasks-panel {
@@ -823,6 +881,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <button class="filter-tab active" data-filter="all"       onclick="setFilter('all')">All</button>
           <button class="filter-tab"        data-filter="pending"   onclick="setFilter('pending')">Pending</button>
           <button class="filter-tab t-paid" data-filter="paid"      onclick="setFilter('paid')">Paid</button>
+          <button class="filter-tab t-proc" data-filter="processed" onclick="setFilter('processed')">Processed</button>
           <button class="filter-tab t-ship" data-filter="shipped"   onclick="setFilter('shipped')">Shipped</button>
           <button class="filter-tab t-done" data-filter="complete"  onclick="setFilter('complete')">Complete</button>
         </div>
@@ -881,16 +940,30 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     </div>
 
     <div class="modal-body">
-      <!-- Pet + Customer info grid -->
+      <!-- Decal alert ribbon — only shown when order includes car decal -->
+      <div id="decal-alert" class="decal-alert" style="display:none">
+        <span class="decal-icon">🎯</span>
+        <span>This order includes the <strong>8×8" Car Decal</strong> add-on — don't forget to include it!</span>
+      </div>
+
+      <!-- Pet + Customer info grid (collapsible, closed by default) -->
       <div class="modal-grid">
-        <div class="detail-section" id="pet-info-section">
-          <div class="section-title">Pet & Licence Info</div>
+        <details class="detail-section" id="pet-info-section">
+          <summary>
+            <span class="chevron">▶</span>
+            <span class="section-title">Pet & Licence Info</span>
+            <span class="summary-hint" id="pet-info-hint"></span>
+          </summary>
           <div id="pet-info-rows"></div>
-        </div>
-        <div class="detail-section" id="customer-info-section">
-          <div class="section-title">Customer & Shipping</div>
+        </details>
+        <details class="detail-section" id="customer-info-section">
+          <summary>
+            <span class="chevron">▶</span>
+            <span class="section-title">Customer & Shipping</span>
+            <span class="summary-hint" id="customer-info-hint"></span>
+          </summary>
           <div id="customer-info-rows"></div>
-        </div>
+        </details>
       </div>
 
       <!-- Printout preview -->
@@ -917,6 +990,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
             <select id="edit-status">
               <option value="pending">Pending</option>
               <option value="paid">Paid</option>
+              <option value="processed">Processed</option>
               <option value="shipped">Shipped</option>
               <option value="complete">Complete</option>
               <option value="cancelled">Cancelled</option>
@@ -1133,7 +1207,7 @@ function updateAnalytics() {
   const now       = Date.now();
   const weekMs    = 7  * 24 * 60 * 60 * 1000;
   const monthMs   = 30 * 24 * 60 * 60 * 1000;
-  const paidStats = ['paid', 'shipped', 'complete'];
+  const paidStats = ['paid', 'processed', 'shipped', 'complete'];
 
   const revenue     = allOrders.filter(o => paidStats.includes(o.status)).reduce((s, o) => s + parseTotal(o.total), 0);
   const thisWeek    = allOrders.filter(o => new Date(o.created_at).getTime() >= now - weekMs).length;
@@ -1285,6 +1359,24 @@ async function openOrder(dbId) {
     ['Stripe ID',     order.stripe_payment_id],
     ['Tracking #',    order.tracking_number],
   ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
+
+  // Decal alert — only shown when car decal was added
+  document.getElementById('decal-alert').style.display =
+    order.add_on === 'car_decal' ? 'flex' : 'none';
+
+  // Summary hints on the collapsed section headers
+  const petSummary = [order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ')
+    || '(no name)';
+  document.getElementById('pet-info-hint').textContent =
+    `${petSummary} · ${order.pack_count || 1}-Pack${order.add_on === 'car_decal' ? ' + Decal' : ''}`;
+  const custSummary = order.customer_name || order.customer_email || '(not captured)';
+  const cityState = [order.ship_city, order.ship_state].filter(Boolean).join(', ');
+  document.getElementById('customer-info-hint').textContent =
+    cityState ? `${custSummary} · ${cityState}` : custSummary;
+
+  // Keep the two info sections collapsed by default on each open
+  document.getElementById('pet-info-section').open = false;
+  document.getElementById('customer-info-section').open = false;
 
   // Reset licence preview and editor state
   _editedPhotoUrl = null;
@@ -1669,6 +1761,30 @@ function downloadLicence() {
   a.download = name;
   a.href     = licenceCanvas.toDataURL('image/png');
   a.click();
+
+  // Auto-advance status: paid → processed the first time the licence is
+  // downloaded (documents are printed). Leaves already-shipped/complete
+  // orders alone.
+  if (modalOrder && (modalOrder.status === 'paid' || modalOrder.status === 'pending')) {
+    maybeFlipToProcessed();
+  }
+}
+
+async function maybeFlipToProcessed() {
+  if (!openOrderId || !modalOrder) return;
+  try {
+    await adminAPI('update_order', { id: openOrderId, updates: { status: 'processed' } });
+    modalOrder.status = 'processed';
+    const idx = allOrders.findIndex(o => String(o.id) === String(openOrderId));
+    if (idx >= 0) allOrders[idx].status = 'processed';
+    document.getElementById('edit-status').value = 'processed';
+    updateAnalytics();
+    renderTable();
+    showToast('Licence downloaded · status → processed', 'ok');
+  } catch (err) {
+    // Non-fatal — download already happened
+    console.warn('Auto-status update failed:', err);
+  }
 }
 
 // ── Label Printer ────────────────────────────────────────────────────────────

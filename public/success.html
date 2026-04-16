@@ -6,218 +6,601 @@
   <title>Order Confirmed! — Pet Licence Factory</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --gold:   #f0c050;
-      --gold2:  #c8922a;
-      --brown:  #2a1804;
-      --dark:   #1a0e04;
-      --darker: #0d0800;
-      --text:   #d4a84a;
-      --green:  #4caf50;
+      --green:   #00ff41;
+      --green2:  #00cc33;
+      --green3:  #0a2a0a;
+      --green4:  #002a0a;
+      --bg:      #060808;
+      --bg2:     #0a1410;
+      --gold:    #f0c050;
+      --text:    #d4ffd4;
+      --muted:   #7a9a7a;
     }
 
     html, body {
       height: 100%;
-      background: var(--darker);
-      color: var(--gold);
-      font-family: 'Press Start 2P', monospace;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow-x: hidden;
     }
 
-    /* Pixel grid background */
-    body::before {
+    /* ── Starfield backdrop ───────────────────────────────────────────── */
+    #star-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+    /* Faint pixel grid overlay */
+    body::after {
       content: '';
       position: fixed;
       inset: 0;
       background-image:
-        linear-gradient(rgba(240,192,80,.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(240,192,80,.04) 1px, transparent 1px);
+        linear-gradient(rgba(0,255,65,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,65,.03) 1px, transparent 1px);
       background-size: 32px 32px;
       pointer-events: none;
+      z-index: 2;
     }
 
-    .card {
+    /* CRT scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0,0,0,.05) 2px, rgba(0,0,0,.05) 4px);
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* ── Confetti canvas (above stars, below content) ──────────────────── */
+    #confetti { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+
+    /* ── Main wrapper ──────────────────────────────────────────────────── */
+    .wrap {
       position: relative;
-      background: var(--dark);
-      border: 3px solid var(--gold2);
-      border-radius: 6px;
-      padding: clamp(28px, 5vw, 56px);
-      max-width: 620px;
-      width: 92%;
-      text-align: center;
-      box-shadow: 0 0 40px rgba(200,146,42,.25), 0 0 0 1px rgba(200,146,42,.15);
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(24px, 5vh, 56px) 20px;
+      gap: clamp(20px, 3vh, 36px);
+      perspective: 900px;
     }
 
-    /* Animated corner accents */
-    .card::before, .card::after {
-      content: '◆';
-      position: absolute;
-      color: var(--gold2);
-      font-size: 10px;
-      opacity: .6;
-    }
-    .card::before { top: 10px; left: 14px; }
-    .card::after  { top: 10px; right: 14px; }
-
-    .stamp {
-      font-size: clamp(36px, 8vw, 60px);
-      margin-bottom: 18px;
-      animation: stamp .4s cubic-bezier(.17,.67,.3,1.6) both;
+    /* ── Title area ────────────────────────────────────────────────────── */
+    .title-area { text-align: center; animation: titleIn .6s cubic-bezier(.2,.8,.2,1.2) .1s both; }
+    @keyframes titleIn {
+      from { opacity: 0; transform: translateY(-20px) scale(.95); }
+      to   { opacity: 1; transform: translateY(0)     scale(1);   }
     }
 
+    .paw-stamp {
+      font-size: clamp(32px, 6vw, 52px);
+      margin-bottom: 14px;
+      animation: stamp .5s cubic-bezier(.17,.67,.3,1.6) both;
+      filter: drop-shadow(0 0 18px rgba(0,255,65,.5));
+    }
     @keyframes stamp {
       from { transform: scale(2.5); opacity: 0; }
       to   { transform: scale(1);   opacity: 1; }
     }
 
-    .title {
-      font-size: clamp(8px, 2.4vw, 16px);
+    h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(14px, 3vw, 26px);
       color: var(--green);
+      letter-spacing: 2px;
+      text-shadow: 3px 3px 0 #003a10, 0 0 20px rgba(0,255,65,.5);
       margin-bottom: 10px;
-      letter-spacing: 1px;
     }
-
     .subtitle {
-      font-size: clamp(5px, 1.4vw, 10px);
-      color: var(--gold2);
-      line-height: 1.9;
-      margin-bottom: 28px;
-    }
-
-    .divider {
-      border: none;
-      border-top: 1px dashed var(--gold2);
-      opacity: .4;
-      margin: 20px 0;
-    }
-
-    .order-box {
-      background: var(--brown);
-      border: 1px solid var(--gold2);
-      border-radius: 4px;
-      padding: 14px 18px;
-      margin-bottom: 24px;
-      text-align: left;
-    }
-    .order-label {
-      font-size: clamp(4px, 1vw, 7px);
+      font-size: clamp(11px, 1.3vw, 14px);
       color: var(--text);
-      margin-bottom: 6px;
+      line-height: 1.6;
+      max-width: 540px;
+      margin: 0 auto;
+      opacity: .92;
     }
-    .order-id {
-      font-size: clamp(6px, 1.6vw, 11px);
-      color: var(--gold);
+
+    /* ── Licence card preview with hover gravity + pulsing glow ────────── */
+    .card-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 10px 0;
+    }
+
+    .licence-card {
+      position: relative;
+      width: clamp(280px, 45vw, 520px);
+      aspect-ratio: 1322/830;
+      border-radius: clamp(6px, .7vw, 12px);
+      cursor: pointer;
+      overflow: hidden;
+      transform-style: preserve-3d;
+      will-change: transform;
+      transition: transform .3s ease, box-shadow .3s ease, filter .3s ease;
+      animation: cardIn .7s cubic-bezier(.2,.8,.2,1) .3s both, glowPulse 2.8s ease-in-out 1.2s infinite;
+      background: linear-gradient(135deg, #0a2a0a 0%, #05150a 100%);
+      box-shadow:
+        0 8px 30px rgba(0,0,0,.6),
+        0 0 24px rgba(0,255,65,.25);
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(30px) scale(.9); }
+      to   { opacity: 1; transform: translateY(0)    scale(1);  }
+    }
+    @keyframes glowPulse {
+      0%, 100% { box-shadow: 0 8px 30px rgba(0,0,0,.6), 0 0 24px rgba(0,255,65,.25); }
+      50%      { box-shadow: 0 8px 40px rgba(0,0,0,.6), 0 0 60px rgba(0,255,65,.55), 0 0 100px rgba(0,255,65,.2); }
+    }
+
+    .licence-card:hover { filter: brightness(1.08); }
+
+    .licence-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    .licence-card.focused {
+      position: fixed;
+      z-index: 90;
+      left: 50%; top: 50%;
+      width: clamp(320px, 70vw, 720px);
+      transform: translate(-50%, -50%) !important;
+      animation: none;
+      box-shadow: 0 12px 60px rgba(0,0,0,.8), 0 0 80px rgba(0,255,65,.5);
+      cursor: zoom-out;
+    }
+
+    .card-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.75);
+      backdrop-filter: blur(4px);
+      z-index: 85;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .35s;
+    }
+    .card-backdrop.active { opacity: 1; pointer-events: auto; cursor: pointer; }
+
+    /* Placeholder when no rendered card exists (e.g. user lands here without going through game) */
+    .licence-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-align: center;
+      padding: 20px;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Order info card ─────────────────────────────────────────────── */
+    .info-card {
+      background: rgba(10,42,10,.65);
+      border: 1px solid var(--green2);
+      border-radius: 8px;
+      padding: 22px 28px;
+      max-width: 560px;
+      width: 90%;
+      box-shadow: 0 0 24px rgba(0,255,65,.1), inset 0 0 20px rgba(0,255,65,.04);
+      animation: cardIn .7s cubic-bezier(.2,.8,.2,1) .5s both;
+    }
+    .order-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px dashed rgba(0,255,65,.2);
+    }
+    .order-row:last-of-type { border-bottom: none; }
+    .order-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: var(--green2);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .order-value {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: var(--green);
       word-break: break-all;
+      text-align: right;
     }
 
     .steps {
-      text-align: left;
       list-style: none;
-      margin-bottom: 28px;
+      margin-top: 14px;
+      padding: 14px 0 4px;
+      border-top: 1px dashed rgba(0,255,65,.2);
     }
     .steps li {
-      font-size: clamp(4px, 1.1vw, 8px);
+      font-size: 13px;
       color: var(--text);
-      line-height: 2;
-      padding-left: 18px;
+      line-height: 1.8;
+      padding-left: 20px;
       position: relative;
     }
     .steps li::before {
       content: '▸';
       position: absolute;
       left: 0;
-      color: var(--gold2);
+      color: var(--green2);
     }
 
+    /* ── Buttons ───────────────────────────────────────────────────────── */
     .btn-row {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       justify-content: center;
       flex-wrap: wrap;
+      animation: cardIn .7s cubic-bezier(.2,.8,.2,1) .7s both;
     }
-
     .btn {
-      background: var(--gold2);
-      color: var(--darker);
-      border: none;
-      border-radius: 3px;
-      padding: 10px 18px;
       font-family: 'Press Start 2P', monospace;
-      font-size: clamp(5px, 1.2vw, 8px);
-      cursor: pointer;
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      padding: 14px 24px;
+      border-radius: 4px;
       text-decoration: none;
-      display: inline-block;
-      transition: background .15s, transform .1s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background .15s, transform .1s, box-shadow .2s;
+      border: 2px solid var(--green2);
     }
-    .btn:hover { background: var(--gold); transform: translateY(-1px); }
-    .btn.ghost {
+    .btn-primary {
+      background: var(--green3);
+      color: var(--green);
+    }
+    .btn-primary:hover {
+      background: var(--green);
+      color: var(--bg);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0,255,65,.35);
+    }
+    .btn-ghost {
       background: transparent;
-      color: var(--gold2);
-      border: 1px solid var(--gold2);
+      color: var(--green2);
     }
-    .btn.ghost:hover { background: rgba(200,146,42,.12); }
+    .btn-ghost:hover {
+      background: rgba(0,255,65,.1);
+      color: var(--green);
+      transform: translateY(-2px);
+    }
 
-    .paw-trail {
-      font-size: 11px;
-      letter-spacing: 6px;
-      opacity: .35;
-      margin-top: 20px;
+    .legal-footer {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      font-size: 10px;
+      color: rgba(0,204,51,.55);
+      letter-spacing: .5px;
+      display: flex;
+      gap: 10px;
+      white-space: nowrap;
+    }
+    .legal-footer a {
+      color: inherit;
+      text-decoration: none;
+      transition: color .15s;
+    }
+    .legal-footer a:hover { color: var(--green); }
+
+    @media (max-width: 520px) {
+      .info-card { padding: 18px; }
+      .order-value { font-size: 9px; }
+      .btn { padding: 12px 18px; font-size: 9px; }
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="stamp">🐾</div>
-    <div class="title">ORDER CONFIRMED!</div>
-    <p class="subtitle">
-      Your pet is about to become the<br />
-      most official animal in the neighbourhood.
-    </p>
-    <hr class="divider" />
 
-    <div class="order-box">
-      <div class="order-label">YOUR ORDER ID</div>
-      <div class="order-id" id="order-id-display">—</div>
+  <!-- Starfield background -->
+  <canvas id="star-canvas"></canvas>
+
+  <!-- Confetti canvas -->
+  <canvas id="confetti"></canvas>
+
+  <!-- Card backdrop for focused view -->
+  <div class="card-backdrop" id="card-backdrop"></div>
+
+  <div class="wrap">
+
+    <!-- Title -->
+    <div class="title-area">
+      <div class="paw-stamp">🐾</div>
+      <h1>ORDER CONFIRMED!</h1>
+      <p class="subtitle" id="subtitle">
+        Your pet is about to become the<br>most official animal in the neighbourhood.
+      </p>
     </div>
 
-    <ul class="steps">
-      <li>We're processing your licence now</li>
-      <li>Your sticker ships within 2–3 business days</li>
-      <li>Tracking info sent to your email</li>
-      <li>Frame it. Brag about it. You earned this.</li>
-    </ul>
+    <!-- Licence card preview with hover gravity + pulsing glow + click to focus -->
+    <div class="card-stage">
+      <div class="licence-card" id="licence-card">
+        <div class="licence-placeholder" id="licence-placeholder">
+          YOUR LICENCE IS<br>BEING PREPARED
+        </div>
+      </div>
+    </div>
 
+    <!-- Order info card -->
+    <div class="info-card">
+      <div class="order-row">
+        <span class="order-label">Order ID</span>
+        <span class="order-value" id="order-id-display">—</span>
+      </div>
+      <ul class="steps">
+        <li>We're processing your licence now.</li>
+        <li>Your sticker ships within 2–3 business days.</li>
+        <li>Tracking info sent to your email.</li>
+        <li>Frame it. Brag about it. You earned this.</li>
+      </ul>
+    </div>
+
+    <!-- CTA buttons -->
     <div class="btn-row">
-      <a class="btn" href="/">🏠 Back to Home</a>
-      <a class="btn ghost" href="/game.html">🐭 Play Again</a>
+      <a class="btn btn-primary" href="/">🏠 BACK TO HOME</a>
+      <a class="btn btn-ghost"   href="/game.html">🐭 MAKE ANOTHER</a>
     </div>
-    <div class="paw-trail">🐾🐾🐾🐾🐾</div>
-    <div style="margin-top:20px;font-size:10px;color:var(--gold2);line-height:1.8;opacity:.8">
-      <a href="/privacy.html" style="color:var(--gold2);text-decoration:underline;margin:0 6px">Privacy</a>·
-      <a href="/terms.html" style="color:var(--gold2);text-decoration:underline;margin:0 6px">Terms</a>·
-      <a href="/refunds.html" style="color:var(--gold2);text-decoration:underline;margin:0 6px">Refunds</a>·
-      <a href="mailto:contact@creditcardart.com" style="color:var(--gold2);text-decoration:underline;margin:0 6px">Contact</a>
-    </div>
+
+  </div>
+
+  <div class="legal-footer">
+    <a href="/privacy.html">Privacy</a>
+    <span>·</span>
+    <a href="/terms.html">Terms</a>
+    <span>·</span>
+    <a href="/refunds.html">Refunds</a>
+    <span>·</span>
+    <a href="mailto:contact@creditcardart.com">Contact</a>
   </div>
 
   <script>
-    // Pull order_id from URL params and display it
+    // ═════════════════════════════════════════════════════════════
+    //  ORDER DETAILS + LICENCE PREVIEW FROM STASH
+    // ═════════════════════════════════════════════════════════════
     const params  = new URLSearchParams(window.location.search);
     const orderId = params.get('order_id') || '';
-    if (orderId) {
-      document.getElementById('order-id-display').textContent = orderId;
-    }
-    // Set page title with pet name if ever passed in future
+    if (orderId) document.getElementById('order-id-display').textContent = orderId;
     document.title = orderId
       ? `Order ${orderId} Confirmed! — Pet Licence Factory`
       : 'Order Confirmed! — Pet Licence Factory';
+
+    (function loadPreview() {
+      let stash = null;
+      try {
+        const raw = localStorage.getItem('plf_last_preview');
+        if (raw) stash = JSON.parse(raw);
+      } catch (_) {}
+      if (!stash || !stash.cardDataUrl) return;
+
+      // Only trust the stash if the orderId matches OR it was set within the last hour
+      const fresh = stash.ts && (Date.now() - stash.ts < 60 * 60 * 1000);
+      const matches = orderId && stash.orderId === orderId;
+      if (!fresh && !matches) return;
+
+      const card = document.getElementById('licence-card');
+      const placeholder = document.getElementById('licence-placeholder');
+      const img = document.createElement('img');
+      img.src = stash.cardDataUrl;
+      img.alt = `${stash.petFirstName || 'Your pet'}'s Pet Licence`;
+      card.innerHTML = '';
+      card.appendChild(img);
+
+      // Personalize the subtitle with the pet name
+      if (stash.petFirstName) {
+        const name = stash.petFirstName + (stash.petLastName ? ' ' + stash.petLastName : '');
+        document.getElementById('subtitle').innerHTML =
+          `<strong style="color:var(--green)">${escapeHtml(name)}</strong> is about to become the<br>most official animal in the neighbourhood.`;
+      }
+
+      // Clear stash after successful load (keep for 1 more hour if user refreshes, then purge)
+      // Leave it for now so a reload still shows the preview.
+    })();
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  HOVER GRAVITY + CLICK TO FOCUS (ported from index.html)
+    // ═════════════════════════════════════════════════════════════
+    const card     = document.getElementById('licence-card');
+    const backdrop = document.getElementById('card-backdrop');
+    let focused = false;
+
+    card.addEventListener('mousemove', (e) => {
+      if (focused) return;
+      const rect = card.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top)  / rect.height - 0.5;
+      card.style.transform = `rotateX(${-y * 22}deg) rotateY(${x * 26}deg) scale(1.04)`;
+    });
+    card.addEventListener('mouseleave', () => { if (!focused) card.style.transform = ''; });
+    card.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (focused) { unfocus(); return; }
+      focused = true;
+      card.classList.add('focused');
+      card.style.transform = '';
+      backdrop.classList.add('active');
+    });
+    backdrop.addEventListener('click', unfocus);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && focused) unfocus(); });
+    function unfocus() {
+      focused = false;
+      card.classList.remove('focused');
+      backdrop.classList.remove('active');
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  STARFIELD (subtle, same feel as index.html)
+    // ═════════════════════════════════════════════════════════════
+    (function starfield() {
+      const c   = document.getElementById('star-canvas');
+      const ctx = c.getContext('2d');
+      let W = 0, H = 0, stars = [];
+      function resize() {
+        W = c.width  = window.innerWidth  * window.devicePixelRatio;
+        H = c.height = window.innerHeight * window.devicePixelRatio;
+        c.style.width  = window.innerWidth  + 'px';
+        c.style.height = window.innerHeight + 'px';
+        stars = [];
+        const count = Math.min(200, Math.floor((window.innerWidth * window.innerHeight) / 7000));
+        for (let i = 0; i < count; i++) {
+          stars.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            r: Math.random() * 1.4 + .3,
+            a: Math.random() * .6 + .2,
+            t: Math.random() * Math.PI * 2,
+            s: Math.random() * .02 + .005,
+          });
+        }
+      }
+      resize();
+      window.addEventListener('resize', resize);
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        for (const s of stars) {
+          s.t += s.s;
+          const tw = (Math.sin(s.t) + 1) * .5;
+          ctx.fillStyle = `rgba(0,255,65,${s.a * (.4 + tw * .6)})`;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r * window.devicePixelRatio, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // ═════════════════════════════════════════════════════════════
+    //  CONFETTI BURST (ported from mobile.html)
+    // ═════════════════════════════════════════════════════════════
+    (function confetti() {
+      const c   = document.getElementById('confetti');
+      const ctx = c.getContext('2d');
+      const DPR = window.devicePixelRatio || 1;
+      c.width  = window.innerWidth  * DPR;
+      c.height = window.innerHeight * DPR;
+      c.style.width  = window.innerWidth  + 'px';
+      c.style.height = window.innerHeight + 'px';
+      ctx.scale(DPR, DPR);
+
+      const W = window.innerWidth, H = window.innerHeight;
+      const COLORS = [
+        '#00ff41','#00cc33','#33ff77','#66ffaa',
+        '#FFD700','#FFA500','#FF6347',
+        '#FF69B4','#DA70D6','#9370DB',
+        '#00BFFF','#1E90FF','#7FFFD4',
+        '#FFFFFF',
+      ];
+
+      function spawn(count, originY) {
+        const pieces = [];
+        for (let i = 0; i < count; i++) {
+          const angle = -Math.PI/2 + (Math.random() - .5) * Math.PI * 1.6;
+          const speed = 4 + Math.random() * 10;
+          pieces.push({
+            x: W/2 + (Math.random() - .5) * W * .5,
+            y: originY,
+            vx: Math.cos(angle) * speed + (Math.random() - .5) * 3,
+            vy: Math.sin(angle) * speed - 2,
+            g:  .12 + Math.random() * .08,
+            w:  4 + Math.random() * 6,
+            h:  3 + Math.random() * 8,
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            spin:  Math.random() * Math.PI * 2,
+            spinV: (Math.random() - .5) * .3,
+            wob:   Math.random() * Math.PI * 2,
+            wobV:  .05 + Math.random() * .1,
+            life:  1,
+            decay: .003 + Math.random() * .004,
+            shape: Math.random() < .3 ? 'circle' : Math.random() < .5 ? 'star' : 'rect',
+          });
+        }
+        return pieces;
+      }
+
+      let pieces = spawn(140, H * .35);
+      let frame = 0;
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        let alive = 0;
+        for (const p of pieces) {
+          if (p.life <= 0) continue;
+          alive++;
+          p.x += p.vx;
+          p.vy += p.g;
+          p.y += p.vy;
+          p.vx *= .99;
+          p.spin += p.spinV;
+          p.wob += p.wobV;
+          p.life -= p.decay;
+          p.x += Math.sin(p.wob) * .5;
+
+          const a = Math.min(1, p.life * 2);
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.spin);
+          ctx.globalAlpha = a;
+          ctx.fillStyle = p.color;
+          if (p.shape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.w/2, 0, Math.PI*2);
+            ctx.fill();
+          } else if (p.shape === 'star') {
+            ctx.beginPath();
+            for (let s = 0; s < 5; s++) {
+              const ang = (s * Math.PI * 2) / 5 - Math.PI / 2;
+              const r   = s % 2 === 0 ? p.w/2 : p.w/5;
+              ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+          } else {
+            ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+          }
+          // shimmer highlight
+          ctx.globalAlpha = a * .4;
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(-p.w/4, -p.h/4, p.w/3, p.h/3);
+          ctx.restore();
+        }
+        frame++;
+        // Second smaller burst after a moment
+        if (frame === 25) pieces = pieces.concat(spawn(50, H * .3));
+        if (alive > 0) requestAnimationFrame(draw);
+      }
+      draw();
+    })();
   </script>
 </body>
 </html>
