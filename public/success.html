@@ -60,6 +60,9 @@
     #confetti { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
 
     /* ── Main wrapper ──────────────────────────────────────────────────── */
+    /* NO perspective here — it would create a containing block for the
+       focused card's position: fixed, trapping it behind the backdrop.
+       Perspective is applied inline on the card's transform instead. */
     .wrap {
       position: relative;
       z-index: 10;
@@ -70,7 +73,6 @@
       justify-content: center;
       padding: clamp(24px, 5vh, 56px) 20px;
       gap: clamp(20px, 3vh, 36px);
-      perspective: 900px;
     }
 
     /* ── Title area ────────────────────────────────────────────────────── */
@@ -120,30 +122,44 @@
 
     .licence-card {
       position: relative;
-      width: clamp(280px, 45vw, 520px);
+      width: clamp(240px, 32vw, 380px);
       aspect-ratio: 1322/830;
       border-radius: clamp(6px, .7vw, 12px);
       cursor: pointer;
       overflow: hidden;
       transform-style: preserve-3d;
       will-change: transform;
-      transition: transform .3s ease, box-shadow .3s ease, filter .3s ease;
-      animation: cardIn .7s cubic-bezier(.2,.8,.2,1) .3s both, glowPulse 2.8s ease-in-out 1.2s infinite;
+      transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease, filter .3s ease;
+      /* Entry animation runs once and finishes; then idleFloat + glowPulse
+         keep the card subtly alive when the user isn't hovering. Both are
+         overridden the moment hoverTilt() sets an inline transform. */
+      animation:
+        cardIn    .7s cubic-bezier(.2,.8,.2,1) .3s both,
+        glowPulse 2.8s ease-in-out 1.2s infinite,
+        idleFloat 4.2s ease-in-out  1s   infinite;
       background: linear-gradient(135deg, #0a2a0a 0%, #05150a 100%);
       box-shadow:
         0 8px 30px rgba(0,0,0,.6),
         0 0 24px rgba(0,255,65,.25);
     }
     @keyframes cardIn {
-      from { opacity: 0; transform: translateY(30px) scale(.9); }
-      to   { opacity: 1; transform: translateY(0)    scale(1);  }
+      from { opacity: 0; transform: perspective(900px) translateY(30px) scale(.9); }
+      to   { opacity: 1; transform: perspective(900px) translateY(0)    scale(1);  }
     }
     @keyframes glowPulse {
       0%, 100% { box-shadow: 0 8px 30px rgba(0,0,0,.6), 0 0 24px rgba(0,255,65,.25); }
       50%      { box-shadow: 0 8px 40px rgba(0,0,0,.6), 0 0 60px rgba(0,255,65,.55), 0 0 100px rgba(0,255,65,.2); }
     }
+    /* Gentle autonomous wobble so the card always feels alive */
+    @keyframes idleFloat {
+      0%, 100% { transform: perspective(900px) rotateY(-3deg)  rotateX(1deg)  translateY(0); }
+      50%      { transform: perspective(900px) rotateY( 3deg)  rotateX(-1deg) translateY(-4px); }
+    }
 
     .licence-card:hover { filter: brightness(1.08); }
+    /* When the user is actively moving the mouse over the card, the
+       inline transform (set by hoverTilt in JS) wins over idleFloat. */
+    .licence-card.hovering { animation: glowPulse 2.8s ease-in-out infinite; }
 
     .licence-card img {
       width: 100%;
@@ -158,7 +174,7 @@
       position: fixed;
       z-index: 90;
       left: 50%; top: 50%;
-      width: clamp(320px, 70vw, 720px);
+      width: clamp(320px, 78vw, 820px);
       transform: translate(-50%, -50%) !important;
       animation: none;
       box-shadow: 0 12px 60px rgba(0,0,0,.8), 0 0 80px rgba(0,255,65,.5);
@@ -334,7 +350,7 @@
       <div class="paw-stamp">🐾</div>
       <h1>ORDER CONFIRMED!</h1>
       <p class="subtitle" id="subtitle">
-        Your pet is about to become the<br>most official animal in the neighbourhood.
+        Your pet is about to become the<br>fastest animal in the neighbourhood.
       </p>
     </div>
 
@@ -357,7 +373,7 @@
         <li>We're processing your licence now.</li>
         <li>Your sticker ships within 2–3 business days.</li>
         <li>Tracking info sent to your email.</li>
-        <li>Frame it. Brag about it. You earned this.</li>
+        <li>Please do not let them operate a motor vehicle. We cannot be held liable for paw-driven traffic incidents.</li>
       </ul>
     </div>
 
@@ -415,7 +431,7 @@
       if (stash.petFirstName) {
         const name = stash.petFirstName + (stash.petLastName ? ' ' + stash.petLastName : '');
         document.getElementById('subtitle').innerHTML =
-          `<strong style="color:var(--green)">${escapeHtml(name)}</strong> is about to become the<br>most official animal in the neighbourhood.`;
+          `<strong style="color:var(--green)">${escapeHtml(name)}</strong> is about to become the<br>fastest animal in the neighbourhood.`;
       }
 
       // Clear stash after successful load (keep for 1 more hour if user refreshes, then purge)
@@ -434,20 +450,39 @@
     const backdrop = document.getElementById('card-backdrop');
     let focused = false;
 
+    card.addEventListener('mouseenter', () => { if (!focused) card.classList.add('hovering'); });
     card.addEventListener('mousemove', (e) => {
       if (focused) return;
       const rect = card.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width - 0.5;
       const y = (e.clientY - rect.top)  / rect.height - 0.5;
-      card.style.transform = `rotateX(${-y * 22}deg) rotateY(${x * 26}deg) scale(1.04)`;
+      // Inline perspective() keeps the 3D effect without needing a parent
+      // with `perspective: …`, which would trap the focused card inside
+      // a containing block below the backdrop.
+      card.style.transform =
+        `perspective(900px) rotateX(${-y * 26}deg) rotateY(${x * 30}deg) scale(1.06)`;
     });
-    card.addEventListener('mouseleave', () => { if (!focused) card.style.transform = ''; });
+    card.addEventListener('mouseleave', () => {
+      if (focused) return;
+      card.classList.remove('hovering');
+      card.style.transform = '';  // yields back to idleFloat
+    });
+    // When focused, the card is reparented to <body> so it escapes the
+    // wrap's stacking context (z-index: 10) and can sit above the
+    // backdrop (z-index: 85). On unfocus, we restore it to its home.
+    let cardHomeParent = null;
+    let cardHomeNext   = null;
+
     card.addEventListener('click', (e) => {
       e.stopPropagation();
       if (focused) { unfocus(); return; }
       focused = true;
+      card.classList.remove('hovering');
+      cardHomeParent = card.parentNode;
+      cardHomeNext   = card.nextSibling;
+      document.body.appendChild(card);
       card.classList.add('focused');
-      card.style.transform = '';
+      card.style.transform = '';  // !important in .focused takes over
       backdrop.classList.add('active');
     });
     backdrop.addEventListener('click', unfocus);
@@ -456,6 +491,11 @@
       focused = false;
       card.classList.remove('focused');
       backdrop.classList.remove('active');
+      // Restore the card to its original place in the DOM
+      if (cardHomeParent) {
+        if (cardHomeNext) cardHomeParent.insertBefore(card, cardHomeNext);
+        else              cardHomeParent.appendChild(card);
+      }
     }
 
     // ═════════════════════════════════════════════════════════════
