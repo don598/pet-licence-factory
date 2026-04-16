@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Success Page Preview — PLF</title>
+  <style>
+    html, body { margin:0; height:100%; background:#060808; color:#00ff41;
+                 font-family:'Press Start 2P',monospace; display:flex;
+                 align-items:center; justify-content:center; font-size:11px;
+                 letter-spacing:1.5px; text-align:center; padding:20px; }
+  </style>
+</head>
+<body>
+  <div>
+    Seeding preview data…<br><br>
+    <span id="status" style="font-size:9px;color:#7a9a7a"></span>
+  </div>
+  <script>
+    // ─────────────────────────────────────────────────────────────
+    //  Success-page preview helper — NOT a production page.
+    //  Seeds a realistic sample licence into localStorage, then
+    //  redirects to /success.html so you can review the design
+    //  without running through a full test order.
+    //
+    //  Query string options:
+    //    ?pet=luna     → Luna Whiskers (default)
+    //    ?pet=max      → Max Woofington
+    //    ?pet=oliver   → Oliver Pawsley
+    //    ?order=PLF-…  → custom order ID shown on the page
+    // ─────────────────────────────────────────────────────────────
+
+    const qs = new URLSearchParams(location.search);
+    const petKey = (qs.get('pet') || 'luna').toLowerCase();
+
+    const PETS = {
+      luna:   { first: 'Luna',   last: 'Whiskers',   img: '/images/preview-licences/luna-whiskers.png'   },
+      max:    { first: 'Max',    last: 'Woofington', img: '/images/preview-licences/max-woofington.png'  },
+      oliver: { first: 'Oliver', last: 'Pawsley',    img: '/images/preview-licences/oliver-pawsley.png'  },
+    };
+    const pet = PETS[petKey] || PETS.luna;
+    const orderId = qs.get('order')
+      || 'PLF-' + Date.now() + '-DEMO';
+
+    localStorage.setItem('plf_last_preview', JSON.stringify({
+      orderId,
+      petFirstName: pet.first,
+      petLastName:  pet.last,
+      cardDataUrl:  pet.img,       // success.html happily accepts a URL here
+      ts:           Date.now(),
+    }));
+
+    document.getElementById('status').textContent =
+      `Redirecting to /success.html?order_id=${orderId}`;
+
+    setTimeout(() => {
+      location.replace('/success.html?order_id=' + encodeURIComponent(orderId));
+    }, 300);
+  </script>
+</body>
+</html>
