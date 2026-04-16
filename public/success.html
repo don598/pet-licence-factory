@@ -157,9 +157,10 @@
     }
 
     .licence-card:hover { filter: brightness(1.08); }
-    /* When the user is actively moving the mouse over the card, the
-       inline transform (set by hoverTilt in JS) wins over idleFloat. */
-    .licence-card.hovering { animation: glowPulse 2.8s ease-in-out infinite; }
+    /* Inline transform (set by hoverTilt in JS) naturally wins over the
+       keyframe transform, so idleFloat keeps running underneath. On
+       mouseleave we just clear the inline transform and the idle
+       animation resumes in place — no restart, no flash. */
 
     .licence-card img {
       width: 100%;
@@ -450,7 +451,6 @@
     const backdrop = document.getElementById('card-backdrop');
     let focused = false;
 
-    card.addEventListener('mouseenter', () => { if (!focused) card.classList.add('hovering'); });
     card.addEventListener('mousemove', (e) => {
       if (focused) return;
       const rect = card.getBoundingClientRect();
@@ -458,13 +458,14 @@
       const y = (e.clientY - rect.top)  / rect.height - 0.5;
       // Inline perspective() keeps the 3D effect without needing a parent
       // with `perspective: …`, which would trap the focused card inside
-      // a containing block below the backdrop.
+      // a containing block below the backdrop. Inline transform wins over
+      // the idleFloat keyframe, so idleFloat keeps running underneath and
+      // resumes smoothly when we clear the inline transform — no flash.
       card.style.transform =
         `perspective(900px) rotateX(${-y * 26}deg) rotateY(${x * 30}deg) scale(1.06)`;
     });
     card.addEventListener('mouseleave', () => {
       if (focused) return;
-      card.classList.remove('hovering');
       card.style.transform = '';  // yields back to idleFloat
     });
     // When focused, the card is reparented to <body> so it escapes the
@@ -477,7 +478,6 @@
       e.stopPropagation();
       if (focused) { unfocus(); return; }
       focused = true;
-      card.classList.remove('hovering');
       cardHomeParent = card.parentNode;
       cardHomeNext   = card.nextSibling;
       document.body.appendChild(card);
