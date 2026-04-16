@@ -458,6 +458,7 @@ html,body{width:100%;height:100%;background:#060808;display:flex;align-items:cen
             <span style="display:inline-flex;align-items:center;gap:3px;background:#fff;color:#3c4043;padding:3px 9px;border-radius:5px;font-family:'Roboto',sans-serif;font-size:12px;font-weight:500;line-height:1.4"><svg width="13" height="13" viewBox="0 0 20 20"><path d="M19.6 10.2c0-.7-.1-1.3-.2-1.9H10v3.6h5.4c-.2 1.2-1 2.2-2.1 2.9v2.4h3.3c2-1.8 3-4.4 3-7z" fill="#4285F4"/><path d="M10 20c2.7 0 4.9-.9 6.6-2.4l-3.3-2.4c-.9.6-2 1-3.3 1-2.5 0-4.6-1.7-5.4-4H1.2V14c1.7 3.4 5.1 6 8.8 6z" fill="#34A853"/><path d="M4.6 12.1c-.2-.6-.3-1.3-.3-2.1s.1-1.5.3-2.1V5.5H1.2A10 10 0 000 10c0 1.6.4 3.2 1.2 4.5l3.4-2.4z" fill="#FBBC05"/><path d="M10 4c1.4 0 2.6.5 3.6 1.4L16.5 3C14.9 1.2 12.6 0 10 0 6.2 0 2.8 2.6 1.2 6l3.4 2.5C5.4 5.7 7.5 4 10 4z" fill="#EA4335"/></svg> Pay</span>
           </span>
         </button>
+        <p style="margin-top:8px;font-size:clamp(5px,.8vw,9px);color:#7a9a7a;text-align:center;line-height:1.6">By placing this order you agree to our <a href="/terms.html" target="_blank" style="color:#00cc33;text-decoration:underline">Terms</a>, <a href="/privacy.html" target="_blank" style="color:#00cc33;text-decoration:underline">Privacy Policy</a>, and <a href="/refunds.html" target="_blank" style="color:#00cc33;text-decoration:underline">Refund Policy</a>.</p>
         <button class="btn" style="margin-top:8px;background:#001a00;font-size:clamp(5px,.9vw,9px)" onclick="s5BackToPicker()">◀ EDIT ORDER</button>
       </div>
     </div>
@@ -1598,14 +1599,25 @@ async function s5Checkout() {
     discountEarned, total: parseFloat((base + dec - disc + ship).toFixed(2))
   };
 
-  // Save order to database (status: 'pending' — webhook will flip to 'paid')
+  // Save order to database (status: 'pending' — webhook will flip to 'paid').
+  // If this fails, do NOT proceed to Stripe — a successful charge with no
+  // linked order row leaves the customer invisible to admin + unshippable.
   let orderId = null;
   try {
     orderId = await submitOrder(orderData);
     orderData.orderId = orderId;
   } catch (err) {
     console.error('Order save failed:', err);
-    // Continue — don't block checkout if DB write fails
+    btn.disabled  = false;
+    btn.innerHTML = origHTML;
+    typewrite(5, 'Something went wrong saving your order. Please try again — if this keeps happening, email contact@creditcardart.com.', () => {});
+    return;
+  }
+  if (!orderId) {
+    btn.disabled  = false;
+    btn.innerHTML = origHTML;
+    typewrite(5, 'Couldn\'t save your order. Please try again.', () => {});
+    return;
   }
 
   // Create Stripe Checkout session and redirect

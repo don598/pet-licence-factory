@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terms of Service — Pet Licence Factory</title>
+<meta name="robots" content="index,follow" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold:   #f0c050;
+    --gold2:  #c8922a;
+    --brown:  #2a1804;
+    --dark:   #1a0e04;
+    --darker: #0d0800;
+    --body:   #e8dfc4;
+    --green:  #4caf50;
+  }
+  html, body { background: var(--darker); color: var(--body); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.65; }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(240,192,80,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(240,192,80,.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    background: rgba(13,8,0,.95);
+    border-bottom: 2px solid var(--gold2);
+    backdrop-filter: blur(6px);
+  }
+  .brand {
+    font-family: 'Press Start 2P', monospace;
+    color: var(--green);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-decoration: none;
+    text-shadow: 2px 2px 0 #003a10;
+  }
+  .topbar a.back {
+    font-size: 13px; color: var(--gold2);
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 1px solid var(--gold2);
+    border-radius: 3px;
+    transition: background .15s;
+  }
+  .topbar a.back:hover { background: rgba(200,146,42,.12); }
+  main {
+    position: relative; z-index: 1;
+    max-width: 780px; margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(18px, 3.5vw, 26px);
+    color: var(--gold);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-shadow: 2px 2px 0 #3a2a10;
+  }
+  .meta {
+    font-size: 13px; color: var(--gold2);
+    margin-bottom: 36px; padding-bottom: 16px;
+    border-bottom: 1px dashed rgba(200,146,42,.4);
+  }
+  h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px; color: var(--gold);
+    letter-spacing: 1.5px;
+    margin: 36px 0 14px;
+    padding-top: 16px;
+    border-top: 1px dashed rgba(200,146,42,.25);
+  }
+  h3 { font-size: 15px; color: var(--gold2); font-weight: 700; margin: 20px 0 8px; }
+  p, li { font-size: 15px; margin-bottom: 14px; }
+  ul, ol { padding-left: 28px; margin-bottom: 18px; }
+  li { margin-bottom: 6px; }
+  a { color: var(--green); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: #66ffaa; }
+  strong { color: var(--gold); font-weight: 700; }
+  .callout {
+    background: var(--brown);
+    border-left: 3px solid var(--gold2);
+    padding: 14px 18px;
+    margin: 18px 0;
+    border-radius: 2px;
+  }
+  .footer {
+    text-align: center; padding: 32px 24px;
+    font-size: 12px; color: var(--gold2);
+    border-top: 1px solid rgba(200,146,42,.2);
+  }
+  .footer a { margin: 0 8px; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="brand" href="/">🐾 PET LICENCE FACTORY</a>
+    <a class="back" href="/">← Back</a>
+  </div>
+  <main>
+    <h1>Terms of Service</h1>
+    <div class="meta"><strong>Effective:</strong> April 16, 2026 &nbsp;·&nbsp; <strong>Last updated:</strong> April 16, 2026</div>
+
+    <p>These Terms of Service ("Terms") are a contract between you and <strong>Credit Card Art LLC</strong> ("we," "us," "our"), a Texas limited liability company operating the Pet Licence Factory brand. By using the Site or placing an order, you agree to these Terms.</p>
+    <p>If you don't agree, don't use the Site.</p>
+
+    <h2>1. The Product</h2>
+    <p>Pet Licence Factory sells custom, personalized card-skin stickers shaped and printed to resemble a novelty driver's licence for your pet (each, a "Product").</p>
+    <div class="callout"><strong>The Product is a novelty item for entertainment, gifting, and display only.</strong> It is not a government-issued document, does not confer any legal rights, and cannot be used as proof of identification, licensure, or vehicle registration for any person or animal.</div>
+
+    <h2>2. Eligibility</h2>
+    <p>You must be at least 18 years old (or the age of majority in your jurisdiction) to place an order. By ordering, you represent that you meet this requirement.</p>
+
+    <h2>3. Your Account and Submissions</h2>
+    <p>You do not need to create an account to use the Site. You do, however, provide us with pet information, a photo, and your name, email, shipping address, and payment details through Stripe Checkout.</p>
+    <h3>Your responsibilities for uploaded content</h3>
+    <p>By uploading a photo or any other content, you represent that:</p>
+    <ul>
+      <li>You own the rights to the content, or you have permission from the rights holder to use it.</li>
+      <li>The content does not contain any person's image without their consent.</li>
+      <li>The content is not unlawful, infringing, defamatory, sexually explicit, hateful, or otherwise objectionable.</li>
+    </ul>
+    <p>We may decline, cancel, or refund any order we believe violates these rules or our Terms, at our sole discretion.</p>
+    <h3>License you grant us</h3>
+    <p>You grant Credit Card Art LLC a non-exclusive, royalty-free, worldwide license to reproduce, process, print, and ship the content you upload for the sole purpose of fulfilling your order. We do not use your uploaded photos for marketing without your written permission.</p>
+
+    <h2>4. Orders, Pricing, and Payment</h2>
+    <ul>
+      <li>All prices are listed in <strong>U.S. Dollars (USD)</strong> and shown at checkout before you pay.</li>
+      <li>Payment is handled by <strong>Stripe</strong>. We do not see or store your full card number.</li>
+      <li>Placing an order is an offer to buy. We may accept or decline any order for any lawful reason (pricing errors, suspected fraud, content concerns).</li>
+      <li>We may cancel an order at any time before shipment and issue a full refund.</li>
+      <li><strong>Prices, products, promotions, and discount eligibility (including mini-game rewards) may change at any time without notice.</strong></li>
+    </ul>
+    <h3>Taxes</h3>
+    <p>You are responsible for any applicable sales, use, or import taxes and duties. Where required, we will collect these at checkout.</p>
+
+    <h2>5. Shipping</h2>
+    <ul>
+      <li>We ship to the United States, Canada, United Kingdom, Australia, and New Zealand.</li>
+      <li>Shipping times are estimates, not guarantees. Carrier delays, weather, holidays, and customs inspections are outside our control.</li>
+      <li>Title and risk of loss pass to you when the Product is handed to the carrier.</li>
+      <li>International customers are the importer of record and are responsible for customs duties, taxes, or fees assessed by your country.</li>
+    </ul>
+    <p>See our <a href="/refunds.html">Refund &amp; Replacement Policy</a> for what happens if your order arrives damaged, defective, or wrong.</p>
+
+    <h2>6. Intellectual Property</h2>
+    <p>The Site, its design, branding, pixel-art characters, source code, text, and animations are owned by Credit Card Art LLC and its licensors and are protected by copyright, trademark, and other laws. You may not copy, modify, distribute, or create derivative works from any part of the Site without our prior written permission.</p>
+    <p>You retain ownership of photos and content you upload. You grant us the license described in Section 3 for fulfilment purposes.</p>
+    <p>"Pet Licence Factory" and the PLF mark are trademarks of Credit Card Art LLC.</p>
+
+    <h2>7. Acceptable Use</h2>
+    <p>You agree not to:</p>
+    <ul>
+      <li>Use the Site to engage in any unlawful activity.</li>
+      <li>Attempt to probe, scan, or test the vulnerability of any part of the Site or our systems.</li>
+      <li>Interfere with, overload, or disrupt the Site (including automated scraping, stress-testing, or spamming orders).</li>
+      <li>Upload content that infringes third-party rights or violates Section 3.</li>
+      <li>Reverse-engineer, decompile, or extract any part of the Site for competitive purposes.</li>
+      <li>Represent a Product as a genuine, government-issued licence or identification.</li>
+    </ul>
+    <p>We reserve the right to suspend access and refuse service for violations of these rules.</p>
+
+    <h2>8. Novelty Disclaimer</h2>
+    <div class="callout"><strong>The Product is a novelty sticker. It is not a licence. It is not identification. It is not a government-issued document.</strong> Any resemblance to official credentials is for entertainment purposes only. Do not present the Product as real identification, do not use it to misrepresent your pet's credentials to any authority, and do not use it in any fraudulent manner. You agree to hold us harmless for any such misuse.</div>
+
+    <h2>9. Warranties and Disclaimers</h2>
+    <p>We warrant that the Product will be free of material defects in manufacture on delivery. If it isn't, see the Refund &amp; Replacement Policy.</p>
+    <p><strong>Beyond that limited warranty, the Site and the Product are provided "AS IS" and "AS AVAILABLE" without warranties of any kind, express or implied, including warranties of merchantability, fitness for a particular purpose, or non-infringement. We do not warrant that the Site will be uninterrupted, secure, or error-free, or that the colors or image on your screen will exactly match the printed Product.</strong></p>
+    <p>Some jurisdictions don't allow limitations on implied warranties; in that case the limitations above apply to the maximum extent permitted by law.</p>
+
+    <h2>10. Limitation of Liability</h2>
+    <div class="callout"><strong>To the maximum extent permitted by law, Credit Card Art LLC, its members, employees, and contractors are not liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits, revenue, data, or goodwill, arising out of or in connection with your use of the Site or the Product.</strong>
+    <br><br>
+    <strong>Our total liability to you for any claim is limited to the greater of (a) the amount you paid for the Product giving rise to the claim in the 12 months before the claim, or (b) USD $50.</strong></div>
+    <p>This section does not limit liability for fraud, willful misconduct, or any liability that cannot be limited by applicable law.</p>
+
+    <h2>11. Indemnity</h2>
+    <p>You agree to indemnify and hold harmless Credit Card Art LLC and its affiliates from any claims, damages, or expenses (including reasonable attorneys' fees) arising out of (a) your breach of these Terms, (b) your violation of any law or third-party right (including by uploading content you don't have rights to), or (c) your misuse of the Product.</p>
+
+    <h2>12. Dispute Resolution</h2>
+    <p>We want to make things right. <strong>Before filing any formal legal claim, you agree to first email us at <a href="mailto:contact@creditcardart.com">contact@creditcardart.com</a> and give us 30 days to attempt to resolve the issue in good faith.</strong></p>
+    <p>If we can't resolve it, any dispute will be brought exclusively in the state or federal courts located in <strong>Harris County, Texas</strong>, and you and we consent to the personal jurisdiction of those courts.</p>
+    <p><strong>Governing law:</strong> These Terms are governed by the laws of the <strong>State of Texas</strong>, without regard to conflict-of-laws rules.</p>
+    <p>Nothing in this section prevents either party from bringing a claim in small-claims court if eligible.</p>
+
+    <h2>13. Changes to These Terms</h2>
+    <p>We may update these Terms from time to time. The "Last updated" date above will reflect the most recent version. Material changes will be posted on the Site at least 15 days before they take effect. Your continued use of the Site after the effective date constitutes acceptance.</p>
+
+    <h2>14. Miscellaneous</h2>
+    <ul>
+      <li><strong>Entire agreement.</strong> These Terms, together with the Privacy Policy and Refund Policy, are the entire agreement between you and us regarding the Site and the Product.</li>
+      <li><strong>Severability.</strong> If any provision is held unenforceable, the rest of the Terms remain in effect.</li>
+      <li><strong>No waiver.</strong> A failure to enforce any right does not waive that right.</li>
+      <li><strong>Assignment.</strong> You may not assign these Terms without our consent. We may assign them in connection with a merger, sale, or similar transaction.</li>
+      <li><strong>Force majeure.</strong> We are not liable for failures caused by events beyond our reasonable control (carrier disruptions, natural disasters, pandemics, power or internet outages, acts of government).</li>
+    </ul>
+
+    <h2>15. Contact</h2>
+    <p>Questions about these Terms?<br>
+    <a href="mailto:contact@creditcardart.com">contact@creditcardart.com</a></p>
+    <p>Credit Card Art LLC<br>1403 Essex Green, College Station, TX 77845</p>
+  </main>
+  <div class="footer">
+    <a href="/privacy.html">Privacy</a> ·
+    <a href="/terms.html">Terms</a> ·
+    <a href="/refunds.html">Refund Policy</a> ·
+    <a href="mailto:contact@creditcardart.com">Contact</a>
+    <br><br>
+    © 2026 Credit Card Art LLC. All rights reserved.
+  </div>
+</body>
+</html>

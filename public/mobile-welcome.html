@@ -37,9 +37,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060808;font-family:
 .showcase-card.focused{cursor:default;filter:none!important;z-index:60;box-shadow:0 12px 60px rgba(0,0,0,.7),0 0 40px rgba(0,255,65,.3)!important}
 
 /* ── Preview buttons ── */
-.preview-btns{position:fixed;left:50%;bottom:8%;transform:translateX(-50%);z-index:62;display:flex;gap:clamp(8px,3vw,16px);opacity:0;pointer-events:none;transition:opacity .4s .15s}
+.preview-btns{position:fixed;left:50%;bottom:10%;transform:translateX(-50%);z-index:62;display:flex;flex-direction:column;gap:10px;width:80vw;max-width:340px;opacity:0;pointer-events:none;transition:opacity .4s .15s}
 .preview-btns.show{opacity:1;pointer-events:auto}
-.preview-btn{font-family:'Press Start 2P',monospace;font-size:clamp(7px,2.5vw,12px);border:3px solid;padding:clamp(8px,2vh,14px) clamp(16px,5vw,32px);cursor:pointer;letter-spacing:1px;transition:background .12s,transform .08s;display:flex;align-items:center;justify-content:center;gap:6px;line-height:1}
+.preview-btn{font-family:'Press Start 2P',monospace;font-size:clamp(10px,3vw,14px);border:3px solid;padding:14px 20px;cursor:pointer;letter-spacing:1px;transition:background .12s,transform .08s;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.4;width:100%;text-align:center}
 .preview-btn:active{transform:translate(1px,1px)}
 .btn-back{background:#0a1a0a;color:#00ff41;border-color:#00cc33}
 .btn-build{background:#0a2a0a;color:#60ff80;border-color:#3cb050}
@@ -365,6 +365,16 @@ document.getElementById('start-btn').addEventListener('click', () => {
   goToGame();
 });
 </script>
+
+<div style="position:fixed;bottom:4px;left:50%;transform:translateX(-50%);z-index:200;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:9px;color:rgba(0,204,51,.5);letter-spacing:.3px;display:flex;gap:7px;white-space:nowrap">
+  <a href="/privacy.html" style="color:inherit;text-decoration:none">Privacy</a>
+  <span>·</span>
+  <a href="/terms.html" style="color:inherit;text-decoration:none">Terms</a>
+  <span>·</span>
+  <a href="/refunds.html" style="color:inherit;text-decoration:none">Refunds</a>
+  <span>·</span>
+  <a href="mailto:contact@creditcardart.com" style="color:inherit;text-decoration:none">Contact</a>
+</div>
 
 </body>
 </html>

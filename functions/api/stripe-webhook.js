@@ -6,6 +6,7 @@
 
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
+import { sendOrderConfirmationEmail } from '../_shared/email.js';
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -78,12 +79,15 @@ export async function onRequest(context) {
     const customerName = session.customer_details?.name      || '';
 
     try {
-      await db.query(
+      const result = await db.query(
         `UPDATE pet_orders SET
            status = $1, stripe_payment_id = $2, customer_email = $3, customer_name = $4,
            ship_addr_line1 = $5, ship_addr_line2 = $6, ship_city = $7, ship_state = $8,
            ship_zip = $9, ship_country = $10, shipping_option = $11, updated_at = NOW()
-         WHERE order_id = $12`,
+         WHERE order_id = $12
+         RETURNING order_id, pet_first_name, pet_last_name, pack_count, add_on, chip_size,
+                   shipping_option, total, customer_email, customer_name,
+                   ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country`,
         [
           'paid',
           session.payment_intent || session.id,
@@ -100,6 +104,34 @@ export async function onRequest(context) {
         ]
       );
       console.log(`Order ${orderId} marked as paid — customer: ${email}`);
+
+      // Fire confirmation email. Failure here must NOT fail the webhook
+      // (Stripe will retry and we'd double-charge the DB update path).
+      const row = result.rows[0];
+      if (row) {
+        try {
+          await sendOrderConfirmationEmail(env, {
+            orderId:        row.order_id,
+            customerEmail:  row.customer_email,
+            customerName:   row.customer_name,
+            petFirstName:   row.pet_first_name,
+            petLastName:    row.pet_last_name,
+            packCount:      row.pack_count,
+            addOn:          row.add_on,
+            chipSize:       row.chip_size,
+            shippingOption: row.shipping_option,
+            total:          row.total,
+            shipAddrLine1:  row.ship_addr_line1,
+            shipAddrLine2:  row.ship_addr_line2,
+            shipCity:       row.ship_city,
+            shipState:      row.ship_state,
+            shipZip:        row.ship_zip,
+            shipCountry:    row.ship_country,
+          });
+        } catch (emailErr) {
+          console.error('Confirmation email failed (non-fatal):', emailErr);
+        }
+      }
     } catch (err) {
       console.error('Database update error:', err);
       return new Response('Database update failed', { status: 500 });

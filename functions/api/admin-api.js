@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb } from '../_shared/db.js';
+import { sendShippingNotificationEmail } from '../_shared/email.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -123,6 +124,15 @@ export async function onRequest(context) {
         const { id, updates } = body;
         if (!id || !updates) return json(400, { error: 'Missing id or updates' });
 
+        // Read the current row first so we can detect a tracking-number transition
+        // and fire the shipping email only on empty → set (not every edit).
+        const priorRes = await db.query(
+          'SELECT tracking_number, customer_email FROM pet_orders WHERE id = $1',
+          [id]
+        );
+        const prior = priorRes.rows[0] || {};
+        const priorTracking = (prior.tracking_number || '').trim();
+
         const setClauses = [];
         const values = [];
         let paramIdx = 1;
@@ -140,11 +150,33 @@ export async function onRequest(context) {
         setClauses.push(`updated_at = NOW()`);
         values.push(id);
 
-        await db.query(
-          `UPDATE pet_orders SET ${setClauses.join(', ')} WHERE id = $${paramIdx}`,
+        const upd = await db.query(
+          `UPDATE pet_orders SET ${setClauses.join(', ')} WHERE id = $${paramIdx}
+           RETURNING order_id, pet_first_name, pet_last_name, customer_email,
+                     shipping_option, tracking_number`,
           values
         );
-        return json(200, { success: true });
+
+        // Shipping notification trigger: tracking number just got set
+        const row = upd.rows[0];
+        const newTracking = ((row?.tracking_number) || '').trim();
+        const crossedThreshold = !priorTracking && newTracking;
+        if (crossedThreshold && row?.customer_email) {
+          try {
+            await sendShippingNotificationEmail(env, {
+              orderId:        row.order_id,
+              customerEmail:  row.customer_email,
+              petFirstName:   row.pet_first_name,
+              petLastName:    row.pet_last_name,
+              trackingNumber: row.tracking_number,
+              shippingOption: row.shipping_option,
+            });
+          } catch (e) {
+            console.error('Shipping email failed (non-fatal):', e);
+          }
+        }
+
+        return json(200, { success: true, emailSent: crossedThreshold });
       }
 
       case 'delete_all_orders': {
