@@ -93,62 +93,77 @@ export async function sendOrderConfirmationEmail(env, order) {
 
   const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
-<body style="margin:0;padding:0;background:#0d0800;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0d0800;padding:24px 0;">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f0f5ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f0f5ff;padding:24px 0;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#1a0e04;border:2px solid #c8922a;border-radius:8px;overflow:hidden;">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
 
         <!-- Header -->
-        <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#2a1804 0%,#1a0e04 100%);">
-          <div style="font-size:48px;line-height:1;margin-bottom:12px;">🐾</div>
-          <h1 style="margin:0;font-family:'Courier New',monospace;font-size:22px;color:#4caf50;letter-spacing:2px;text-transform:uppercase;">Order Confirmed!</h1>
-          <p style="margin:12px 0 0;font-size:14px;color:#d4a84a;line-height:1.5;">
+        <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
+          <div style="font-family:'Press Start 2P','Courier New',monospace;font-size:20px;color:#0044cc;letter-spacing:3px;margin-bottom:20px;">PET LICENCE FACTORY</div>
+          <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
+          <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">${shippingOption === 'stamp' ? 'Your Order Is On The Way!' : 'Order Confirmed!'}</h1>
+          <p style="margin:12px 0 0;font-size:14px;color:#334477;line-height:1.5;">
             ${esc(petFull)} is now the most official animal in the neighbourhood.
           </p>
         </td></tr>
 
         <!-- Order ID -->
         <tr><td style="padding:24px 32px 8px;">
-          <div style="background:#2a1804;border:1px solid #c8922a;border-radius:4px;padding:14px 18px;">
-            <div style="font-size:11px;color:#d4a84a;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Your Order ID</div>
-            <div style="font-family:'Courier New',monospace;font-size:14px;color:#f0c050;word-break:break-all;">${esc(orderId || '—')}</div>
+          <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:4px;padding:14px 18px;">
+            <div style="font-size:11px;color:#5577aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Your Order ID</div>
+            <div style="font-family:'Courier New',monospace;font-size:14px;color:#0055cc;word-break:break-all;">${esc(orderId || '—')}</div>
           </div>
         </td></tr>
 
         <!-- Order details -->
         <tr><td style="padding:16px 32px;">
-          <h2 style="margin:0 0 12px;font-size:13px;color:#c8922a;letter-spacing:1px;text-transform:uppercase;font-weight:600;">Order Summary</h2>
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size:14px;color:#d4a84a;border-collapse:collapse;">
-            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(200,146,42,.3);">Item</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(200,146,42,.3);color:#f0c050;">${esc(packLabel)}</td></tr>
-            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(200,146,42,.3);">Chip Size</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(200,146,42,.3);color:#f0c050;">${esc((chipSize || 'mini').charAt(0).toUpperCase() + (chipSize || 'mini').slice(1))}</td></tr>
-            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(200,146,42,.3);">Shipping</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(200,146,42,.3);color:#f0c050;">${esc(shipLabel)}</td></tr>
-            <tr><td style="padding:12px 0 0;font-weight:700;color:#4caf50;">Total</td><td style="padding:12px 0 0;text-align:right;font-weight:700;color:#4caf50;font-size:16px;">${esc(total || '—')}</td></tr>
+          <h2 style="margin:0 0 12px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">🧾 Order Summary</h2>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size:14px;color:#223355;border-collapse:collapse;">
+            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,102,255,.15);">Item</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(0,102,255,.15);color:#0099cc;">${esc(packLabel)}</td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,102,255,.15);">Chip Size</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(0,102,255,.15);color:#0099cc;">${esc((chipSize || 'mini').charAt(0).toUpperCase() + (chipSize || 'mini').slice(1))}</td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,102,255,.15);">Shipping</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(0,102,255,.15);color:#0099cc;">${esc(shipLabel)}</td></tr>
+            <tr><td style="padding:12px 0 0;font-weight:700;color:#0077ff;">Total</td><td style="padding:12px 0 0;text-align:right;font-weight:700;color:#0077ff;font-size:16px;">${esc(total || '—')}</td></tr>
           </table>
         </td></tr>
 
         <!-- Shipping -->
         ${addrParts ? `<tr><td style="padding:16px 32px;">
-          <h2 style="margin:0 0 12px;font-size:13px;color:#c8922a;letter-spacing:1px;text-transform:uppercase;font-weight:600;">Shipping To</h2>
-          <div style="background:#2a1804;border-left:3px solid #c8922a;padding:12px 16px;font-size:14px;color:#d4a84a;line-height:1.6;">
-            ${customerName ? `<strong style="color:#f0c050;">${esc(customerName)}</strong><br>` : ''}
+          <h2 style="margin:0 0 12px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">📦 Shipping To</h2>
+          <div style="background:#f0f5ff;border-left:3px solid #0077ff;padding:12px 16px;font-size:14px;color:#223355;line-height:1.6;">
+            ${customerName ? `<strong style="color:#0099cc;">${esc(customerName)}</strong><br>` : ''}
             ${addrParts}
+          </div>
+        </td></tr>` : ''}
+
+        <!-- Stamp mail notice -->
+        ${shippingOption === 'stamp' ? `<tr><td style="padding:0 32px 8px;">
+          <div style="background:#f0f8ff;border:1px dashed #0099cc;border-radius:4px;padding:14px 18px;">
+            <div style="font-size:12px;color:#0099cc;font-weight:700;margin-bottom:6px;">📮 Stamp Mail — No Tracking Number</div>
+            <div style="font-size:13px;color:#223355;line-height:1.6;">Your order ships via USPS stamp mail. There's no tracking number with this option. If your licence hasn't arrived after <strong style="color:#0099cc;">21 days</strong> (most orders arrive in 3–5 days), email us at <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll make it right — free replacement included.</div>
           </div>
         </td></tr>` : ''}
 
         <!-- What's next -->
         <tr><td style="padding:16px 32px 24px;">
-          <h2 style="margin:0 0 12px;font-size:13px;color:#c8922a;letter-spacing:1px;text-transform:uppercase;font-weight:600;">What Happens Next</h2>
-          <ol style="margin:0;padding-left:20px;font-size:14px;color:#d4a84a;line-height:1.8;">
-            <li>We print your custom licence sticker (2–3 business days).</li>
-            <li>We carefully package it and ship it via your chosen method.</li>
-            <li>You get a follow-up email with tracking once it's in the mail.</li>
-            <li>You frame it. Brag about it. You earned this.</li>
-          </ol>
+          <h2 style="margin:0 0 12px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">⚡ What Happens Next</h2>
+          ${shippingOption === 'stamp' ? `<ol style="margin:0;padding-left:20px;font-size:14px;color:#223355;line-height:1.8;">
+            <li>🖨️ We print your custom licence sticker (2–3 business days).</li>
+            <li>📮 We seal and stamp your envelope and drop it in the mail.</li>
+            <li>📬 Keep an eye on your mailbox — stamp mail typically arrives in 3–5 business days.</li>
+            <li>❓ Not arrived after 21 days? Email <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll sort it out.</li>
+            <li>🏆 ${esc(petFull)} is the fastest animal in the neighborhood.</li>
+          </ol>` : `<ol style="margin:0;padding-left:20px;font-size:14px;color:#223355;line-height:1.8;">
+            <li>🖨️ We print your custom licence sticker (2–3 business days).</li>
+            <li>📫 We carefully package it and ship it via your chosen method.</li>
+            <li>📧 You get a follow-up email with tracking once it's in the mail.</li>
+            <li>🏆 ${esc(petFull)} is the fastest animal in the neighborhood.</li>
+          </ol>`}
         </td></tr>
 
         <!-- Footer -->
-        <tr><td style="padding:20px 32px;background:#0d0800;border-top:1px solid rgba(200,146,42,.3);text-align:center;font-size:12px;color:#9e7a34;line-height:1.6;">
+        <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Just reply to this email — we read every message.<br>
           <span style="opacity:.6;">Pet Licence Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054</span>
         </td></tr>
@@ -190,26 +205,28 @@ export async function sendShippingNotificationEmail(env, order) {
   const trackUrl = `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(trackingNumber)}`;
 
   const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0d0800;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0d0800;padding:24px 0;">
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f0f5ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f0f5ff;padding:24px 0;">
     <tr><td align="center">
-      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#1a0e04;border:2px solid #c8922a;border-radius:8px;overflow:hidden;">
-        <tr><td style="padding:32px;text-align:center;">
-          <div style="font-size:48px;margin-bottom:12px;">📬</div>
-          <h1 style="margin:0 0 8px;font-family:'Courier New',monospace;font-size:20px;color:#4caf50;letter-spacing:2px;text-transform:uppercase;">Shipped!</h1>
-          <p style="margin:8px 0 24px;font-size:15px;color:#d4a84a;line-height:1.5;">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
+        <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
+          <div style="font-family:'Press Start 2P','Courier New',monospace;font-size:20px;color:#0044cc;letter-spacing:3px;margin-bottom:20px;">PET LICENCE FACTORY</div>
+          <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
+          <div style="font-size:32px;margin-bottom:8px;">📬</div>
+          <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Shipped!</h1>
+          <p style="margin:8px 0 24px;font-size:15px;color:#334477;line-height:1.5;">
             ${esc(petFull)}'s licence just hit the mail stream.
           </p>
-          <div style="background:#2a1804;border:1px solid #c8922a;border-radius:4px;padding:16px;margin:16px 0;text-align:left;">
-            <div style="font-size:11px;color:#d4a84a;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Tracking Number</div>
-            <div style="font-family:'Courier New',monospace;font-size:15px;color:#f0c050;word-break:break-all;">${esc(trackingNumber)}</div>
-            <div style="font-size:11px;color:#d4a84a;text-transform:uppercase;letter-spacing:1px;margin:12px 0 4px;">Order</div>
-            <div style="font-family:'Courier New',monospace;font-size:13px;color:#f0c050;">${esc(orderId || '—')}</div>
+          <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:4px;padding:16px;margin:16px 0;text-align:left;">
+            <div style="font-size:11px;color:#5577aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Tracking Number</div>
+            <div style="font-family:'Courier New',monospace;font-size:15px;color:#0055cc;word-break:break-all;">${esc(trackingNumber)}</div>
+            <div style="font-size:11px;color:#5577aa;text-transform:uppercase;letter-spacing:1px;margin:12px 0 4px;">Order</div>
+            <div style="font-family:'Courier New',monospace;font-size:13px;color:#0055cc;">${esc(orderId || '—')}</div>
           </div>
-          <a href="${esc(trackUrl)}" style="display:inline-block;margin-top:12px;padding:14px 28px;background:#c8922a;color:#0d0800;text-decoration:none;border-radius:4px;font-weight:700;font-size:14px;letter-spacing:1px;">Track Package →</a>
+          <a href="${esc(trackUrl)}" style="display:inline-block;margin-top:12px;padding:14px 28px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:14px;letter-spacing:1px;">Track Package →</a>
         </td></tr>
-        <tr><td style="padding:20px 32px;background:#0d0800;border-top:1px solid rgba(200,146,42,.3);text-align:center;font-size:12px;color:#9e7a34;line-height:1.6;">
+        <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Reply to this email any time.<br>
           <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
         </td></tr>

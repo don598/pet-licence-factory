@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb } from '../_shared/db.js';
-import { sendShippingNotificationEmail } from '../_shared/email.js';
+import { sendShippingNotificationEmail, sendOrderConfirmationEmail } from '../_shared/email.js';
 import { createAndBuyLabel } from '../_shared/easypost.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -125,14 +125,14 @@ export async function onRequest(context) {
         const { id, updates } = body;
         if (!id || !updates) return json(400, { error: 'Missing id or updates' });
 
-        // Read the current row first so we can detect a tracking-number transition
-        // and fire the shipping email only on empty → set (not every edit).
+        // Read the current row first so we can detect transitions and fire emails.
         const priorRes = await db.query(
-          'SELECT tracking_number, customer_email FROM pet_orders WHERE id = $1',
+          `SELECT tracking_number, customer_email, status, shipping_option FROM pet_orders WHERE id = $1`,
           [id]
         );
         const prior = priorRes.rows[0] || {};
         const priorTracking = (prior.tracking_number || '').trim();
+        const priorStatus   = (prior.status || '').trim();
 
         const setClauses = [];
         const values = [];
@@ -153,13 +153,16 @@ export async function onRequest(context) {
 
         const upd = await db.query(
           `UPDATE pet_orders SET ${setClauses.join(', ')} WHERE id = $${paramIdx}
-           RETURNING order_id, pet_first_name, pet_last_name, customer_email,
-                     shipping_option, tracking_number`,
+           RETURNING order_id, pet_first_name, pet_last_name, customer_email, customer_name,
+                     shipping_option, tracking_number, status, pack_count, add_on, chip_size, total,
+                     ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country`,
           values
         );
 
-        // Shipping notification trigger: tracking number just got set
         const row = upd.rows[0];
+        let emailSent = false;
+
+        // Shipping notification trigger: tracking number just got set
         const newTracking = ((row?.tracking_number) || '').trim();
         const crossedThreshold = !priorTracking && newTracking;
         if (crossedThreshold && row?.customer_email) {
@@ -172,12 +175,41 @@ export async function onRequest(context) {
               trackingNumber: row.tracking_number,
               shippingOption: row.shipping_option,
             });
+            emailSent = true;
           } catch (e) {
             console.error('Shipping email failed (non-fatal):', e);
           }
         }
 
-        return json(200, { success: true, emailSent: crossedThreshold });
+        // Stamp mail confirmation trigger: status just flipped to 'printed'
+        const statusJustPrinted = priorStatus !== 'printed' && row?.status === 'printed';
+        if (statusJustPrinted && row?.shipping_option === 'stamp' && row?.customer_email) {
+          try {
+            await sendOrderConfirmationEmail(env, {
+              orderId:        row.order_id,
+              customerEmail:  row.customer_email,
+              customerName:   row.customer_name,
+              petFirstName:   row.pet_first_name,
+              petLastName:    row.pet_last_name,
+              packCount:      row.pack_count,
+              addOn:          row.add_on,
+              chipSize:       row.chip_size,
+              shippingOption: row.shipping_option,
+              total:          row.total,
+              shipAddrLine1:  row.ship_addr_line1,
+              shipAddrLine2:  row.ship_addr_line2,
+              shipCity:       row.ship_city,
+              shipState:      row.ship_state,
+              shipZip:        row.ship_zip,
+              shipCountry:    row.ship_country,
+            });
+            emailSent = true;
+          } catch (e) {
+            console.error('Stamp mail confirmation email failed (non-fatal):', e);
+          }
+        }
+
+        return json(200, { success: true, emailSent });
       }
 
       case 'delete_all_orders': {

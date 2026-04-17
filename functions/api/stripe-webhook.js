@@ -118,10 +118,10 @@ export async function onRequest(context) {
       );
       console.log(`Order ${orderId} marked as paid — customer: ${email}`);
 
-      // Fire confirmation email. Failure here must NOT fail the webhook
-      // (Stripe will retry and we'd double-charge the DB update path).
+      // Fire confirmation email for non-stamp orders only.
+      // Stamp mail orders are emailed when the admin prints/processes them.
       const row = result.rows[0];
-      if (row) {
+      if (row && row.shipping_option !== 'stamp') {
         try {
           await sendOrderConfirmationEmail(env, {
             orderId:        row.order_id,
