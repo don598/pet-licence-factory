@@ -908,8 +908,12 @@ html, body {
 }
 .label-preview-area {
   flex: 1; overflow-y: auto; padding: 20px; background: #1a1a1a;
-  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
 }
+/* On-screen preview: shrink physical print pages so multiple fit in view,
+   and prevent flex-shrink from squishing them vertically.
+   Print CSS overrides these back to 1:1 — see @media print below. */
+.label-preview-area .label-page { zoom: 0.78; flex-shrink: 0; }
 .label-preview-actions {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface2);
@@ -997,12 +1001,19 @@ html, body {
 .label-certificate .lc-ded .lc-reason { color: #222; }
 .label-certificate .lc-sig {
   margin-top: auto; padding-top: 12px; border-top: 1.5px solid #000;
-  display: flex; justify-content: space-between; align-items: flex-end; font-size: 8pt;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  gap: 10px; font-size: 8pt;
 }
-.label-certificate .lc-sig .lcs-emp { font-weight: 700; font-size: 9pt; }
+.label-certificate .lc-sig .lcs-left { flex: 1; min-width: 0; }
+.label-certificate .lc-sig .lcs-emp { font-weight: 700; font-size: 9pt; line-height: 1.25; }
 .label-certificate .lc-sig .lcs-title { color: #666; }
-.label-certificate .lc-sig img { width: 36px; height: 36px; }
-.label-certificate .lc-sig .lcs-brand { font-family: 'Press Start 2P', monospace; font-size: 6.5pt; color: #000; white-space: nowrap; text-align: right; }
+.label-certificate .lc-sig img { width: 28px; height: 28px; flex-shrink: 0; }
+.label-certificate .lc-sig .lcs-brand {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5pt; color: #555;
+  text-align: right; line-height: 1.55;
+  flex-shrink: 0;
+}
 
 /* Receipt label layout */
 .label-receipt {
@@ -1049,6 +1060,7 @@ html, body {
   .label-preview-backdrop .label-preview-actions { display: none !important; }
   .label-preview-inner { border: none !important; box-shadow: none !important; width: auto !important; height: auto !important; max-width: none !important; background: #fff !important; }
   .label-preview-area { background: #fff !important; padding: 0 !important; gap: 0 !important; display: block !important; }
+  .label-preview-area .label-page { zoom: 1 !important; }
   .label-page { box-shadow: none !important; }
 }
 
@@ -1074,19 +1086,15 @@ html, body {
   gap: 6px;
 }
 .sidebar-brand {
-  display: flex; align-items: center; gap: 10px;
-  padding: 4px 8px 22px;
-  font-size: 18px; font-weight: 800;
-  color: var(--text);
-  letter-spacing: -0.02em;
+  display: block;
+  padding: 6px 8px 24px;
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: var(--accent);
+  line-height: 1.9;
+  letter-spacing: 1px;
 }
-.sidebar-brand .brand-mark {
-  width: 34px; height: 34px;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--accent);
-  border-radius: var(--r-md);
-  font-size: 18px;
-}
+.sidebar-brand span { display: block; }
 .sidebar-section-label {
   font-size: 10.5px;
   font-weight: 700;
@@ -1326,8 +1334,9 @@ html, body {
     <!-- Left nav -->
     <nav class="cs-sidebar">
       <div class="sidebar-brand">
-        <span class="brand-mark">🐾</span>
-        <span>PLF</span>
+        <span>PET</span>
+        <span>LICENCE</span>
+        <span>FACTORY</span>
       </div>
 
       <div class="sidebar-section-label">Menu</div>
@@ -1406,25 +1415,21 @@ html, body {
 
         <div class="analytics-row">
           <div class="stat-card hero">
-            <div class="stat-arrow">↗</div>
             <div class="stat-label">Total Revenue</div>
             <div class="stat-value" id="stat-revenue">$—</div>
             <div class="stat-trend"><span class="trend-chip" style="background:rgba(255,255,255,.18);color:#fff">Paid orders</span></div>
           </div>
           <div class="stat-card">
-            <div class="stat-arrow">↗</div>
             <div class="stat-label">Orders This Week</div>
             <div class="stat-value blue" id="stat-week">—</div>
             <div class="stat-trend"><span class="trend-chip">Last 7 days</span></div>
           </div>
           <div class="stat-card">
-            <div class="stat-arrow">↗</div>
             <div class="stat-label">Orders This Month</div>
             <div class="stat-value purple" id="stat-month">—</div>
             <div class="stat-trend"><span class="trend-chip">Last 30 days</span></div>
           </div>
           <div class="stat-card">
-            <div class="stat-arrow">↗</div>
             <div class="stat-label">Total Orders</div>
             <div class="stat-value" id="stat-total">—</div>
             <div class="stat-trend"><span class="trend-chip">All time</span></div>
@@ -2845,12 +2850,12 @@ function renderCertificateLabel(o) {
         <div class="lc-ded"><span class="lc-pts">-${d.pts}</span><span class="lc-reason">${esc(d.reason)}</span></div>
       `).join('')}
       <div class="lc-sig">
-        <div>
+        <div class="lcs-left">
           <div class="lcs-emp">${esc(emp.name)}</div>
           <div class="lcs-title">${esc(emp.title)}</div>
         </div>
         <img src="${pawSrc}" alt="${esc(petType)} paw print">
-        <div class="lcs-brand">Order ${esc(o.order_id || '—')}</div>
+        <div class="lcs-brand">#${esc((o.order_id || '').split('-').pop() || '—')}</div>
       </div>
     </div>
   `;
