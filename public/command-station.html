@@ -1038,6 +1038,12 @@ html, body {
 .label-receipt .lr-items { font-size: 10pt; }
 .label-receipt .lr-items-title { font-size: 9pt; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
 .label-receipt .lr-item { padding: 2px 0; }
+.label-receipt .lr-line { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 10pt; }
+.label-receipt .lr-line-name { flex: 1; }
+.label-receipt .lr-line-amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.label-receipt .lr-line-meta { color: #888; font-size: 9pt; font-weight: 400; }
+.label-receipt .lr-line.lr-sub { border-top: 1px dashed #bbb; margin-top: 4px; padding-top: 6px; font-weight: 600; }
+.label-receipt .lr-line.lr-disc { color: #0a7a35; font-weight: 600; }
 .label-receipt .lr-total { font-size: 14pt; font-weight: 700; text-align: right; margin-top: 8px; border-top: 2px solid #000; padding-top: 6px; }
 .label-receipt .lr-signoff {
   margin-top: auto; padding-top: 14px; text-align: center; font-size: 10pt;
@@ -2864,12 +2870,26 @@ function renderCertificateLabel(o) {
 function renderReceiptLabel(o) {
   const petName = [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet';
   const emp = randomAnimalEmployee();
-  const items = [];
-  const pack = parseInt(o.pack_count) || 1;
-  items.push(`${pack}-Pack Pet Licence` + (pack > 1 ? ' Skin' : ' Skin'));
-  if (o.chip_size) items.push(`Chip: ${o.chip_size}`);
-  if (o.add_on) items.push('Bonus Decal Add-on');
-  const shipMethod = (o.shipping_option || 'stamp').toUpperCase();
+
+  // ── Price breakdown — must match PRICES in create-checkout-session.js ─────
+  const PRICES = { pack1: 1395, pack2: 1999, decal: 499, stamp: 95, standard: 399, priority: 799 };
+  const fmt = (cents) => '$' + (cents / 100).toFixed(2);
+  const pack       = parseInt(o.pack_count) || 1;
+  const packLabel  = pack === 2 ? 'Pet Licence Sticker (2-Pack)' : 'Pet Licence Sticker (1-Pack)';
+  const packAmt    = pack === 2 ? PRICES.pack2 : PRICES.pack1;
+  const wantsDecal = o.add_on === 'car_decal';
+  const decalAmt   = wantsDecal ? PRICES.decal : 0;
+  const listSubtotal = packAmt + decalAmt;
+
+  const shipKey    = (o.shipping_option || 'stamp').toLowerCase();
+  const shipAmt    = PRICES[shipKey] ?? PRICES.stamp;
+  const shipLabel  = ({ stamp: 'Stamp Shipping', standard: 'Standard Shipping', priority: 'Priority Shipping' })[shipKey] || 'Shipping';
+
+  // Derive discount from actual paid total (stored as "$12.81") — avoids needing a new column.
+  const paidCents  = Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
+  const paidSubtotal = Math.max(0, paidCents - shipAmt);
+  const discountAmt  = Math.max(0, listSubtotal - paidSubtotal);
+
   return `
     <div class="label-page portrait label-receipt">
       <div class="lr-header">
@@ -2878,13 +2898,16 @@ function renderReceiptLabel(o) {
       <div class="lr-row"><span class="lr-k">Order</span><span class="lr-v">${esc(o.order_id || '—')}</span></div>
       <div class="lr-row"><span class="lr-k">Date</span><span class="lr-v">${esc(fmtDate(o.created_at))}</span></div>
       <div class="lr-row"><span class="lr-k">Pet</span><span class="lr-v">${esc(petName)}</span></div>
-      <div class="lr-row"><span class="lr-k">Shipping</span><span class="lr-v">${esc(shipMethod)}</span></div>
       <div class="lr-divider"></div>
       <div class="lr-items">
         <div class="lr-items-title">Items</div>
-        ${items.map(i => `<div class="lr-item">• ${esc(i)}</div>`).join('')}
+        <div class="lr-line"><span class="lr-line-name">${esc(packLabel)}${o.chip_size ? ` <span class="lr-line-meta">(${esc(o.chip_size)} chip)</span>` : ''}</span><span class="lr-line-amt">${fmt(packAmt)}</span></div>
+        ${wantsDecal ? `<div class="lr-line"><span class="lr-line-name">8×8" Vinyl Car Decal</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
+        <div class="lr-line lr-sub"><span class="lr-line-name">Subtotal</span><span class="lr-line-amt">${fmt(listSubtotal)}</span></div>
+        ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">Mini-game discount</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
+        <div class="lr-line"><span class="lr-line-name">${esc(shipLabel)}</span><span class="lr-line-amt">${fmt(shipAmt)}</span></div>
       </div>
-      <div class="lr-total">Total: ${esc(o.total || '—')}</div>
+      <div class="lr-total">Total: ${fmt(paidCents || (listSubtotal - discountAmt + shipAmt))}</div>
       <div class="lr-signoff">
         <div class="lr-tagline">Handcrafted with care by:</div>
         <div class="lr-paw" style="margin:8px 0;"><img src="${trackImageFor(emp.species, emp.name)}" alt="${esc(emp.species)} paw print"></div>
