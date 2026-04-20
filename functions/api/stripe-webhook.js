@@ -118,10 +118,12 @@ export async function onRequest(context) {
       );
       console.log(`Order ${orderId} marked as paid — customer: ${email}`);
 
-      // Fire confirmation email for non-stamp orders only.
-      // Stamp mail orders are emailed when the admin prints/processes them.
+      // Fire confirmation email for every paid order (stamp and non-stamp).
+      // A second "shipped" email is sent later:
+      //   - non-stamp: when the EasyPost label is bought (tracking available)
+      //   - stamp:     when the admin flips status to 'printed'
       const row = result.rows[0];
-      if (row && row.shipping_option !== 'stamp') {
+      if (row) {
         try {
           await sendOrderConfirmationEmail(env, {
             orderId:        row.order_id,

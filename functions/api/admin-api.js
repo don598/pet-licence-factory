@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb } from '../_shared/db.js';
-import { sendShippingNotificationEmail, sendOrderConfirmationEmail } from '../_shared/email.js';
+import { sendShippingNotificationEmail, sendStampShippedEmail } from '../_shared/email.js';
 import { createAndBuyLabel } from '../_shared/easypost.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -181,31 +181,20 @@ export async function onRequest(context) {
           }
         }
 
-        // Stamp mail confirmation trigger: status just flipped to 'printed'
+        // Stamp-mail shipped trigger: status just flipped to 'printed'.
+        // (Confirmation already sent at payment time by the Stripe webhook.)
         const statusJustPrinted = priorStatus !== 'printed' && row?.status === 'printed';
         if (statusJustPrinted && row?.shipping_option === 'stamp' && row?.customer_email) {
           try {
-            await sendOrderConfirmationEmail(env, {
-              orderId:        row.order_id,
-              customerEmail:  row.customer_email,
-              customerName:   row.customer_name,
-              petFirstName:   row.pet_first_name,
-              petLastName:    row.pet_last_name,
-              packCount:      row.pack_count,
-              addOn:          row.add_on,
-              chipSize:       row.chip_size,
-              shippingOption: row.shipping_option,
-              total:          row.total,
-              shipAddrLine1:  row.ship_addr_line1,
-              shipAddrLine2:  row.ship_addr_line2,
-              shipCity:       row.ship_city,
-              shipState:      row.ship_state,
-              shipZip:        row.ship_zip,
-              shipCountry:    row.ship_country,
+            await sendStampShippedEmail(env, {
+              orderId:       row.order_id,
+              customerEmail: row.customer_email,
+              petFirstName:  row.pet_first_name,
+              petLastName:   row.pet_last_name,
             });
             emailSent = true;
           } catch (e) {
-            console.error('Stamp mail confirmation email failed (non-fatal):', e);
+            console.error('Stamp shipped email failed (non-fatal):', e);
           }
         }
 

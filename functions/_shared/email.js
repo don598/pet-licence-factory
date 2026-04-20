@@ -103,7 +103,7 @@ export async function sendOrderConfirmationEmail(env, order) {
         <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
           <div style="font-family:'Press Start 2P','Courier New',monospace;font-size:20px;color:#0044cc;letter-spacing:3px;margin-bottom:20px;">PET LICENCE FACTORY</div>
           <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
-          <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">${shippingOption === 'stamp' ? 'Your Order Is On The Way!' : 'Order Confirmed!'}</h1>
+          <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Order Confirmed!</h1>
           <p style="margin:12px 0 0;font-size:14px;color:#334477;line-height:1.5;">
             ${esc(petFull)} is now the most official animal in the neighbourhood.
           </p>
@@ -187,6 +187,62 @@ Total:    ${total || '—'}
 ${addrParts ? `Shipping to:\n${customerName ? customerName + '\n' : ''}${[shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry].filter(Boolean).join('\n')}\n\n` : ''}Next up: we'll print ${petFull}'s licence, package it with care, and ship it your way. You'll get a tracking email once it's out the door.
 
 Questions? Just reply to this email.
+
+— Pet Licence Factory`;
+
+  return sendEmail(env, { to: customerEmail, subject, html, text });
+}
+
+// ── Stamp-mail shipped (called when admin flips a stamp order to 'printed') ──
+// Stamp orders have no tracking number, so this is a simpler "it's in the
+// mailbox" note vs. the full tracking email used for Standard/Priority.
+export async function sendStampShippedEmail(env, order) {
+  const { orderId, customerEmail, petFirstName, petLastName } = order;
+  if (!customerEmail) return { skipped: true, reason: 'no email' };
+
+  const petFull = [petFirstName, petLastName].filter(Boolean).join(' ') || 'your pet';
+  const subject = `📬 ${petFull}'s Pet Licence is in the mail!`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f0f5ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f0f5ff;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
+        <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
+          <div style="font-family:'Press Start 2P','Courier New',monospace;font-size:20px;color:#0044cc;letter-spacing:3px;margin-bottom:20px;">PET LICENCE FACTORY</div>
+          <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
+          <div style="font-size:32px;margin-bottom:8px;">📮</div>
+          <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">It's In The Mail!</h1>
+          <p style="margin:8px 0 20px;font-size:15px;color:#334477;line-height:1.5;">
+            ${esc(petFull)}'s licence is sealed, stamped, and on its way via USPS.
+          </p>
+          <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:4px;padding:16px;margin:16px 0;text-align:left;">
+            <div style="font-size:11px;color:#5577aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Order</div>
+            <div style="font-family:'Courier New',monospace;font-size:14px;color:#0055cc;word-break:break-all;">${esc(orderId || '—')}</div>
+          </div>
+        </td></tr>
+        <tr><td style="padding:0 32px 24px;">
+          <div style="background:#f0f8ff;border:1px dashed #0099cc;border-radius:4px;padding:14px 18px;font-size:13px;color:#223355;line-height:1.6;">
+            <strong style="color:#0099cc;">📬 No tracking number</strong> — stamp mail doesn't come with tracking. Most orders arrive in <strong>3–5 business days</strong>. If yours hasn't shown up after <strong>21 days</strong>, just reply to this email and we'll send a free replacement.
+          </div>
+        </td></tr>
+        <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
+          Questions? Reply to this email any time.<br>
+          <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text =
+`📮 ${petFull}'s Pet Licence is in the mail!
+
+Order: ${orderId || '—'}
+
+Stamp mail doesn't include a tracking number. Most orders arrive in 3–5 business days.
+If yours hasn't shown up after 21 days, just reply to this email and we'll send a free replacement.
 
 — Pet Licence Factory`;
 
