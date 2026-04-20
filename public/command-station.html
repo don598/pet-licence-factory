@@ -2904,7 +2904,7 @@ function renderReceiptLabel(o) {
         <div class="lr-line"><span class="lr-line-name">${esc(packLabel)}${o.chip_size ? ` <span class="lr-line-meta">(${esc(o.chip_size)} chip)</span>` : ''}</span><span class="lr-line-amt">${fmt(packAmt)}</span></div>
         ${wantsDecal ? `<div class="lr-line"><span class="lr-line-name">8×8" Vinyl Car Decal</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
         <div class="lr-line lr-sub"><span class="lr-line-name">Subtotal</span><span class="lr-line-amt">${fmt(listSubtotal)}</span></div>
-        ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">Mini-game discount</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
+        ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">15% Mini-game discount</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
         <div class="lr-line"><span class="lr-line-name">${esc(shipLabel)}</span><span class="lr-line-amt">${fmt(shipAmt)}</span></div>
       </div>
       <div class="lr-total">Total: ${fmt(paidCents || (listSubtotal - discountAmt + shipAmt))}</div>
