@@ -43,7 +43,7 @@ export async function onRequest(context) {
 
   let stripeEvent;
   try {
-    stripeEvent = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+    stripeEvent = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
