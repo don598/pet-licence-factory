@@ -154,8 +154,10 @@ html,body{width:100%;height:100%;background:#060808;display:flex;align-items:cen
 #lam-status{color:#00cc33;font-size:clamp(4px,.68vw,7px);text-align:center;margin-top:5px}
 #crop-canvas{display:block;cursor:grab;image-rendering:pixelated}
 #crop-canvas:active{cursor:grabbing}
-#photo-wrap{background:#000d00;border:2px solid #003a00;border-radius:4px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+#photo-wrap{background:#000d00;border:2px solid #003a00;border-radius:4px;overflow:hidden;transition:border-color .15s,box-shadow .15s;position:relative}
 #photo-wrap.drag-hot{border-color:#00ff41;box-shadow:0 0 0 3px rgba(0,255,65,.3)}
+#photo-wrap.decoding::after{content:"Decoding HEIC…";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,13,0,.85);color:#00ff41;font:bold clamp(6px,.9vw,10px)/1 'Courier New',monospace;letter-spacing:1px;animation:plf-pulse 1.2s ease-in-out infinite;z-index:5}
+@keyframes plf-pulse { 0%,100%{opacity:.55} 50%{opacity:1} }
 #licence-preview-wrap{background:#000800;border:2px solid #00cc33;border-radius:4px;overflow:hidden}
 #licence-canvas{display:block;image-rendering:auto}
 
@@ -967,18 +969,20 @@ $('zoom-out-btn').addEventListener('click', () => { cropScale=Math.max(cropScale
 // ── Photo loading pipeline (shared by file input + drag/drop) ───────────────
 // Handles size validation, HEIC/HEIF decoding (iPhone photos), and feeds the
 // resulting image into the crop canvas.
-let _heic2anyPromise = null;
-function _loadHeic2Any() {
-  if (_heic2anyPromise) return _heic2anyPromise;
-  _heic2anyPromise = new Promise((resolve, reject) => {
-    if (window.heic2any) return resolve(window.heic2any);
+let _heicToPromise = null;
+function _loadHeicTo() {
+  if (_heicToPromise) return _heicToPromise;
+  _heicToPromise = new Promise((resolve, reject) => {
+    if (window.HeicTo) return resolve(window.HeicTo);
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-    s.onload  = () => resolve(window.heic2any);
+    // heic-to bundles a modern libheif-js that decodes iOS 17+ HEIC (HDR/10-bit)
+    // — the older heic2any fails with ERR_LIBHEIF on those.
+    s.src = 'https://cdn.jsdelivr.net/npm/heic-to@1.1.13/dist/iife/heic-to.js';
+    s.onload  = () => resolve(window.HeicTo);
     s.onerror = () => reject(new Error('Could not load HEIC decoder'));
     document.head.appendChild(s);
   });
-  return _heic2anyPromise;
+  return _heicToPromise;
 }
 
 async function loadPhotoFile(file) {
@@ -989,19 +993,22 @@ async function loadPhotoFile(file) {
   const name = (file.name || '').toLowerCase();
   const isHeic = /\.(heic|heif)$/i.test(name)
               || file.type === 'image/heic'
-              || file.type === 'image/heif'
-              || (file.type === '' && /\.(heic|heif)$/i.test(name));
+              || file.type === 'image/heif';
 
   let blob = file;
   if (isHeic) {
+    const wrap = $('photo-wrap');
+    wrap?.classList.add('decoding');
     try {
-      const h2a = await _loadHeic2Any();
-      const converted = await h2a({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-      blob = Array.isArray(converted) ? converted[0] : converted;
+      const HeicTo = await _loadHeicTo();
+      // Decode takes ~20–30s for a typical iPhone HEIC on average hardware.
+      blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.9 });
     } catch (err) {
       console.error('HEIC conversion failed:', err);
       alert('Could not read this HEIC photo. Try saving it as JPEG first, or take a new photo.');
       return;
+    } finally {
+      wrap?.classList.remove('decoding');
     }
   }
 
