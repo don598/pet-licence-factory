@@ -154,7 +154,8 @@ html,body{width:100%;height:100%;background:#060808;display:flex;align-items:cen
 #lam-status{color:#00cc33;font-size:clamp(4px,.68vw,7px);text-align:center;margin-top:5px}
 #crop-canvas{display:block;cursor:grab;image-rendering:pixelated}
 #crop-canvas:active{cursor:grabbing}
-#photo-wrap{background:#000d00;border:2px solid #003a00;border-radius:4px;overflow:hidden}
+#photo-wrap{background:#000d00;border:2px solid #003a00;border-radius:4px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+#photo-wrap.drag-hot{border-color:#00ff41;box-shadow:0 0 0 3px rgba(0,255,65,.3)}
 #licence-preview-wrap{background:#000800;border:2px solid #00cc33;border-radius:4px;overflow:hidden}
 #licence-canvas{display:block;image-rendering:auto}
 
@@ -323,8 +324,8 @@ html,body{width:100%;height:100%;background:#060808;display:flex;align-items:cen
             <button class="btn ghost" id="zoom-out-btn">－</button>
             <button class="btn ghost" onclick="resetCrop()" style="color:#ff4444;border-color:#ff4444">Reset</button>
           </div>
-          <input type="file" id="photo-file" accept="image/*" style="display:none"/>
-          <p style="color:#003a00;font-size:clamp(5px,.65vw,7px);margin-top:4px;line-height:1.7;">Drag to reposition · Zoom to fit</p>
+          <input type="file" id="photo-file" accept="image/*,.heic,.heif" style="display:none"/>
+          <p style="color:#003a00;font-size:clamp(5px,.65vw,7px);margin-top:4px;line-height:1.7;">Drop photo here or click Upload · HEIC OK · Drag preview to reposition</p>
         </div>
         <div style="text-align:center;">
           <p style="color:#00cc33;font-size:clamp(5px,.7vw,7px);margin-bottom:4px;">LICENCE PREVIEW</p>
@@ -963,11 +964,93 @@ cropCanvas.addEventListener('touchmove', e => { if(!cropDrag||!cropImg)return; c
 cropCanvas.addEventListener('touchend', () => cropDrag=false);
 $('zoom-in-btn').addEventListener('click', () => { cropScale=Math.min(cropScale*1.18,6); drawCrop(); refreshLicPreview(); });
 $('zoom-out-btn').addEventListener('click', () => { cropScale=Math.max(cropScale/1.18,.1); drawCrop(); refreshLicPreview(); });
+// ── Photo loading pipeline (shared by file input + drag/drop) ───────────────
+// Handles size validation, HEIC/HEIF decoding (iPhone photos), and feeds the
+// resulting image into the crop canvas.
+let _heic2anyPromise = null;
+function _loadHeic2Any() {
+  if (_heic2anyPromise) return _heic2anyPromise;
+  _heic2anyPromise = new Promise((resolve, reject) => {
+    if (window.heic2any) return resolve(window.heic2any);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    s.onload  = () => resolve(window.heic2any);
+    s.onerror = () => reject(new Error('Could not load HEIC decoder'));
+    document.head.appendChild(s);
+  });
+  return _heic2anyPromise;
+}
+
+async function loadPhotoFile(file) {
+  if (!file) return;
+  if (file.size > 20 * 1024 * 1024) { alert('Photo must be under 20 MB.'); return; }
+
+  // Detect HEIC/HEIF (iPhone default format — browsers can't decode natively)
+  const name = (file.name || '').toLowerCase();
+  const isHeic = /\.(heic|heif)$/i.test(name)
+              || file.type === 'image/heic'
+              || file.type === 'image/heif'
+              || (file.type === '' && /\.(heic|heif)$/i.test(name));
+
+  let blob = file;
+  if (isHeic) {
+    try {
+      const h2a = await _loadHeic2Any();
+      const converted = await h2a({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+      blob = Array.isArray(converted) ? converted[0] : converted;
+    } catch (err) {
+      console.error('HEIC conversion failed:', err);
+      alert('Could not read this HEIC photo. Try saving it as JPEG first, or take a new photo.');
+      return;
+    }
+  }
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      cropImg = img;
+      const cw = cropCanvas.width;
+      const r  = Math.max(cw / img.width, cw / img.height);
+      cropScale = r;
+      cropOffX = (cw - img.width  * r) / 2;
+      cropOffY = (cw - img.height * r) / 2;
+      drawCrop();
+      refreshLicPreview();
+      $('approve-btn').disabled = false;
+      beep(660, .08);
+    };
+    img.onerror = () => alert('Could not read that image. Try a different file.');
+    img.src = ev.target.result;
+  };
+  reader.onerror = () => alert('Could not read that image. Try a different file.');
+  reader.readAsDataURL(blob);
+}
+
 $('photo-file').addEventListener('change', e => {
-  const file = e.target.files[0]; if (!file) return;
-  if (file.size > 10 * 1024 * 1024) { alert('Photo must be under 10 MB.'); e.target.value = ''; return; }
-  const reader = new FileReader(); reader.onload = ev => { const img=new Image(); img.onload=()=>{ cropImg=img; const cw=cropCanvas.width,r=Math.max(cw/img.width,cw/img.height); cropScale=r; cropOffX=(cw-img.width*r)/2; cropOffY=(cw-img.height*r)/2; drawCrop(); refreshLicPreview(); $('approve-btn').disabled=false; beep(660,.08); }; img.src=ev.target.result; }; reader.readAsDataURL(file);
+  const file = e.target.files[0];
+  loadPhotoFile(file);
+  e.target.value = '';   // allow re-uploading the same file
 });
+
+// ── Drag & drop onto the photo wrap ─────────────────────────────────────────
+(function attachDnD() {
+  const wrap = $('photo-wrap');
+  if (!wrap) return;
+  const kill = e => { e.preventDefault(); e.stopPropagation(); };
+  ['dragenter','dragover'].forEach(ev => wrap.addEventListener(ev, e => { kill(e); wrap.classList.add('drag-hot'); }));
+  ['dragleave','dragend'].forEach(ev => wrap.addEventListener(ev, e => { kill(e); wrap.classList.remove('drag-hot'); }));
+  wrap.addEventListener('drop', e => {
+    kill(e);
+    wrap.classList.remove('drag-hot');
+    const file = e.dataTransfer?.files?.[0];
+    if (file) loadPhotoFile(file);
+  });
+  // Also stop the window from navigating if the user misses the target
+  ['dragover','drop'].forEach(ev => window.addEventListener(ev, e => {
+    if (!wrap.contains(e.target)) e.preventDefault();
+  }));
+})();
 
 // ── Licence compositor: Updated template ──
 const licCanvas = $('licence-canvas');
