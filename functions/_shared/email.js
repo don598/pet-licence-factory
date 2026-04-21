@@ -89,7 +89,7 @@ export async function sendOrderConfirmationEmail(env, order) {
   const addrParts = [shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry]
     .filter(Boolean).join('<br>');
 
-  const subject = `🐾 Order confirmed — ${petFull}'s Pet Licence is on the way!`;
+  const subject = `🐾 Order confirmed — ${petFull}'s Pet Licence is being processed!`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -101,7 +101,7 @@ export async function sendOrderConfirmationEmail(env, order) {
 
         <!-- Header -->
         <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <div style="font-family:'Press Start 2P','Courier New',monospace;font-size:20px;color:#0044cc;letter-spacing:3px;margin-bottom:20px;">PET LICENCE FACTORY</div>
+          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Order Confirmed!</h1>
           <p style="margin:12px 0 0;font-size:14px;color:#334477;line-height:1.5;">
@@ -210,7 +210,7 @@ export async function sendStampShippedEmail(env, order) {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <div style="font-family:'Press Start 2P','Courier New',monospace;font-size:20px;color:#0044cc;letter-spacing:3px;margin-bottom:20px;">PET LICENCE FACTORY</div>
+          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <div style="font-size:32px;margin-bottom:8px;">📮</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">It's In The Mail!</h1>
@@ -267,7 +267,7 @@ export async function sendShippingNotificationEmail(env, order) {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <div style="font-family:'Press Start 2P','Courier New',monospace;font-size:20px;color:#0044cc;letter-spacing:3px;margin-bottom:20px;">PET LICENCE FACTORY</div>
+          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <div style="font-size:32px;margin-bottom:8px;">📬</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Shipped!</h1>
