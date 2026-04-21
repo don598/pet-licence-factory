@@ -1714,12 +1714,32 @@ async function s5Checkout() {
     return;
   }
 
-  // Stash a snapshot of the rendered licence card so the success page
-  // can display a personalized preview on return from Stripe.
+  // Stash a snapshot of the rendered licence card (WITH the chip composited
+  // on top, matching the preview shown in the checkout flow) so the success
+  // page can display a personalized preview on return from Stripe.
   try {
     const licCanvas = document.getElementById('licence-canvas');
-    const dataUrl = licCanvas ? licCanvas.toDataURL('image/jpeg', 0.85) : null;
-    if (dataUrl) {
+    if (licCanvas) {
+      const off = document.createElement('canvas');
+      off.width  = licCanvas.width;
+      off.height = licCanvas.height;
+      const octx = off.getContext('2d');
+      octx.drawImage(licCanvas, 0, 0);
+      // Chip overlay — geometry must match drawLicWithChip() below.
+      if (chipSize) {
+        const cw = off.width, ch = off.height;
+        const chipL = cw * 0.13, chipT = ch * 0.27;
+        const chipW = chipSize === 'mini' ? cw * 0.1168 : cw * 0.1402;
+        const chipH = chipSize === 'mini' ? ch * 0.1426 : ch * 0.2038;
+        const chipImg = new Image();
+        chipImg.crossOrigin = 'anonymous';
+        await new Promise((res) => {
+          chipImg.onload  = () => { octx.drawImage(chipImg, chipL, chipT, chipW, chipH); res(); };
+          chipImg.onerror = () => res();   // fall back to chip-less snapshot
+          chipImg.src = chipSize === 'mini' ? 'images/mini-chip.png' : 'images/classic-chip.png';
+        });
+      }
+      const dataUrl = off.toDataURL('image/jpeg', 0.85);
       localStorage.setItem('plf_last_preview', JSON.stringify({
         orderId,
         petFirstName: petData.petFirstName || '',
