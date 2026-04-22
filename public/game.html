@@ -1115,9 +1115,14 @@ function refreshLicPreview(){
   const tfs=[{k:'dlNumber',v:petData.dlNumber||'',c:'#1a0a00'},{k:'expDate',v:petData.expDate||'',c:'#1a0a00'},{k:'issDate',v:petData.issDate||'',c:'#1a0a00'},{k:'dob',v:petData.dob||'',c:'#c0200a'},{k:'firstName',v:petData.petFirstName||'',c:'#1a0a00'},{k:'lastName',v:petData.petLastName||'',c:'#1a0a00'},{k:'addrLine1',v:addr.l1,c:'#1a0a00'},{k:'addrLine2',v:addr.l2,c:'#1a0a00'},{k:'height',v:petData.height||'',c:'#1a0a00'},{k:'sex',v:petData.sex||'',c:'#1a0a00'},{k:'weight',v:petData.weight||'',c:'#1a0a00'},{k:'eyes',v:petData.eyeColor||'',c:'#1a0a00'},{k:'licClass',v:petData.licenceClass||'',c:'#1a0a00'},{k:'restrict',v:petData.restrictions||'ALL',c:'#1a0a00'}];
   licCtx.textBaseline='middle';
   const pxFloor=3*_licDPR, pxCap=7*_licDPR;
+  // The pet name is the hero text on the card — give it a larger cap so it
+  // reads closer to the admin/Command Station preview instead of shrinking
+  // to the same size as the tiny data fields.
+  const pxCapName = 9*_licDPR;
   tfs.forEach(({k,v,c})=>{
     const f=sf(k);
-    let px=Math.max(pxFloor,Math.min(f.h*.35,f.w*.10,pxCap));
+    const cap = (k === 'firstName' || k === 'lastName') ? pxCapName : pxCap;
+    let px=Math.max(pxFloor,Math.min(f.h*.35,f.w*.10,cap));
     licCtx.fillStyle=c; licCtx.textAlign='left';
     licCtx.font=`${px}px 'Press Start 2P',monospace`;
     while(licCtx.measureText(v).width > f.w-6 && px > pxFloor) { px -= 0.3; licCtx.font=`${px}px 'Press Start 2P',monospace`; }
