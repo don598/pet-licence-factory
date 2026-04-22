@@ -166,7 +166,7 @@ async function seed() {
       oid, o.status, o.pet_first_name, o.pet_last_name,
       o.dl_number, o.dob, o.exp_date, o.iss_date,
       o.addr_line1, o.addr_line2, o.sex, o.height, o.weight, o.eyes,
-      'A', 'NONE', signature,
+      'A', 'ALL', signature,
       o.pack_count, o.total, o.chip_size, o.add_on, o.shipping_option,
       photoUrl,
       o.customer_name, o.customer_email,

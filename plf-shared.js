@@ -195,7 +195,7 @@ function validateAndBuildPetData() {
       dlNumber: String(Math.floor(1000000000 + Math.random() * 8999999999)),
       dob, issDate: iss, expDate: expS, sex, species, eyeColor: eyes, weight,
       height: height.toUpperCase(), licenceClass: classMap[species] || 'D',
-      restrictions: 'H', addrMode,
+      restrictions: 'ALL', addrMode,
       addrLine1: addrMode === 'real' ? $('fAddr1').value.trim() : '456 Woofington Drive',
       addrLine2: addrMode === 'real' ? $('fAddr2').value.trim() : 'Tailwag, TX 76543',
     }

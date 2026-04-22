@@ -77,7 +77,7 @@ export async function onRequest(context) {
         s(body.weight),
         s(body.eyeColor),
         'A',
-        'NONE',
+        'ALL',
         (s(body.petFirstName) + ' ' + s(body.petLastName)).trim(),
         photoUrl,
         parseInt(body.packQty) || 1,
