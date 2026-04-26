@@ -103,8 +103,10 @@ export async function createAndBuyLabel(env, order) {
       to_address:   toAddressFrom(order),
       from_address: FROM_ADDRESS,
       parcel:       parcelFor(order),
-      // Let EasyPost verify the recipient address and warn us about bad ones
-      options: { address_validation_level: 'none' },
+      // Strict USPS verification: fail before buying postage if the address is
+      // undeliverable. Stripe's address autocomplete is format-only — it won't
+      // catch wrong house numbers, missing apt suffixes, or ZIP/city mismatches.
+      options: { address_validation_level: 'verify_strict' },
     },
   });
 
@@ -137,5 +139,72 @@ export async function createAndBuyLabel(env, order) {
     carrier:         chosen.carrier,
     service:         chosen.service,
     shipment_id:     shipment.id,
+  };
+}
+
+/**
+ * Standalone USPS address verification — used at webhook time, before the
+ * Stripe auth is captured, to make sure we can actually deliver to this
+ * address. Costs ~$0.02 per US verification (not bundled with a label).
+ *
+ * Pass an address shaped like a pet_orders row's ship_* fields.
+ *
+ * Returns:
+ *   { ok: true, normalized: { street1, street2, city, state, zip, country } }
+ *   { ok: false, error: 'human-readable reason from USPS' }
+ *
+ * Throws only on hard failures (network, missing API key) — verification
+ * "address is bad" is a soft `ok: false` result the caller can handle.
+ */
+export async function verifyAddress(env, address) {
+  if (!address || !address.street1 || !address.city || !address.state || !address.zip) {
+    return { ok: false, error: 'Address is missing required fields (street, city, state, or ZIP).' };
+  }
+
+  // Build the EasyPost Address payload with strict verification. EasyPost
+  // returns 200 even for undeliverable addresses; we read `verifications.delivery`
+  // to determine the actual outcome.
+  const payload = {
+    address: {
+      street1: address.street1,
+      street2: address.street2 || '',
+      city:    address.city,
+      state:   address.state,
+      zip:     address.zip,
+      country: address.country || 'US',
+      verify:  ['delivery'],
+    },
+  };
+
+  let data;
+  try {
+    data = await ep(env, 'POST', '/addresses', payload);
+  } catch (err) {
+    // Hard failure (network, auth, etc.) — bubble up so the webhook can decide
+    // whether to retry or hold the order.
+    throw err;
+  }
+
+  const delivery = data?.verifications?.delivery;
+  const success  = !!delivery?.success;
+
+  if (!success) {
+    const errs = Array.isArray(delivery?.errors) ? delivery.errors : [];
+    const reason = errs.length > 0
+      ? errs.map(e => e.message || e.code || 'unknown').filter(Boolean).join('; ')
+      : 'USPS could not verify this address.';
+    return { ok: false, error: reason };
+  }
+
+  return {
+    ok: true,
+    normalized: {
+      street1: data.street1 || address.street1,
+      street2: data.street2 || address.street2 || '',
+      city:    data.city    || address.city,
+      state:   data.state   || address.state,
+      zip:     data.zip     || address.zip,
+      country: data.country || address.country || 'US',
+    },
   };
 }

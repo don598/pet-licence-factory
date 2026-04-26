@@ -88,6 +88,20 @@ CREATE TABLE IF NOT EXISTS admin_tasks (
 -- ================================================================
 ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS pet_species TEXT;
 
+-- Address-verification flow (auth + capture pattern):
+--   stripe_session_id        — used as the auth token by /api/order-status and /api/update-address
+--   stripe_payment_intent    — needed to capture/cancel the auth in the webhook
+--   verification_attempts    — capped at 5 retries on the success page before order is locked
+--   verification_error       — last EasyPost error text, surfaced in success page + admin
+-- Order statuses can include: pending, address_pending_verification, address_invalid,
+--   paid, shipped, printed, completed, refunded, etc.
+ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS stripe_session_id     TEXT;
+ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS stripe_payment_intent TEXT;
+ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS verification_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS verification_error    TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_pet_orders_stripe_session_id ON pet_orders (stripe_session_id);
+
 -- ================================================================
 --  Done! Tables: pet_orders, admin_tasks
 -- ================================================================

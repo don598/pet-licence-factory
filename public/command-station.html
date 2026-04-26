@@ -515,6 +515,45 @@ html, body {
 .badge-shipped  { background: rgba(37,99,235,.12); color: var(--blue); }
 .badge-complete { background: rgba(124,58,237,.12); color: var(--purple); }
 .badge-cancelled{ background: rgba(220,38,38,.12); color: var(--red); }
+.badge-address_pending_verification { background: rgba(217,119,6,.12); color: var(--amber); }
+.badge-address_invalid {
+  background: rgba(220,38,38,.18); color: var(--red);
+  animation: addrInvalidPulse 2.4s ease-in-out infinite;
+}
+@keyframes addrInvalidPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+  50%     { box-shadow: 0 0 0 4px rgba(220,38,38,.18); }
+}
+
+/* Verification banner shown at the top of the order modal */
+.verify-alert {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: rgba(220,38,38,.08);
+  border: 1px solid rgba(220,38,38,.4);
+  border-left: 4px solid var(--red);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  color: #4a1212;
+}
+.verify-alert.pending {
+  background: rgba(217,119,6,.08);
+  border-color: rgba(217,119,6,.4);
+  border-left-color: var(--amber);
+  color: #4a3000;
+}
+.verify-alert .va-icon { font-size: 18px; line-height: 1.2; flex: 0 0 auto; }
+.verify-alert .va-body { flex: 1; min-width: 0; font-size: 13px; line-height: 1.5; }
+.verify-alert .va-body strong { display: block; font-weight: 600; margin-bottom: 4px; }
+.verify-alert .va-reason {
+  display: block; margin-top: 6px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 12px; color: inherit; opacity: .85;
+  background: rgba(0,0,0,.04);
+  padding: 6px 8px; border-radius: 3px;
+  word-break: break-word;
+}
+.verify-alert .va-meta { font-size: 11px; opacity: .7; margin-top: 6px; }
 
 /* Decal alert — high-visibility ribbon on orders that include a car decal */
 .decal-alert {
@@ -1539,6 +1578,17 @@ html, body {
     </div>
 
     <div class="modal-body">
+      <!-- Address-verification alert — surfaces address_invalid + address_pending_verification -->
+      <div id="verify-alert" class="verify-alert" style="display:none">
+        <span class="va-icon" id="verify-alert-icon">⚠️</span>
+        <div class="va-body">
+          <strong id="verify-alert-title">Address could not be verified</strong>
+          <span id="verify-alert-message">USPS rejected the shipping address. The customer's card has been authorised but not charged — the auth drops in 7 days.</span>
+          <span class="va-reason" id="verify-alert-reason"></span>
+          <span class="va-meta" id="verify-alert-meta"></span>
+        </div>
+      </div>
+
       <!-- Decal alert ribbon — only shown when order includes car decal -->
       <div id="decal-alert" class="decal-alert" style="display:none">
         <span class="decal-icon">🎯</span>
@@ -1588,6 +1638,8 @@ html, body {
             <label>Status</label>
             <select id="edit-status">
               <option value="pending">Pending</option>
+              <option value="address_pending_verification">Address — Verifying…</option>
+              <option value="address_invalid">Address — Invalid (auth held)</option>
               <option value="paid">Paid</option>
               <option value="processed">Processed</option>
               <option value="shipped">Shipped</option>
@@ -2196,6 +2248,35 @@ async function openOrder(dbId) {
   // Decal alert — only shown when car decal was added
   document.getElementById('decal-alert').style.display =
     order.add_on === 'car_decal' ? 'flex' : 'none';
+
+  // Address-verification banner — surfaces address_invalid + address_pending_verification
+  const verifyAlert = document.getElementById('verify-alert');
+  if (order.status === 'address_invalid') {
+    verifyAlert.style.display = 'flex';
+    verifyAlert.classList.remove('pending');
+    document.getElementById('verify-alert-icon').textContent    = '⚠️';
+    document.getElementById('verify-alert-title').textContent   = 'Address could not be verified';
+    document.getElementById('verify-alert-message').textContent =
+      "USPS rejected the shipping address. The customer's card was authorised but never charged. They can fix the address on the success page (max 5 retries); the auth drops in ~7 days if they don't.";
+    const reason = order.verification_error
+      ? `USPS: ${order.verification_error}`
+      : 'No specific reason returned by USPS.';
+    document.getElementById('verify-alert-reason').textContent = reason;
+    const attempts = order.verification_attempts || 0;
+    document.getElementById('verify-alert-meta').textContent =
+      `Verification attempts: ${attempts} / 5${attempts >= 5 ? ' — locked, payment auth has been voided.' : ''}`;
+  } else if (order.status === 'address_pending_verification') {
+    verifyAlert.style.display = 'flex';
+    verifyAlert.classList.add('pending');
+    document.getElementById('verify-alert-icon').textContent    = '⏳';
+    document.getElementById('verify-alert-title').textContent   = 'Verifying address…';
+    document.getElementById('verify-alert-message').textContent =
+      "Webhook is still in flight. If this state persists for more than a minute, check the Stripe webhook delivery and Cloudflare function logs.";
+    document.getElementById('verify-alert-reason').textContent = '';
+    document.getElementById('verify-alert-meta').textContent   = '';
+  } else {
+    verifyAlert.style.display = 'none';
+  }
 
   // Summary hints on the collapsed section headers
   const petSummary = [order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ')

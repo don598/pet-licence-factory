@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import Stripe from 'stripe';
+import { getDb } from '../_shared/db.js';
 
 // Prices in US cents — must match PRICES in plf-shared.js
 const PRICES = {
@@ -142,6 +143,12 @@ export async function onRequest(context) {
         },
       ],
       customer_creation: 'always',
+      // Auth-only: we capture the funds in the webhook only after USPS
+      // verifies the shipping address. If verification fails, the auth is
+      // voided and the customer is never charged.
+      payment_intent_data: {
+        capture_method: 'manual',
+      },
       metadata: {
         order_id:        orderId,
         pet_first_name:  (petData.petFirstName || '').slice(0, 100),
@@ -153,6 +160,21 @@ export async function onRequest(context) {
       success_url: successUrl,
       cancel_url:  cancel,
     });
+
+    // Persist the session id on the order so the public success page can
+    // poll /api/order-status?session_id=... without exposing PII via the
+    // (guessable) order_id alone. Non-fatal if it fails — the webhook can
+    // still find the order via metadata.order_id.
+    if (orderId) {
+      try {
+        await getDb(env).query(
+          `UPDATE pet_orders SET stripe_session_id = $1 WHERE order_id = $2`,
+          [session.id, orderId]
+        );
+      } catch (err) {
+        console.error('Failed to persist stripe_session_id (non-fatal):', err);
+      }
+    }
 
     return json(200, { url: session.url, sessionId: session.id });
 

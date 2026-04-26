@@ -35,7 +35,7 @@ function verifyToken(request, env) {
 }
 
 // Whitelist of columns that admin can update on pet_orders
-const ALLOWED_ORDER_UPDATES = ['status', 'tracking_number', 'notes', 'shipping_label_url'];
+const ALLOWED_ORDER_UPDATES = ['status', 'tracking_number', 'notes', 'shipping_label_url', 'verification_error'];
 
 // ── Handler ─────────────────────────────────────────────────────────────────
 
@@ -106,7 +106,8 @@ export async function onRequest(context) {
           `SELECT id, order_id, status, created_at, updated_at, pet_first_name, pet_last_name,
                   customer_email, customer_name, shipping_option, total, pack_count, add_on,
                   chip_size, tracking_number, notes, stripe_payment_id,
-                  ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country
+                  ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country,
+                  verification_error, verification_attempts
            FROM pet_orders ORDER BY created_at DESC LIMIT $1`,
           [limit]
         );

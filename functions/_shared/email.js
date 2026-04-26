@@ -249,6 +249,83 @@ If yours hasn't shown up after 21 days, just reply to this email and we'll send 
   return sendEmail(env, { to: customerEmail, subject, html, text });
 }
 
+// ── Address-issue email (called from webhook when USPS verification fails) ──
+// Sent when the customer's auth went through but the address couldn't be
+// verified. The customer hasn't been charged — the auth is held for ~7 days.
+// Email gives them a link back to the success page where they can fix it.
+export async function sendAddressIssueEmail(env, order) {
+  const { orderId, customerEmail, petFirstName, petLastName, sessionId, reason, siteOrigin } = order;
+  if (!customerEmail) return { skipped: true, reason: 'no email' };
+
+  const petFull = [petFirstName, petLastName].filter(Boolean).join(' ') || 'your pet';
+  const fixUrl  = `${siteOrigin || 'https://pet-licence-factory.pages.dev'}/success.html?session_id=${encodeURIComponent(sessionId || '')}&order_id=${encodeURIComponent(orderId || '')}`;
+  const subject = `⚠️ We couldn't verify your shipping address for ${petFull}'s licence`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f0f5ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f0f5ff;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #e0a800;border-radius:8px;overflow:hidden;">
+        <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#fff8e1 0%,#ffffff 100%);">
+          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <div style="font-size:32px;margin-bottom:8px;">⚠️</div>
+          <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#a86c00;letter-spacing:2px;text-transform:uppercase;line-height:1.5;">Address Couldn't Be<br>Verified</h1>
+          <p style="margin:14px 0 4px;font-size:15px;color:#334477;line-height:1.5;">
+            Good news first: <strong>you have not been charged.</strong>
+          </p>
+          <p style="margin:8px 0 20px;font-size:14px;color:#334477;line-height:1.5;">
+            We tried to verify your shipping address with USPS for ${esc(petFull)}'s licence, but it didn't come back as deliverable. We've put the payment on hold so we don't ship to a bad address.
+          </p>
+        </td></tr>
+        <tr><td style="padding:0 32px 8px;">
+          <div style="background:#fff8e1;border:1px dashed #e0a800;border-radius:4px;padding:14px 18px;">
+            <div style="font-size:11px;color:#a86c00;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">USPS said:</div>
+            <div style="font-size:13px;color:#5a4a00;line-height:1.5;font-family:'Courier New',monospace;">${esc(reason || 'Address could not be verified.')}</div>
+          </div>
+        </td></tr>
+        <tr><td style="padding:20px 32px 8px;text-align:center;">
+          <a href="${esc(fixUrl)}" style="display:inline-block;padding:14px 28px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:14px;letter-spacing:1px;">Fix My Address →</a>
+          <p style="margin:14px 0 0;font-size:12px;color:#6688aa;line-height:1.5;">
+            The link above takes you back to your order. Update the address there and we'll re-verify it instantly. Once it passes, your card is charged and we get to printing.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 32px;">
+          <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:4px;padding:14px 18px;">
+            <div style="font-size:11px;color:#5577aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Order</div>
+            <div style="font-family:'Courier New',monospace;font-size:14px;color:#0055cc;word-break:break-all;">${esc(orderId || '—')}</div>
+          </div>
+        </td></tr>
+        <tr><td style="padding:0 32px 24px;font-size:13px;color:#334477;line-height:1.6;">
+          If you don't fix the address within 7 days, the card hold drops automatically and no charge is made. You can also just reply to this email and we'll sort it out manually.
+        </td></tr>
+        <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
+          Need help? Reply to this email any time.<br>
+          <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text =
+`⚠️ We couldn't verify your shipping address for ${petFull}'s licence.
+
+Good news first: you have NOT been charged.
+
+USPS said: ${reason || 'Address could not be verified.'}
+
+Fix it here: ${fixUrl}
+
+Order: ${orderId || '—'}
+
+If you don't fix the address within 7 days, the card hold drops automatically and no charge is made. You can also just reply to this email and we'll sort it out manually.
+
+— Pet Licence Factory`;
+
+  return sendEmail(env, { to: customerEmail, subject, html, text });
+}
+
 // ── Shipping notification (called when admin sets tracking number) ──────────
 export async function sendShippingNotificationEmail(env, order) {
   const { orderId, customerEmail, customerName, petFirstName, petLastName, trackingNumber, shippingOption } = order;
