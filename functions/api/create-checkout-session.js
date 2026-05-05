@@ -116,6 +116,7 @@ export async function onRequest(context) {
     // `allow_promotion_codes` — Stripe blocks both in the same session).
     let preAppliedPromoId = null;
     let allowPromotionCodes = true;
+    let freebieFreeShipping = false;  // creator welcome freebie → free stamp shipping
     const cleanPromo = String(promoCode || '').trim();
     if (cleanPromo) {
       try {
@@ -125,6 +126,13 @@ export async function onRequest(context) {
         if (list.data.length) {
           preAppliedPromoId   = list.data[0].id;
           allowPromotionCodes = false;
+          // Detect creator welcome freebie (kind=freebie metadata, set at
+          // promo creation time in functions/_shared/affiliate.js). Those
+          // get free stamp shipping so the creator never pays anything.
+          const meta = list.data[0].coupon?.metadata || {};
+          if (meta.kind === 'freebie' && meta.source === 'plf_affiliate') {
+            freebieFreeShipping = true;
+          }
         }
       } catch (err) {
         console.warn('promo lookup failed (continuing without preapply):', err);
@@ -141,41 +149,57 @@ export async function onRequest(context) {
       ...(preAppliedPromoId
         ? { discounts: [{ promotion_code: preAppliedPromoId }] }
         : { allow_promotion_codes: true }),
-      shipping_options: [
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            fixed_amount: { amount: PRICES.stamp, currency: 'usd' },
-            display_name: 'Stamp Shipping',
-            delivery_estimate: {
-              minimum: { unit: 'week', value: 2 },
-              maximum: { unit: 'week', value: 4 },
+      shipping_options: freebieFreeShipping
+        ? [
+            // Creator welcome freebie — free stamp shipping, no upgrades.
+            // Keeps the order genuinely free end-to-end.
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                fixed_amount: { amount: 0, currency: 'usd' },
+                display_name: 'Stamp Shipping (free)',
+                delivery_estimate: {
+                  minimum: { unit: 'week', value: 2 },
+                  maximum: { unit: 'week', value: 4 },
+                },
+              },
             },
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            fixed_amount: { amount: PRICES.standard, currency: 'usd' },
-            display_name: 'Standard Shipping',
-            delivery_estimate: {
-              minimum: { unit: 'business_day', value: 7 },
-              maximum: { unit: 'business_day', value: 14 },
+          ]
+        : [
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                fixed_amount: { amount: PRICES.stamp, currency: 'usd' },
+                display_name: 'Stamp Shipping',
+                delivery_estimate: {
+                  minimum: { unit: 'week', value: 2 },
+                  maximum: { unit: 'week', value: 4 },
+                },
+              },
             },
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            fixed_amount: { amount: PRICES.priority, currency: 'usd' },
-            display_name: 'Priority Shipping',
-            delivery_estimate: {
-              minimum: { unit: 'business_day', value: 3 },
-              maximum: { unit: 'business_day', value: 5 },
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                fixed_amount: { amount: PRICES.standard, currency: 'usd' },
+                display_name: 'Standard Shipping',
+                delivery_estimate: {
+                  minimum: { unit: 'business_day', value: 7 },
+                  maximum: { unit: 'business_day', value: 14 },
+                },
+              },
             },
-          },
-        },
-      ],
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                fixed_amount: { amount: PRICES.priority, currency: 'usd' },
+                display_name: 'Priority Shipping',
+                delivery_estimate: {
+                  minimum: { unit: 'business_day', value: 3 },
+                  maximum: { unit: 'business_day', value: 5 },
+                },
+              },
+            },
+          ],
       customer_creation: 'always',
       // Auth-only: we capture the funds in the webhook only after USPS
       // verifies the shipping address. If verification fails, the auth is

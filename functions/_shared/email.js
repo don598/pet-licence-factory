@@ -440,7 +440,7 @@ export async function sendCreatorOnboardingEmail(env, opts) {
           <div style="background:#fff8e1;border:1px solid #e0a800;border-radius:6px;padding:18px 20px;">
             <div style="font-size:11px;color:#a86c00;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">🎁 Your free Pet Licence</div>
             <p style="margin:0 0 12px;font-size:14px;color:#5a4a00;line-height:1.6;">
-              Click the button below to claim your complimentary Pet Licence sticker. We'll ship it to you so you have something real to film with.
+              Click the button below to claim your complimentary Pet Licence sticker — free product, free stamp shipping, on us.
             </p>
             <a href="${esc(freebieUrl)}" style="display:inline-block;padding:12px 22px;background:#e0a800;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">Claim My Free Licence →</a>
             <div style="margin-top:8px;font-size:11px;color:#a86c00;font-family:'Courier New',monospace;">Code: ${esc(freebieCode)} · single-use · expires in 30 days</div>
