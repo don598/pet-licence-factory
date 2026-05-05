@@ -2076,6 +2076,8 @@ async function doLogin() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     loadAll();
+    // If the user's last view was Affiliate, lazy-load it now that auth landed.
+    if (currentView === 'affiliate' && !Aff.loaded) affLoad();
   } catch (err) {
     document.getElementById('auth-error').textContent = 'Incorrect password.';
     document.getElementById('pass-input').value = '';
@@ -2150,7 +2152,10 @@ function switchView(name) {
   try { localStorage.setItem('plf_last_view', name); } catch {}
   if (name === 'stats') renderStats();
   if (name === 'tasks') setTimeout(() => { const i = document.getElementById('task-input'); if (i) i.focus(); }, 50);
-  if (name === 'affiliate' && !Aff.loaded) affLoad();
+  // Lazy-load affiliate data, but only if the user is actually authenticated.
+  // Without this guard, the restoreLastView IIFE below could fire affLoad
+  // before login, racing the auth UI and (on 401) triggering location.reload.
+  if (name === 'affiliate' && !Aff.loaded && isTokenValid()) affLoad();
 }
 (function restoreLastView() {
   try {
