@@ -1474,6 +1474,11 @@ html, body {
 .aff-modal { display: none; }
 .aff-modal.open { display: flex; }
 .aff-modal-inner { max-width: 540px; }
+/* Pad the modal body content (forms, preview body) so it doesn't jam
+   against the modal edges. The header has its own padding already. */
+#affInviteForm, #affPayoutForm { padding: 22px 24px 20px; }
+.aff-preview-body { margin: 22px 24px; }
+.aff-modal-inner .aff-form-actions { margin-bottom: 0; }
 .aff-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .aff-form-row label, .aff-stack {
   display: flex; flex-direction: column; gap: 5px;
