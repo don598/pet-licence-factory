@@ -1488,13 +1488,17 @@ html, body {
 }
 .aff-form-row input:focus, .aff-stack input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .aff-form-actions {
-  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  display: flex; gap: 10px; align-items: center; flex-wrap: nowrap;
   margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+  justify-content: flex-end;
 }
-.aff-form-actions .aff-checkbox {
-  font-size: 11.5px; color: var(--muted); margin-right: auto;
-  display: flex; gap: 6px; align-items: center; font-weight: 500;
+.aff-form-actions .aff-btn-tert { margin-right: auto; }
+.aff-checkbox-row {
+  font-size: 12px; color: var(--muted); font-weight: 500;
+  display: flex; gap: 8px; align-items: center; flex-direction: row;
+  margin: 0 0 4px;
 }
+.aff-checkbox-row input[type="checkbox"] { margin: 0; }
 .aff-form-error { color: var(--red, #ef4444); font-size: 12px; margin-top: 10px; font-weight: 500; }
 
 .aff-preview-body {
@@ -1794,19 +1798,17 @@ html, body {
         <label>Name<input name="name" required maxlength="100" /></label>
         <label>Email<input name="email" type="email" required maxlength="200" /></label>
       </div>
-      <div class="aff-form-row">
-        <label>Coupon code (3–32 chars)<input name="couponCode" required pattern="[A-Za-z0-9_-]{3,32}" /></label>
-      </div>
+      <label class="aff-stack">Coupon code (3–32 chars)<input name="couponCode" required pattern="[A-Za-z0-9_-]{3,32}" /></label>
       <div class="aff-form-row">
         <label>Commission %<input name="commissionRate" type="number" min="1" max="100" step="1" value="20" required /></label>
         <label>Customer discount %<input name="customerDiscountRate" type="number" min="1" max="100" step="1" value="15" required /></label>
       </div>
       <label class="aff-stack">Notes (optional)<textarea name="notes" rows="2" maxlength="1000"></textarea></label>
+      <label class="aff-checkbox aff-checkbox-row"><input type="checkbox" name="skipEmail" /> Don't send onboarding email yet</label>
       <div class="aff-form-actions">
-        <label class="aff-checkbox"><input type="checkbox" name="skipEmail" /> Don't send onboarding email yet</label>
+        <button type="button" class="btn-secondary aff-btn-tert" onclick="affCloseInvite()">Cancel</button>
         <button type="button" class="btn-secondary" onclick="affPreviewOnboarding()">Preview email</button>
         <button type="submit" class="btn-primary">Create &amp; send</button>
-        <button type="button" class="btn-secondary" onclick="affCloseInvite()">Cancel</button>
       </div>
       <div class="aff-form-error" id="affInviteError" hidden></div>
     </form>
@@ -1850,8 +1852,8 @@ html, body {
       <label class="aff-stack">Date<input name="paidAt" type="date" required /></label>
       <label class="aff-stack">Notes (optional)<textarea name="notes" rows="2" maxlength="500"></textarea></label>
       <div class="aff-form-actions">
+        <button type="button" class="btn-secondary aff-btn-tert" onclick="affCloseModal('affPayoutModal')">Cancel</button>
         <button type="submit" class="btn-primary">Save payout</button>
-        <button type="button" class="btn-secondary" onclick="affCloseModal('affPayoutModal')">Cancel</button>
       </div>
       <div class="aff-form-error" id="affPayoutError" hidden></div>
     </form>
