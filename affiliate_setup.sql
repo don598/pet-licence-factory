@@ -165,7 +165,26 @@ ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS affiliate_ref_at_submit  TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_pet_orders_aff_creator ON pet_orders (affiliate_creator_id);
 
+-- ── 9. Outreach templates (admin-only saved messages) ─────────────────────
+CREATE TABLE IF NOT EXISTS affiliate_outreach_templates (
+  id          BIGSERIAL    PRIMARY KEY,
+  name        TEXT         NOT NULL,
+  body        TEXT         NOT NULL,
+  notes       TEXT,
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+DO $$ BEGIN
+  CREATE TRIGGER set_affiliate_templates_updated_at
+    BEFORE UPDATE ON affiliate_outreach_templates
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+CREATE INDEX IF NOT EXISTS idx_aff_templates_name ON affiliate_outreach_templates (name);
+
 -- ================================================================
 --  Done. Tables: affiliate_creators, affiliate_clicks, affiliate_orders,
---  affiliate_payouts, affiliate_email_log, affiliate_magic_links
+--  affiliate_payouts, affiliate_email_log, affiliate_magic_links,
+--  affiliate_outreach_templates
 -- ================================================================

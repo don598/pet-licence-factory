@@ -1512,6 +1512,53 @@ html, body {
   margin-bottom: 12px; max-height: 360px; overflow: auto; line-height: 1.5;
 }
 .aff-preview-body code { color: var(--accent); font-size: 11.5px; word-break: break-all; }
+.aff-modal-inner [hidden] { display: none !important; }
+.aff-modal-inner .aff-form-error[hidden] { display: none !important; }
+
+/* ── Outreach templates ── */
+.aff-templates-inner { max-width: 640px; }
+.aff-templates-body { padding: 22px 24px 20px; }
+.aff-templates-tip {
+  font-size: 12.5px; color: var(--muted); line-height: 1.55;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 16px;
+}
+.aff-templates-tip strong { color: var(--text); font-weight: 600; }
+.aff-template-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 14px 16px; margin-bottom: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.aff-template-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+.aff-template-name {
+  font-size: 13.5px; font-weight: 700; color: var(--text);
+  flex: 1; min-width: 0;
+}
+.aff-template-meta {
+  font-size: 10.5px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .5px; font-weight: 600; flex-shrink: 0;
+}
+.aff-template-preview {
+  font-size: 12.5px; color: var(--muted); line-height: 1.55;
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 80px; overflow: hidden; position: relative;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 10px 12px;
+}
+.aff-template-preview.expanded { max-height: none; }
+.aff-template-actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.aff-template-notes { font-size: 11.5px; color: var(--muted); font-style: italic; }
+.aff-add-template {
+  width: 100%; margin-top: 6px;
+  padding: 12px; font-size: 13px; font-weight: 600;
+}
+#affTemplateForm { padding: 22px 24px 20px; }
+#affTemplateForm textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; line-height: 1.55; }
   </style>
 </head>
 <body>
@@ -1733,6 +1780,7 @@ html, body {
             <div class="page-subtitle">Invite creators, track clicks &amp; sales, and pay them out.</div>
           </div>
           <div class="page-actions">
+            <button class="btn-secondary" onclick="affOpenTemplates()"><span>📝</span> Templates</button>
             <button class="btn-secondary" onclick="affExportCsv()"><span>⬇</span> Export CSV</button>
             <button class="btn-primary" onclick="affOpenInvite()"><span>＋</span> Invite creator</button>
           </div>
@@ -1861,6 +1909,46 @@ html, body {
         <button type="submit" class="btn-primary">Save payout</button>
       </div>
       <div class="aff-form-error" id="affPayoutError" hidden></div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Outreach Templates Modal ──────────────────────────── -->
+<div class="modal-backdrop aff-modal" id="affTemplatesModal" onclick="if(event.target===this)affCloseModal('affTemplatesModal')">
+  <div class="modal-inner aff-modal-inner aff-templates-inner">
+    <div class="modal-header">
+      <h2 class="modal-title">Outreach templates</h2>
+      <button class="modal-close" onclick="affCloseModal('affTemplatesModal')">✕</button>
+    </div>
+    <div class="aff-templates-body">
+      <div class="aff-templates-tip">
+        Save the messages you use to pitch creators (DMs, cold emails, follow-ups).
+        Click <strong>Copy</strong> to grab one — paste it into Instagram, TikTok, email, wherever.
+      </div>
+      <div id="affTemplatesList"><div class="aff-empty">Loading…</div></div>
+      <button class="btn-secondary aff-add-template" onclick="affEditTemplate(null)">＋ New template</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Outreach Template Edit Modal ──────────────────────── -->
+<div class="modal-backdrop aff-modal" id="affTemplateEditModal" onclick="if(event.target===this)affCloseModal('affTemplateEditModal')">
+  <div class="modal-inner aff-modal-inner">
+    <div class="modal-header">
+      <h2 class="modal-title" id="affTemplateEditTitle">New template</h2>
+      <button class="modal-close" onclick="affCloseModal('affTemplateEditModal')">✕</button>
+    </div>
+    <form id="affTemplateForm" autocomplete="off" onsubmit="affSubmitTemplate(event)">
+      <input type="hidden" name="id" />
+      <label class="aff-stack">Name<input name="name" required maxlength="120" placeholder="Initial DM, Follow-up, Cold email…" /></label>
+      <label class="aff-stack">Message body<textarea name="body" required rows="10" maxlength="8000" placeholder="Hey [name]! Loved your last post about… "></textarea></label>
+      <label class="aff-stack">Notes (optional)<input name="notes" maxlength="500" placeholder="When to use this one…" /></label>
+      <div class="aff-form-actions">
+        <button type="button" class="btn-secondary aff-btn-tert" id="affTemplateDeleteBtn" hidden>Delete</button>
+        <button type="button" class="btn-secondary" onclick="affCloseModal('affTemplateEditModal')">Cancel</button>
+        <button type="submit" class="btn-primary">Save</button>
+      </div>
+      <div class="aff-form-error" id="affTemplateError" hidden></div>
     </form>
   </div>
 </div>
@@ -4792,6 +4880,101 @@ async function affSubmitPayout(e) {
 async function affResend(id) {
   try { await affApi('resend_onboarding', { id }); }
   catch (err) { alert('Email failed: ' + err.message); }
+}
+
+// ── Outreach templates ────────────────────────────────────────────────────
+async function affOpenTemplates() {
+  document.getElementById('affTemplatesModal').classList.add('open');
+  document.getElementById('affTemplatesList').innerHTML = '<div class="aff-empty">Loading…</div>';
+  try {
+    const { templates } = await affApi('list_templates');
+    affRenderTemplates(templates || []);
+  } catch (err) {
+    document.getElementById('affTemplatesList').innerHTML =
+      `<div class="aff-empty" style="color:var(--red,#ef4444)">${affEsc(err.message)}</div>`;
+  }
+}
+
+function affRenderTemplates(rows) {
+  const el = document.getElementById('affTemplatesList');
+  if (!rows.length) {
+    el.innerHTML = '<div class="aff-empty">No templates yet — click "New template" below to add one.</div>';
+    return;
+  }
+  el.innerHTML = rows.map(t => `
+    <div class="aff-template-card" data-id="${t.id}">
+      <div class="aff-template-head">
+        <div class="aff-template-name">${affEsc(t.name)}</div>
+        <div class="aff-template-meta">Updated ${affFmtRel(t.updated_at)}</div>
+      </div>
+      ${t.notes ? `<div class="aff-template-notes">${affEsc(t.notes)}</div>` : ''}
+      <div class="aff-template-preview" data-body="${affEsc(t.body)}">${affEsc(t.body)}</div>
+      <div class="aff-template-actions">
+        <button class="aff-mini-btn" data-act="copy">Copy</button>
+        <button class="aff-mini-btn" data-act="expand">Expand</button>
+        <button class="aff-mini-btn" data-act="edit" style="margin-left:auto;">Edit</button>
+      </div>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('.aff-template-card').forEach(card => {
+    card.addEventListener('click', e => {
+      const act  = e.target?.dataset?.act;
+      const id   = Number(card.dataset.id);
+      const row  = rows.find(r => r.id === id);
+      if (!act || !row) return;
+      if (act === 'copy')   { affCopy(row.body); affFlash(e.target, 'Copied'); }
+      if (act === 'expand') { card.querySelector('.aff-template-preview').classList.toggle('expanded'); e.target.textContent = card.querySelector('.aff-template-preview').classList.contains('expanded') ? 'Collapse' : 'Expand'; }
+      if (act === 'edit')   { affEditTemplate(row); }
+    });
+  });
+}
+
+function affEditTemplate(row) {
+  const f = document.getElementById('affTemplateForm');
+  f.reset();
+  document.getElementById('affTemplateError').hidden = true;
+  document.getElementById('affTemplateEditTitle').textContent = row ? 'Edit template' : 'New template';
+  f.elements['id'].value    = row?.id || '';
+  f.elements['name'].value  = row?.name || '';
+  f.elements['body'].value  = row?.body || '';
+  f.elements['notes'].value = row?.notes || '';
+  const delBtn = document.getElementById('affTemplateDeleteBtn');
+  if (row) {
+    delBtn.hidden = false;
+    delBtn.onclick = async () => {
+      if (!confirm(`Delete "${row.name}"?`)) return;
+      try {
+        await affApi('delete_template', { id: row.id });
+        affCloseModal('affTemplateEditModal');
+        affOpenTemplates();
+      } catch (err) { alert(err.message); }
+    };
+  } else {
+    delBtn.hidden = true;
+  }
+  document.getElementById('affTemplateEditModal').classList.add('open');
+  setTimeout(() => f.elements['name'].focus(), 60);
+}
+
+async function affSubmitTemplate(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const errEl = document.getElementById('affTemplateError');
+  errEl.hidden = true;
+  try {
+    await affApi('save_template', {
+      id:    fd.get('id') || null,
+      name:  fd.get('name'),
+      body:  fd.get('body'),
+      notes: fd.get('notes'),
+    });
+    affCloseModal('affTemplateEditModal');
+    affOpenTemplates();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+  }
 }
 
 async function affExportCsv() {

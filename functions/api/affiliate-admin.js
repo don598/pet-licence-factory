@@ -451,6 +451,53 @@ export async function onRequest(context) {
         return json(200, { success: true });
       }
 
+      // ── OUTREACH TEMPLATES ────────────────────────────────────────────
+      case 'list_templates': {
+        const r = await db.query(
+          `SELECT id, name, body, notes, created_at, updated_at
+           FROM affiliate_outreach_templates
+           ORDER BY updated_at DESC`
+        );
+        return json(200, { templates: r.rows });
+      }
+
+      case 'save_template': {
+        const id   = body.id ? parseInt(body.id) : null;
+        const name = (body.name || '').toString().trim();
+        const text = (body.body || '').toString();
+        const notes = (body.notes || '').toString().slice(0, 500) || null;
+
+        if (!name)         return json(400, { error: 'Name is required.' });
+        if (name.length > 120) return json(400, { error: 'Name must be ≤ 120 chars.' });
+        if (!text)         return json(400, { error: 'Body is required.' });
+        if (text.length > 8000) return json(400, { error: 'Body too long (max 8000 chars).' });
+
+        if (id) {
+          const r = await db.query(
+            `UPDATE affiliate_outreach_templates
+             SET name = $1, body = $2, notes = $3, updated_at = NOW()
+             WHERE id = $4
+             RETURNING *`,
+            [name, text, notes, id]
+          );
+          if (r.rows.length === 0) return json(404, { error: 'Template not found' });
+          return json(200, { template: r.rows[0] });
+        }
+        const r = await db.query(
+          `INSERT INTO affiliate_outreach_templates (name, body, notes)
+           VALUES ($1, $2, $3) RETURNING *`,
+          [name, text, notes]
+        );
+        return json(200, { template: r.rows[0] });
+      }
+
+      case 'delete_template': {
+        const id = parseInt(body.id);
+        if (!id) return json(400, { error: 'Missing id' });
+        await db.query('DELETE FROM affiliate_outreach_templates WHERE id = $1', [id]);
+        return json(200, { success: true });
+      }
+
       // ── CSV EXPORT (outstanding balances for monthly payout) ─────────
       case 'export_outstanding_csv': {
         const r = await db.query(LIST_SQL);
