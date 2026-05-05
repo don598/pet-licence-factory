@@ -55,7 +55,8 @@ export async function onRequest(context) {
   try {
     const result = await db.query(
       `SELECT order_id, status, verification_error, verification_attempts,
-              ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country
+              ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country,
+              total
        FROM pet_orders
        WHERE stripe_session_id = $1
        LIMIT 1`,
@@ -75,6 +76,7 @@ export async function onRequest(context) {
   const base = {
     orderId: row.order_id,
     status:  row.status,
+    total:   row.total || null,
   };
 
   if (row.status === 'address_invalid' || row.status === 'address_pending_verification') {

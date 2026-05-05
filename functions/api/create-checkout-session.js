@@ -1,11 +1,13 @@
 // ── Pet Licence Factory — Stripe Checkout (Cloudflare Pages Function) ───────
 // POST /api/create-checkout-session
-// Body: { orderId, packQty, wantsDecal, discountEarned, petData, origin, cancelUrl }
+// Body: { orderId, packQty, wantsDecal, discountEarned, petData, origin, cancelUrl,
+//         promoCode?, affiliateRef? }
 // Returns: { url, sessionId }
 // ---------------------------------------------------------------------------
 
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
+import { readRefCookie, normalizeCode } from '../_shared/affiliate.js';
 
 // Prices in US cents — must match PRICES in plf-shared.js
 const PRICES = {
@@ -47,7 +49,13 @@ export async function onRequest(context) {
     petData        = {},
     origin         = '',
     cancelUrl      = '',
+    promoCode      = '',
+    affiliateRef   = '',
   } = body;
+
+  // Affiliate ref resolution priority: explicit body → first-party cookie.
+  const refFromCookie = readRefCookie(request);
+  const ref = normalizeCode(affiliateRef || refFromCookie);
 
   // ── Calculate line item amounts in cents ──────────────────────────────────
   let packAmount  = packQty === 2 ? PRICES.pack2 : PRICES.pack1;
@@ -100,13 +108,39 @@ export async function onRequest(context) {
 
   // ── Create Stripe Checkout Session ───────────────────────────────────────
   try {
-    const stripe  = new Stripe(env.STRIPE_SECRET_KEY);
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+
+    // ── Resolve a `?promo=<code>` URL parameter into a Stripe promotion ──
+    // code id. If the code is valid and active, we apply it via the
+    // session's `discounts` array (which is mutually exclusive with
+    // `allow_promotion_codes` — Stripe blocks both in the same session).
+    let preAppliedPromoId = null;
+    let allowPromotionCodes = true;
+    const cleanPromo = String(promoCode || '').trim();
+    if (cleanPromo) {
+      try {
+        const list = await stripe.promotionCodes.list({
+          code: cleanPromo, active: true, limit: 1,
+        });
+        if (list.data.length) {
+          preAppliedPromoId   = list.data[0].id;
+          allowPromotionCodes = false;
+        }
+      } catch (err) {
+        console.warn('promo lookup failed (continuing without preapply):', err);
+      }
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
       shipping_address_collection: {
         allowed_countries: ['US', 'CA', 'GB', 'AU', 'NZ'],
       },
+      // Either pre-apply a promo, or let the customer type one in. Not both.
+      ...(preAppliedPromoId
+        ? { discounts: [{ promotion_code: preAppliedPromoId }] }
+        : { allow_promotion_codes: true }),
       shipping_options: [
         {
           shipping_rate_data: {
@@ -156,6 +190,7 @@ export async function onRequest(context) {
         pack_qty:        String(packQty),
         wants_decal:     String(wantsDecal),
         discount_earned: String(discountEarned),
+        affiliate_ref:   ref || '',
       },
       success_url: successUrl,
       cancel_url:  cancel,
@@ -168,8 +203,11 @@ export async function onRequest(context) {
     if (orderId) {
       try {
         await getDb(env).query(
-          `UPDATE pet_orders SET stripe_session_id = $1 WHERE order_id = $2`,
-          [session.id, orderId]
+          `UPDATE pet_orders
+             SET stripe_session_id = $1,
+                 affiliate_ref_at_submit = COALESCE(NULLIF($2, ''), affiliate_ref_at_submit)
+           WHERE order_id = $3`,
+          [session.id, ref || '', orderId]
         );
       } catch (err) {
         console.error('Failed to persist stripe_session_id (non-fatal):', err);

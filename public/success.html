@@ -711,6 +711,10 @@
 
       // Anything past pending verification (paid, shipped, completed, etc.)
       setState('confirmed');
+      try {
+        var v = parseFloat(String(data.total || '0').replace(/[^0-9.]/g, '')) || 0;
+        if (window.PLFPixels && window.PLFPixels.purchase) window.PLFPixels.purchase(v, 'USD');
+      } catch (e) { /* never break confirmation */ }
     }
 
     // Kick off polling immediately
@@ -1003,5 +1007,6 @@
       draw();
     }
   </script>
+  <script src="pixels.js"></script>
 </body>
 </html>

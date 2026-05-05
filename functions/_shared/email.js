@@ -60,7 +60,7 @@ export async function sendEmail(env, { to, subject, html, text, replyTo }) {
     console.error(`[SendGrid] ${resp.status} ${resp.statusText} — ${errBody}`);
     return { success: false, status: resp.status, error: errBody };
   }
-  return { success: true };
+  return { success: true, messageId: resp.headers.get('X-Message-Id') || null };
 }
 
 // ── Order confirmation email ────────────────────────────────────────────────
@@ -378,4 +378,183 @@ Track it: ${trackUrl}
 — Pet Licence Factory`;
 
   return sendEmail(env, { to: customerEmail, subject, html, text });
+}
+
+// ── Creator onboarding (affiliate program) ──────────────────────────────────
+// Sent at invite time. Carries everything the creator needs in one email:
+// affiliate URL, customer-facing coupon code, magic-link to their dashboard,
+// one-time freebie checkout URL with the welcome code pre-applied.
+//
+// Returns { success, status, error, messageId } so callers can log to
+// affiliate_email_log with the SendGrid message id.
+export async function sendCreatorOnboardingEmail(env, opts) {
+  const {
+    creatorName, creatorEmail,
+    affiliateCode, freebieCode, customerDiscountPct, commissionPct,
+    siteOrigin = 'https://pet-licence-factory.pages.dev',
+    dashboardToken,
+  } = opts;
+  if (!creatorEmail) return { skipped: true, reason: 'no email' };
+
+  const refUrl       = `${siteOrigin}/?ref=${encodeURIComponent(affiliateCode)}`;
+  const freebieUrl   = `${siteOrigin}/game.html?promo=${encodeURIComponent(freebieCode)}`;
+  const dashboardUrl = `${siteOrigin}/dashboard.html?token=${encodeURIComponent(dashboardToken)}`;
+
+  const subject = `🎉 You're in — your Pet Licence Factory creator kit`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f0f5ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f0f5ff;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
+
+        <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
+          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;line-height:1.6;">Welcome To The<br>Creator Kit, ${esc(creatorName || 'Creator')}!</h1>
+          <p style="margin:14px 0 0;font-size:14px;color:#334477;line-height:1.6;">
+            Everything you need to start posting and earning is right here.
+          </p>
+        </td></tr>
+
+        <!-- Coupon code -->
+        <tr><td style="padding:24px 32px 8px;">
+          <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:6px;padding:18px 20px;">
+            <div style="font-size:11px;color:#5577aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Your Coupon Code (${esc(customerDiscountPct)}% off)</div>
+            <div style="font-family:'Courier New',monospace;font-size:24px;color:#0055cc;font-weight:700;letter-spacing:2px;">${esc(affiliateCode)}</div>
+            <div style="margin-top:8px;font-size:12px;color:#5577aa;line-height:1.5;">Share this code with your audience. Anyone who uses it gets ${esc(customerDiscountPct)}% off — and you earn ${esc(commissionPct)}% commission on the order.</div>
+          </div>
+        </td></tr>
+
+        <!-- Affiliate URL -->
+        <tr><td style="padding:0 32px 8px;">
+          <div style="background:#f7faff;border:1px dashed #0088cc;border-radius:6px;padding:14px 18px;">
+            <div style="font-size:11px;color:#5577aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Your Affiliate Link</div>
+            <a href="${esc(refUrl)}" style="font-family:'Courier New',monospace;font-size:13px;color:#0055cc;word-break:break-all;text-decoration:none;">${esc(refUrl)}</a>
+            <div style="margin-top:6px;font-size:12px;color:#5577aa;line-height:1.5;">Use this in bios, captions, link-in-bio. Works even if your followers don't enter a coupon code.</div>
+          </div>
+        </td></tr>
+
+        <!-- Freebie -->
+        <tr><td style="padding:16px 32px 8px;">
+          <div style="background:#fff8e1;border:1px solid #e0a800;border-radius:6px;padding:18px 20px;">
+            <div style="font-size:11px;color:#a86c00;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">🎁 Your free Pet Licence</div>
+            <p style="margin:0 0 12px;font-size:14px;color:#5a4a00;line-height:1.6;">
+              Click the button below to claim your complimentary Pet Licence sticker. We'll ship it to you so you have something real to film with.
+            </p>
+            <a href="${esc(freebieUrl)}" style="display:inline-block;padding:12px 22px;background:#e0a800;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">Claim My Free Licence →</a>
+            <div style="margin-top:8px;font-size:11px;color:#a86c00;font-family:'Courier New',monospace;">Code: ${esc(freebieCode)} · single-use · expires in 30 days</div>
+          </div>
+        </td></tr>
+
+        <!-- Dashboard -->
+        <tr><td style="padding:16px 32px 8px;">
+          <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:6px;padding:18px 20px;text-align:center;">
+            <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:8px;">📊 Your Creator Dashboard</div>
+            <p style="margin:0 0 12px;font-size:13px;color:#334477;line-height:1.6;">
+              See clicks, sales and commission in real time. Bookmark this — it's your personal page.
+            </p>
+            <a href="${esc(dashboardUrl)}" style="display:inline-block;padding:12px 22px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">Open Dashboard →</a>
+          </div>
+        </td></tr>
+
+        <!-- Brief -->
+        <tr><td style="padding:20px 32px 8px;">
+          <h2 style="margin:0 0 10px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">📋 The Brief</h2>
+          <ul style="margin:0;padding-left:20px;font-size:13px;color:#223355;line-height:1.7;">
+            <li>Post at least one piece of content featuring your Pet Licence in the next 14 days.</li>
+            <li>You're free to use organic OR paid ads — just don't bid on our brand terms.</li>
+            <li>Tag <strong>@petlicencefactory</strong> so we can re-share.</li>
+            <li>Be honest. Show the licence; show your pet's reaction. Authenticity outperforms polish.</li>
+          </ul>
+        </td></tr>
+
+        <!-- FAQ -->
+        <tr><td style="padding:8px 32px 24px;">
+          <h2 style="margin:0 0 10px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">❓ Quick FAQ</h2>
+          <div style="font-size:13px;color:#223355;line-height:1.7;">
+            <strong style="color:#0099cc;">When am I paid?</strong><br>
+            Manually, monthly, via Venmo / PayPal / Zelle. We'll DM you the first time to confirm your handle.<br><br>
+            <strong style="color:#0099cc;">What counts as a sale?</strong><br>
+            Any paid order using your coupon code, OR any paid order from a visitor who clicked your affiliate link in the last 30 days. Refunds reverse the commission.<br><br>
+            <strong style="color:#0099cc;">Can I share both the link and the code?</strong><br>
+            Yes — share both. Whichever the customer uses, you get credit.
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
+          Questions? Just reply to this email.<br>
+          <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text =
+`Welcome to the Pet Licence Factory creator kit, ${creatorName || 'Creator'}!
+
+Your coupon code:   ${affiliateCode}   (${customerDiscountPct}% off — you earn ${commissionPct}%)
+Your affiliate URL: ${refUrl}
+
+🎁 Claim your free Pet Licence:
+${freebieUrl}
+(Code: ${freebieCode} — single-use, 30-day expiry)
+
+📊 Your dashboard:
+${dashboardUrl}
+
+The brief:
+- Post at least one piece featuring your Pet Licence in the next 14 days.
+- Organic or paid ads OK — just don't bid on our brand terms.
+- Tag @petlicencefactory.
+- Authenticity > polish.
+
+When am I paid?  Monthly, via Venmo / PayPal / Zelle.
+What counts?     Any paid order using your code, OR any paid order from a visitor who clicked your link in the last 30 days. Refunds reverse the commission.
+
+Questions? Reply to this email.
+
+— Pet Licence Factory`;
+
+  return sendEmail(env, { to: creatorEmail, subject, html, text });
+}
+
+// ── Creator magic-link (dashboard sign-in) ─────────────────────────────────
+export async function sendCreatorMagicLinkEmail(env, opts) {
+  const { creatorEmail, creatorName, magicUrl, expiresMinutes = 30 } = opts;
+  if (!creatorEmail) return { skipped: true, reason: 'no email' };
+
+  const subject = `🔑 Sign in to your Pet Licence Factory dashboard`;
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#f0f5ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f0f5ff;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
+        <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
+          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="380" style="display:block;margin:0 auto 16px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Sign In</h1>
+          <p style="margin:8px 0 20px;font-size:14px;color:#334477;line-height:1.5;">
+            ${creatorName ? `Hey ${esc(creatorName)} — c` : 'C'}lick the button to open your dashboard.
+          </p>
+          <a href="${esc(magicUrl)}" style="display:inline-block;padding:14px 28px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:14px;letter-spacing:1px;">Open Dashboard →</a>
+          <p style="margin:18px 0 0;font-size:12px;color:#6688aa;">This link expires in ${esc(expiresMinutes)} minutes and can be used once.</p>
+        </td></tr>
+        <tr><td style="padding:16px 32px 24px;font-size:12px;color:#6688aa;line-height:1.6;text-align:center;">
+          Didn't request this? Ignore it. The link won't do anything if you don't click it.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text =
+`Sign in to your Pet Licence Factory dashboard:
+${magicUrl}
+
+This link expires in ${expiresMinutes} minutes and can be used once. Didn't request this? Ignore it.`;
+
+  return sendEmail(env, { to: creatorEmail, subject, html, text });
 }

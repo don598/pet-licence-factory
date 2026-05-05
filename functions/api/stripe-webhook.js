@@ -13,6 +13,7 @@ import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { sendOrderConfirmationEmail, sendAddressIssueEmail } from '../_shared/email.js';
 import { verifyAddress } from '../_shared/easypost.js';
+import { findCreatorByCode, normalizeCode } from '../_shared/affiliate.js';
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -52,6 +53,11 @@ export async function onRequest(context) {
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+  }
+
+  // ── Refund handling (zero out commission on the affiliate row) ───────────
+  if (stripeEvent.type === 'charge.refunded') {
+    return handleChargeRefunded(stripeEvent.data.object, db);
   }
 
   if (stripeEvent.type !== 'checkout.session.completed') {
@@ -183,6 +189,20 @@ export async function onRequest(context) {
       console.error('Failed to flip order to paid (non-fatal):', err);
     }
 
+    // ── Affiliate attribution ─────────────────────────────────────────────
+    // Resolves the creator from (in order):
+    //   1. an applied promotion code on the session
+    //   2. session.metadata.affiliate_ref (set from the cookie at checkout)
+    //
+    // Records a row in affiliate_orders with the commission rate locked in,
+    // and back-fills the matching pet_orders columns so admin views can see
+    // attribution without joining. Always non-fatal.
+    try {
+      await attributeOrder(env, db, stripe, session, orderId);
+    } catch (err) {
+      console.error('Affiliate attribution failed (non-fatal):', err);
+    }
+
     // Confirmation email — same template as before
     try {
       await sendOrderConfirmationEmail(env, {
@@ -244,4 +264,183 @@ export async function onRequest(context) {
   }
 
   return json(200, { received: true, status: 'address_invalid' });
+}
+
+
+// ── Affiliate attribution ──────────────────────────────────────────────────
+// Called once per checkout.session.completed (after the order is paid).
+//
+// Tries promotion code first (path 2 in the brief), then the cookie ref
+// (path 1). If we find a creator, write the affiliate_orders row with
+// commission rate locked in and back-fill pet_orders.
+async function attributeOrder(env, db, stripe, session, orderId) {
+  // Re-fetch the session with the discount + line item totals expanded so
+  // we can resolve which promotion code was applied. The original webhook
+  // event payload doesn't always include enough detail.
+  let full;
+  try {
+    full = await stripe.checkout.sessions.retrieve(session.id, {
+      expand: ['total_details.breakdown', 'line_items'],
+    });
+  } catch (err) {
+    console.warn('session retrieve failed, falling back to event payload:', err);
+    full = session;
+  }
+
+  // ── Path 2: promo code on the session ──
+  let creator = null;
+  let attribution = null;
+  let isFreebie = false;
+
+  const discounts = full?.total_details?.breakdown?.discounts || [];
+  const promoIds  = (full?.discounts || []).map(d => d.promotion_code).filter(Boolean);
+
+  // The session's `discounts` array carries the applied promo code id(s).
+  // The breakdown carries the coupon id+amount. Try both.
+  if (promoIds.length) {
+    for (const promoId of promoIds) {
+      try {
+        const pc = await stripe.promotionCodes.retrieve(promoId);
+        const code = normalizeCode(pc.code);
+        const c = await findCreatorByCode(db, code);
+        if (c) {
+          creator     = c;
+          attribution = 'coupon';
+          // Welcome freebie code = 100% off. Mark non-commissionable.
+          if (code === c.coupon_code.toUpperCase() + '-WELCOME-' + code.slice(-4) ||
+              (pc.coupon?.percent_off === 100)) {
+            isFreebie = true;
+          }
+          break;
+        }
+      } catch (err) {
+        console.warn('promo retrieve failed:', err);
+      }
+    }
+  }
+
+  // ── Path 1: cookie-supplied affiliate_ref in metadata ──
+  if (!creator) {
+    const ref = normalizeCode(full?.metadata?.affiliate_ref || '');
+    if (ref) {
+      const c = await findCreatorByCode(db, ref);
+      if (c) {
+        creator     = c;
+        attribution = 'cookie';
+      }
+    }
+  }
+
+  if (!creator) return; // unattributed — totally fine
+
+  // ── Compute money fields ────────────────────────────────────────────────
+  // Stripe gives us amount_subtotal (pre-discount), amount_total (post),
+  // total_details.amount_discount.
+  const subtotal     = Number(full?.amount_subtotal) || 0;
+  const total        = Number(full?.amount_total)    || 0;
+  const discountCents = Number(full?.total_details?.amount_discount) || 0;
+  const shippingCents = Number(full?.total_details?.amount_shipping) || 0;
+  // Commissionable gross = post-discount, pre-shipping/tax (≈ subtotal − discount).
+  const grossCents = Math.max(0, subtotal - discountCents);
+
+  // If the freebie wasn't already detected via promo type, infer from total.
+  if (!isFreebie && total === shippingCents && grossCents === 0) {
+    isFreebie = true;
+  }
+
+  const commissionRate  = Number(creator.commission_rate);
+  const commissionCents = isFreebie ? 0 : Math.round(grossCents * commissionRate);
+
+  // Look up pet_orders.id for the FK
+  const po = await db.query('SELECT id FROM pet_orders WHERE order_id = $1 LIMIT 1', [orderId]);
+  const petOrderPK = po.rows[0]?.id || null;
+
+  // Insert (idempotent on order_id_text)
+  await db.query(
+    `INSERT INTO affiliate_orders
+       (creator_id, pet_order_id, order_id_text, stripe_session_id, stripe_payment_intent,
+        attribution_method, is_freebie, gross_cents, discount_cents,
+        commission_rate, commission_cents)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     ON CONFLICT (order_id_text) DO NOTHING`,
+    [
+      creator.id, petOrderPK, orderId,
+      full?.id || session.id, full?.payment_intent || session.payment_intent || '',
+      attribution, isFreebie, grossCents, discountCents,
+      commissionRate, commissionCents,
+    ]
+  );
+
+  // Back-fill pet_orders for at-a-glance visibility
+  await db.query(
+    `UPDATE pet_orders SET
+       affiliate_creator_id      = $1,
+       affiliate_coupon_code     = $2,
+       affiliate_commission_rate = $3,
+       affiliate_commission_cents = $4,
+       affiliate_is_freebie      = $5
+     WHERE order_id = $6`,
+    [creator.id, creator.coupon_code, commissionRate, commissionCents, isFreebie, orderId]
+  );
+
+  // If this was a freebie redemption, mark it on the creator row.
+  if (isFreebie && !creator.freebie_redeemed_at) {
+    await db.query(
+      `UPDATE affiliate_creators
+       SET freebie_redeemed_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND freebie_redeemed_at IS NULL`,
+      [creator.id]
+    );
+  }
+}
+
+
+// ── Refund handling ────────────────────────────────────────────────────────
+// charge.refunded fires whenever a refund is created on the charge. We zero
+// out commission on full refunds; on partial refunds we keep things simple
+// and zero the whole row (the payment for the order is gone).
+async function handleChargeRefunded(charge, db) {
+  const piId   = charge.payment_intent;
+  const refund = Number(charge.amount_refunded) || 0;
+  const total  = Number(charge.amount) || 0;
+
+  // Refund must reference our affiliate order. Match on payment_intent.
+  const r = await db.query(
+    `SELECT id, commission_cents, commission_zeroed
+     FROM affiliate_orders WHERE stripe_payment_intent = $1 LIMIT 1`,
+    [piId]
+  );
+  if (r.rows.length === 0) {
+    return new Response(JSON.stringify({ received: true, no_match: true }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const ao = r.rows[0];
+
+  if (ao.commission_zeroed) {
+    return new Response(JSON.stringify({ received: true, already_zeroed: true }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  await db.query(
+    `UPDATE affiliate_orders SET
+       commission_cents  = 0,
+       commission_zeroed = TRUE,
+       refunded_at       = NOW(),
+       refund_cents      = $1,
+       updated_at        = NOW()
+     WHERE id = $2`,
+    [refund, ao.id]
+  );
+  // Also zero on pet_orders for the at-a-glance view
+  await db.query(
+    `UPDATE pet_orders SET affiliate_commission_cents = 0
+     WHERE stripe_payment_intent = $1`,
+    [piId]
+  );
+
+  return new Response(JSON.stringify({ received: true, zeroed: true, refund_cents: refund }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
 }

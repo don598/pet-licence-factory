@@ -1757,6 +1757,10 @@ async function s5Checkout() {
 
   // Create Stripe Checkout session and redirect
   try {
+    // Pull affiliate ref + ?promo= so attribution + freebie code flow through
+    const affiliateRef = (window.PLFAffiliate && window.PLFAffiliate.getRef && window.PLFAffiliate.getRef()) || '';
+    const promoCode    = (new URLSearchParams(window.location.search).get('promo') || '').trim();
+
     const resp = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1768,6 +1772,8 @@ async function s5Checkout() {
         petData: { petFirstName: petData.petFirstName, petLastName: petData.petLastName },
         origin:    window.location.origin,
         cancelUrl: window.location.origin + '/game.html',
+        affiliateRef,
+        promoCode,
       }),
     });
     const data = await resp.json();
@@ -2528,5 +2534,7 @@ $('lic-backdrop').addEventListener('click', () => {
   window.addEventListener('resize', init);
 })();
 </script>
+<script src="affiliate-tracker.js"></script>
+<script src="pixels.js"></script>
 </body>
 </html>

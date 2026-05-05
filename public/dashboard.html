@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Creator Dashboard — Pet Licence Factory</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#f0f5ff; --card:#ffffff; --ink:#15243f; --muted:#5a6e94;
+  --line:rgba(0,102,255,.15); --accent:#0077ff; --accent-soft:rgba(0,119,255,.08);
+  --green:#16a34a; --green-soft:rgba(22,163,74,.08); --amber:#d97706; --red:#dc2626;
+  --pill:999px; --r:14px;
+}
+html,body { background:var(--bg); color:var(--ink); font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; }
+body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom); }
+
+.shell { max-width:540px; margin:0 auto; padding:18px 0 64px; }
+
+.brand {
+  font-family:'Press Start 2P', monospace; font-size:11px; letter-spacing:1.5px;
+  color:var(--accent); text-transform:uppercase; margin-bottom:18px; text-align:center;
+}
+
+/* ── Login ── */
+.auth-card {
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  padding:28px 22px; box-shadow:0 8px 28px rgba(15,42,90,.06); text-align:center;
+}
+.auth-card h1 { font-size:20px; font-weight:600; margin-bottom:6px; }
+.auth-card p  { font-size:13px; color:var(--muted); margin-bottom:18px; }
+.auth-card form { display:flex; flex-direction:column; gap:10px; }
+.auth-card input {
+  font:inherit; font-size:15px; padding:13px 14px; border-radius:10px;
+  border:1px solid var(--line); background:#fafbff; color:var(--ink); width:100%;
+}
+.auth-card input:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+.auth-card button {
+  font:inherit; font-size:15px; font-weight:600; padding:13px 14px;
+  border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer;
+}
+.auth-card button:disabled { opacity:.6; cursor:not-allowed; }
+.auth-msg { font-size:13px; margin-top:10px; }
+.auth-msg.ok  { color:var(--green); }
+.auth-msg.err { color:var(--red); }
+
+/* ── Dashboard ── */
+.greeting { padding:4px 4px 16px; }
+.greeting h1 { font-size:22px; font-weight:600; line-height:1.2; }
+.greeting .sub { font-size:13px; color:var(--muted); margin-top:2px; }
+
+.card {
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  padding:18px 18px; margin-bottom:14px; box-shadow:0 2px 10px rgba(15,42,90,.04);
+}
+.card-label { font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin-bottom:8px; }
+.code-display {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:#f7faff; border:1px dashed var(--accent); border-radius:10px; padding:12px 14px;
+}
+.code-display code {
+  font-family:'SF Mono',Menlo,Consolas,monospace; font-size:18px;
+  letter-spacing:1.4px; color:var(--accent); font-weight:700; word-break:break-all; flex:1;
+}
+.copy-btn {
+  background:var(--accent); color:#fff; border:none; border-radius:8px;
+  padding:8px 14px; font:inherit; font-weight:600; font-size:12px; cursor:pointer;
+  flex-shrink:0;
+}
+.copy-btn:active { transform:scale(.98); }
+.copy-btn.copied { background:var(--green); }
+
+.url-display {
+  display:flex; align-items:center; gap:10px;
+  background:#f7faff; border:1px solid var(--line); border-radius:10px; padding:11px 14px;
+  font-size:12px;
+}
+.url-display code {
+  flex:1; font-family:'SF Mono',Menlo,monospace; color:var(--accent);
+  word-break:break-all; line-height:1.4;
+}
+
+/* ── Stats grid ── */
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+.stat {
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  padding:14px 12px; text-align:center;
+}
+.stat-num   { font-size:22px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.1; }
+.stat-label { font-size:10px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin-top:6px; }
+.stat-trend { font-size:11px; margin-top:4px; color:var(--muted); }
+.stat-trend.up   { color:var(--green); }
+.stat-trend.down { color:var(--red); }
+
+/* ── Money breakdown ── */
+.money { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; }
+.money-pending { flex:1; }
+.money-pending .v { font-size:30px; font-weight:700; color:var(--green); font-variant-numeric:tabular-nums; line-height:1; }
+.money-pending .l { font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin-top:4px; }
+.money-paid { text-align:right; font-size:12px; color:var(--muted); line-height:1.4; }
+.money-paid strong { font-size:14px; color:var(--ink); display:block; font-variant-numeric:tabular-nums; }
+
+/* ── Lists ── */
+.row {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.row:last-child { border-bottom:none; }
+.row .when { font-size:11px; color:var(--muted); width:90px; flex-shrink:0; }
+.row .what { flex:1; min-width:0; word-break:break-word; }
+.row .amt  { font-weight:600; font-variant-numeric:tabular-nums; flex-shrink:0; }
+.row .amt.pos { color:var(--green); }
+.row .amt.zero { color:var(--muted); text-decoration:line-through; }
+
+.empty { font-size:13px; color:var(--muted); padding:14px 0; text-align:center; }
+
+.kicker { font-size:11px; color:var(--muted); text-align:center; padding:24px 0 8px; }
+.kicker a { color:var(--accent); text-decoration:none; }
+
+.toast {
+  position:fixed; left:50%; bottom:30px; transform:translateX(-50%) translateY(20px);
+  background:var(--ink); color:#fff; padding:10px 18px; border-radius:var(--pill);
+  font-size:13px; font-weight:500; opacity:0; transition:all .25s; pointer-events:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.2); z-index:50;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="brand">Creator Dashboard</div>
+
+  <!-- ── Auth: ask for email + send magic link ── -->
+  <div id="auth" class="auth-card" hidden>
+    <h1>Sign in</h1>
+    <p>Enter the email you signed up with — we'll send you a link.</p>
+    <form id="authForm" novalidate>
+      <input id="authEmail" type="email" required autocomplete="email" placeholder="you@example.com">
+      <button type="submit" id="authBtn">Email me a link</button>
+    </form>
+    <div id="authMsg" class="auth-msg" hidden></div>
+  </div>
+
+  <!-- ── Dashboard body ── -->
+  <main id="board" hidden>
+    <div class="greeting">
+      <h1 id="greetName">—</h1>
+      <div class="sub" id="greetSub">—</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Your coupon code</div>
+      <div class="code-display">
+        <code id="dCode">—</code>
+        <button class="copy-btn" data-copy-target="dCode">Copy</button>
+      </div>
+      <div class="card-label" style="margin-top:14px;">Your affiliate link</div>
+      <div class="url-display">
+        <code id="dUrl">—</code>
+        <button class="copy-btn" data-copy-target="dUrl">Copy</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-num" id="sClicks">0</div>
+        <div class="stat-label">Clicks 7d</div>
+        <div class="stat-trend" id="sClicksTrend"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="sOrders">0</div>
+        <div class="stat-label">Orders</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="sEarned">$0</div>
+        <div class="stat-label">Earned</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Commission balance</div>
+      <div class="money">
+        <div class="money-pending">
+          <div class="v" id="mPending">$0</div>
+          <div class="l">Pending payout</div>
+        </div>
+        <div class="money-paid">
+          <strong id="mPaid">$0</strong>
+          <span>paid lifetime</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Recent activity</div>
+      <div id="dActivity"><div class="empty">Once people click your link or use your code, it'll show up here.</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Payout history</div>
+      <div id="dPayouts"><div class="empty">No payouts recorded yet.</div></div>
+    </div>
+
+    <div class="kicker">
+      Questions? <a href="mailto:contact@creditcardart.com">Email us</a> · Pet Licence Factory
+    </div>
+  </main>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const url = new URL(location.href);
+let dashboardToken = sessionStorage.getItem('plf_creator_token') || '';
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1500);
+}
+function fmtUsd(c) { if (c == null) return '—'; return '$' + (c/100).toFixed(2); }
+function fmtRel(iso) {
+  if (!iso) return '—';
+  const ms = Date.now() - new Date(iso).getTime();
+  const sec = Math.floor(ms/1000);
+  if (sec < 60) return sec + 's ago';
+  const min = Math.floor(sec/60);
+  if (min < 60) return min + 'm ago';
+  const hr  = Math.floor(min/60);
+  if (hr  < 24) return hr  + 'h ago';
+  const day = Math.floor(hr/24);
+  if (day < 30) return day + 'd ago';
+  return new Date(iso).toLocaleDateString();
+}
+
+// ── Bootstrap ──────────────────────────────────────────────────────────
+async function boot() {
+  // Path 1: ?token=<dashboard_token> (from onboarding email)
+  const tok = url.searchParams.get('token');
+  if (tok) {
+    dashboardToken = tok;
+    sessionStorage.setItem('plf_creator_token', tok);
+    cleanUrl();
+  }
+  // Path 2: ?magic=<single-use-token> (from magic-link email)
+  const magic = url.searchParams.get('magic');
+  if (magic) {
+    try {
+      const r = await api('/api/affiliate-magic-link', { action: 'verify', token: magic });
+      if (r?.dashboard_token) {
+        dashboardToken = r.dashboard_token;
+        sessionStorage.setItem('plf_creator_token', dashboardToken);
+        cleanUrl();
+      }
+    } catch (err) {
+      showAuth('That link has expired or already been used. Send yourself a new one.');
+      return;
+    }
+  }
+
+  if (!dashboardToken) { showAuth(''); return; }
+  loadDashboard();
+}
+function cleanUrl() {
+  url.searchParams.delete('token');
+  url.searchParams.delete('magic');
+  history.replaceState({}, document.title, url.pathname + (url.searchParams.toString() ? '?' + url.searchParams : ''));
+}
+
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(body || {}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Network error');
+  return data;
+}
+
+// ── Auth (magic-link flow) ──
+function showAuth(msg) {
+  $('auth').hidden = false;
+  $('board').hidden = true;
+  if (msg) {
+    $('authMsg').hidden = false;
+    $('authMsg').textContent = msg;
+    $('authMsg').className = 'auth-msg err';
+  }
+}
+
+$('authForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('authEmail').value.trim();
+  if (!email) return;
+  const btn = $('authBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  $('authMsg').hidden = true;
+  try {
+    await api('/api/affiliate-magic-link', { action: 'request', email });
+    $('authMsg').textContent = 'Check your inbox — link arrives in a few seconds. (If you don\'t have an account, nothing was sent.)';
+    $('authMsg').className = 'auth-msg ok';
+    $('authMsg').hidden = false;
+    btn.textContent = 'Done';
+  } catch (err) {
+    $('authMsg').textContent = err.message;
+    $('authMsg').className = 'auth-msg err';
+    $('authMsg').hidden = false;
+    btn.disabled = false; btn.textContent = 'Email me a link';
+  }
+});
+
+// ── Dashboard ──
+async function loadDashboard() {
+  $('auth').hidden = true;
+  $('board').hidden = false;
+  try {
+    const data = await api('/api/affiliate-dashboard', { token: dashboardToken });
+    renderDashboard(data);
+  } catch (err) {
+    sessionStorage.removeItem('plf_creator_token');
+    dashboardToken = '';
+    showAuth('Your session expired — sign in again.');
+  }
+}
+
+function renderDashboard(d) {
+  $('greetName').textContent = `Hey ${d.creator.name.split(' ')[0]} 👋`;
+  $('greetSub').textContent  = `${Math.round(d.creator.commission_rate*100)}% commission · ${Math.round(d.creator.customer_discount_rate*100)}% off for your audience`;
+  $('dCode').textContent = d.creator.coupon_code;
+  $('dUrl').textContent  = d.affiliate_url;
+
+  $('sClicks').textContent = d.stats.clicks_7d;
+  const trend = d.stats.clicks_prev_7d > 0
+    ? Math.round((d.stats.clicks_7d - d.stats.clicks_prev_7d) / d.stats.clicks_prev_7d * 100)
+    : null;
+  if (trend !== null && trend !== 0) {
+    const t = $('sClicksTrend');
+    t.textContent = (trend > 0 ? '▲ ' : '▼ ') + Math.abs(trend) + '% vs prev 7d';
+    t.className   = 'stat-trend ' + (trend > 0 ? 'up' : 'down');
+  } else {
+    $('sClicksTrend').textContent = `· ${d.stats.clicks_total} all-time`;
+  }
+
+  $('sOrders').textContent = d.stats.orders_count;
+  $('sEarned').textContent = fmtUsd(d.stats.commission_earned_cents);
+  $('mPending').textContent = fmtUsd(d.stats.commission_pending_cents);
+  $('mPaid').textContent    = fmtUsd(d.stats.commission_paid_cents);
+
+  // Activity feed
+  const act = $('dActivity');
+  if (!d.activity || d.activity.length === 0) {
+    act.innerHTML = '<div class="empty">Once people click your link or use your code, it\'ll show up here.</div>';
+  } else {
+    act.innerHTML = d.activity.map(a => {
+      if (a.kind === 'click') {
+        return `<div class="row"><span class="when">${fmtRel(a.at)}</span><span class="what">Click — ${esc(a.label || '(direct)')}</span><span class="amt"></span></div>`;
+      }
+      const cls = a.cents > 0 ? 'pos' : (a.is_freebie ? '' : 'zero');
+      const tag = a.is_freebie ? '🎁 freebie' : 'Sale';
+      return `<div class="row"><span class="when">${fmtRel(a.at)}</span><span class="what">${tag} · ${esc(a.label)}</span><span class="amt ${cls}">${fmtUsd(a.cents)}</span></div>`;
+    }).join('');
+  }
+
+  // Payouts
+  const p = $('dPayouts');
+  if (!d.payouts || d.payouts.length === 0) {
+    p.innerHTML = '<div class="empty">No payouts recorded yet — your first payout will land here once we send it.</div>';
+  } else {
+    p.innerHTML = d.payouts.map(po =>
+      `<div class="row">
+         <span class="when">${fmtRel(po.paid_at)}</span>
+         <span class="what">${esc(po.method)}${po.notes ? ' · ' + esc(po.notes) : ''}</span>
+         <span class="amt pos">${fmtUsd(po.amount_cents)}</span>
+       </div>`
+    ).join('');
+  }
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Copy buttons ──
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-copy-target]');
+  if (!btn) return;
+  const text = $(btn.dataset.copyTarget).textContent;
+  if (navigator.clipboard) navigator.clipboard.writeText(text);
+  else {
+    const ta = document.createElement('textarea'); ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+  }
+  btn.classList.add('copied'); btn.textContent = 'Copied';
+  setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'Copy'; }, 1500);
+  toast('Copied to clipboard');
+});
+
+boot();
+</script>
+</body>
+</html>
