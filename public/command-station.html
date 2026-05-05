@@ -4920,12 +4920,25 @@ function affRenderTemplates(rows) {
   el.querySelectorAll('.aff-template-card').forEach(card => {
     card.addEventListener('click', e => {
       const act  = e.target?.dataset?.act;
-      const id   = Number(card.dataset.id);
-      const row  = rows.find(r => r.id === id);
+      const id   = card.dataset.id;
+      // pg BIGSERIAL comes back as string — compare loosely so 1 === '1'.
+      const row  = rows.find(r => String(r.id) === String(id));
       if (!act || !row) return;
-      if (act === 'copy')   { affCopy(row.body); affFlash(e.target, 'Copied'); }
-      if (act === 'expand') { card.querySelector('.aff-template-preview').classList.toggle('expanded'); e.target.textContent = card.querySelector('.aff-template-preview').classList.contains('expanded') ? 'Collapse' : 'Expand'; }
-      if (act === 'edit')   { affEditTemplate(row); }
+      if (act === 'copy') {
+        affCopy(row.body);
+        affFlash(e.target, 'Copied');
+        return;
+      }
+      if (act === 'expand') {
+        const pv = card.querySelector('.aff-template-preview');
+        pv.classList.toggle('expanded');
+        e.target.textContent = pv.classList.contains('expanded') ? 'Collapse' : 'Expand';
+        return;
+      }
+      if (act === 'edit') {
+        affEditTemplate(row);
+        return;
+      }
     });
   });
 }
