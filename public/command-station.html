@@ -1352,6 +1352,157 @@ html, body {
 .tasks-counts { font-size: 12.5px; color: var(--muted); font-weight: 500; }
 .tasks-counts strong { color: var(--accent); font-weight: 700; }
 .tasks-view .tasks-list { max-height: calc(100vh - 320px); }
+
+/* ── Affiliate view ───────────────────────────────────────────────── */
+.aff-shell { padding: 0 28px 24px; flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+.aff-toolbar { display: flex; align-items: center; gap: 10px; padding: 0 0 14px; }
+.aff-search, .aff-select {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  font: inherit; font-size: 13px; padding: 8px 12px; border-radius: var(--r-sm);
+}
+.aff-search { width: 280px; }
+.aff-search:focus, .aff-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.aff-table-wrap {
+  flex: 1; overflow: auto; border: 1px solid var(--border);
+  border-radius: var(--r); background: var(--surface);
+}
+.aff-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.aff-table th, .aff-table td {
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  text-align: left; vertical-align: middle;
+}
+.aff-table th {
+  color: var(--muted); font-weight: 600; font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: .6px;
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
+}
+.aff-table td.aff-num, .aff-table th.aff-num { text-align: right; font-variant-numeric: tabular-nums; }
+.aff-table tr.aff-row { cursor: pointer; transition: background .1s; }
+.aff-table tr.aff-row:hover { background: var(--surface2); }
+.aff-table tr.aff-row.aff-stale { opacity: .55; }
+.aff-table tr.aff-row.aff-active td:first-child { box-shadow: inset 3px 0 0 var(--green); }
+.aff-table .aff-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.aff-row-mini-btn {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  font: inherit; font-size: 11px; font-weight: 500;
+  padding: 4px 10px; border-radius: var(--r-sm); cursor: pointer;
+}
+.aff-row-mini-btn:hover { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+.aff-name { font-weight: 600; color: var(--text); }
+.aff-email { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+.aff-code-cell { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; color: var(--accent); font-weight: 600; }
+.aff-empty { text-align: center; padding: 56px 0; color: var(--muted); font-weight: 500; }
+
+.aff-status {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  padding: 3px 9px; border-radius: var(--r-pill); border: 1px solid transparent;
+}
+.aff-status.invited      { color: var(--muted); background: var(--surface2); border-color: var(--border); }
+.aff-status.activated    { color: var(--amber, #d97706); background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.3); }
+.aff-status.producing    { color: var(--blue);  background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.3); }
+.aff-status.performing   { color: var(--green); background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.3); }
+.aff-status.setup_failed { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); }
+
+/* ── Drawer ── */
+.aff-drawer {
+  position: absolute; top: 0; right: 28px; bottom: 24px; width: 580px; max-width: 92%;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+  transform: translateX(calc(100% + 32px)); transition: transform .25s ease;
+  display: flex; flex-direction: column; z-index: 10;
+  box-shadow: -16px 0 40px rgba(15,23,42,.18);
+}
+.aff-drawer.open { transform: translateX(0); }
+.aff-drawer-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 18px 22px; border-bottom: 1px solid var(--border);
+}
+.aff-drawer-name { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.aff-drawer-sub  { font-size: 12px; color: var(--muted); }
+.aff-icon-btn {
+  background: transparent; border: none; color: var(--muted); font-size: 16px;
+  cursor: pointer; padding: 4px 10px; border-radius: var(--r-sm);
+}
+.aff-icon-btn:hover { background: var(--surface2); color: var(--text); }
+.aff-drawer-body { flex: 1; overflow-y: auto; padding: 20px 22px 28px; }
+.aff-section { margin-bottom: 24px; }
+.aff-section-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--muted); font-weight: 700; margin-bottom: 10px;
+}
+.aff-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
+.aff-stat {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 14px;
+}
+.aff-stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+.aff-stat-value { font-size: 19px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+
+.aff-codes { display: flex; flex-direction: column; gap: 8px; }
+.aff-code-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 10px 14px; font-size: 12.5px;
+}
+.aff-code-row code {
+  flex: 1; font-family: 'SF Mono', Menlo, Consolas, monospace; color: var(--accent);
+  word-break: break-all; font-weight: 600;
+}
+.aff-mini-btn {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  font: inherit; font-size: 11.5px; font-weight: 600;
+  padding: 5px 12px; border-radius: var(--r-sm); cursor: pointer;
+}
+.aff-mini-btn:hover { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+.aff-mini-btn.aff-mini-danger:hover { background: var(--red, #ef4444); border-color: var(--red, #ef4444); }
+
+.aff-history-list {
+  list-style: none; padding: 0; margin: 0;
+  border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden;
+  background: var(--surface2);
+}
+.aff-history-list li {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: 12.5px; display: flex; gap: 10px; align-items: center;
+}
+.aff-history-list li:last-child { border-bottom: none; }
+.aff-history-list .aff-h-when { color: var(--muted); width: 110px; flex-shrink: 0; font-size: 11.5px; }
+.aff-history-list .aff-h-amt  { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ── Modals (use the existing modal-backdrop / modal-inner styles) ── */
+.aff-modal { display: none; }
+.aff-modal.open { display: flex; }
+.aff-modal-inner { max-width: 540px; }
+.aff-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.aff-form-row label, .aff-stack {
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: 11.5px; color: var(--muted); font-weight: 600; margin-bottom: 12px;
+}
+.aff-form-row input, .aff-form-row select, .aff-form-row textarea,
+.aff-stack input, .aff-stack select, .aff-stack textarea,
+#affPayoutForm input, #affPayoutForm select, #affPayoutForm textarea {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  font: inherit; font-size: 13px; font-weight: 500; padding: 8px 11px;
+  border-radius: var(--r-sm);
+}
+.aff-form-row input:focus, .aff-stack input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.aff-form-actions {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+.aff-form-actions .aff-checkbox {
+  font-size: 11.5px; color: var(--muted); margin-right: auto;
+  display: flex; gap: 6px; align-items: center; font-weight: 500;
+}
+.aff-form-error { color: var(--red, #ef4444); font-size: 12px; margin-top: 10px; font-weight: 500; }
+
+.aff-preview-body {
+  font-size: 12.5px; color: var(--text); padding: 14px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  margin-bottom: 12px; max-height: 360px; overflow: auto; line-height: 1.5;
+}
+.aff-preview-body code { color: var(--accent); font-size: 11.5px; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -1396,6 +1547,10 @@ html, body {
         <button class="nav-item" data-view="tasks" onclick="switchView('tasks')">
           <span class="nav-icon">📋</span><span>Tasks</span>
           <span class="nav-count" id="nav-tasks-count">—</span>
+        </button>
+        <button class="nav-item" data-view="affiliate" onclick="switchView('affiliate')">
+          <span class="nav-icon">🎟</span><span>Affiliate</span>
+          <span class="nav-count" id="nav-affiliate-count">—</span>
         </button>
       </div>
 
@@ -1561,9 +1716,147 @@ html, body {
         </div>
       </section>
 
+      <!-- ─────────── Affiliate view ─────────── -->
+      <section class="cs-view" id="view-affiliate">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Affiliate creators</h1>
+            <div class="page-subtitle">Invite creators, track clicks &amp; sales, and pay them out.</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn-secondary" onclick="affExportCsv()"><span>⬇</span> Export CSV</button>
+            <button class="btn-primary" onclick="affOpenInvite()"><span>＋</span> Invite creator</button>
+          </div>
+        </div>
+
+        <div class="aff-shell">
+          <div class="aff-toolbar">
+            <input class="aff-search" id="affSearch" type="search" placeholder="Search by name, email, code…" oninput="affRender()" />
+            <select class="aff-select" id="affStatusFilter" onchange="affRender()">
+              <option value="">All statuses</option>
+              <option value="invited">Invited</option>
+              <option value="activated">Activated</option>
+              <option value="producing">Producing</option>
+              <option value="performing">Performing</option>
+              <option value="setup_failed">Setup failed</option>
+            </select>
+          </div>
+          <div class="aff-table-wrap">
+            <table class="aff-table" id="affTable">
+              <thead>
+                <tr>
+                  <th>Creator</th>
+                  <th>Code</th>
+                  <th>Status</th>
+                  <th class="aff-num">Clicks 7d</th>
+                  <th class="aff-num">Clicks all</th>
+                  <th class="aff-num">Orders</th>
+                  <th class="aff-num">Gross</th>
+                  <th class="aff-num">Earned</th>
+                  <th class="aff-num">Outstanding</th>
+                  <th>Last activity</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="affTbody">
+                <tr><td colspan="11" class="aff-empty">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Slide-over detail drawer -->
+        <div class="aff-drawer" id="affDrawer">
+          <div class="aff-drawer-head">
+            <div>
+              <div class="aff-drawer-name" id="affDrawerName">—</div>
+              <div class="aff-drawer-sub" id="affDrawerSub">—</div>
+            </div>
+            <button class="aff-icon-btn" onclick="affCloseDrawer()" title="Close">✕</button>
+          </div>
+          <div class="aff-drawer-body" id="affDrawerBody"></div>
+        </div>
+      </section>
+
     </div><!-- /cs-content -->
   </div><!-- /cs-shell -->
 </div><!-- /app -->
+
+<!-- ─────────── Affiliate modals ─────────── -->
+<div class="modal-backdrop aff-modal" id="affInviteModal" onclick="if(event.target===this)affCloseInvite()">
+  <div class="modal-inner aff-modal-inner">
+    <div class="modal-header">
+      <h2 class="modal-title">Invite a creator</h2>
+      <button class="modal-close" onclick="affCloseInvite()">✕</button>
+    </div>
+    <form id="affInviteForm" autocomplete="off" onsubmit="affSubmitInvite(event)">
+      <div class="aff-form-row">
+        <label>Name<input name="name" required maxlength="100" /></label>
+        <label>Email<input name="email" type="email" required maxlength="200" /></label>
+      </div>
+      <div class="aff-form-row">
+        <label>Coupon code (3–32 chars)<input name="couponCode" required pattern="[A-Za-z0-9_-]{3,32}" /></label>
+      </div>
+      <div class="aff-form-row">
+        <label>Commission %<input name="commissionRate" type="number" min="1" max="100" step="1" value="20" required /></label>
+        <label>Customer discount %<input name="customerDiscountRate" type="number" min="1" max="100" step="1" value="15" required /></label>
+      </div>
+      <label class="aff-stack">Notes (optional)<textarea name="notes" rows="2" maxlength="1000"></textarea></label>
+      <div class="aff-form-actions">
+        <label class="aff-checkbox"><input type="checkbox" name="skipEmail" /> Don't send onboarding email yet</label>
+        <button type="button" class="btn-secondary" onclick="affPreviewOnboarding()">Preview email</button>
+        <button type="submit" class="btn-primary">Create &amp; send</button>
+        <button type="button" class="btn-secondary" onclick="affCloseInvite()">Cancel</button>
+      </div>
+      <div class="aff-form-error" id="affInviteError" hidden></div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop aff-modal" id="affPreviewModal" onclick="if(event.target===this)affCloseModal('affPreviewModal')">
+  <div class="modal-inner aff-modal-inner">
+    <div class="modal-header">
+      <h2 class="modal-title" id="affPreviewTitle">Onboarding preview</h2>
+      <button class="modal-close" onclick="affCloseModal('affPreviewModal')">✕</button>
+    </div>
+    <div id="affPreviewBody" class="aff-preview-body"></div>
+    <div class="aff-form-actions" style="justify-content:flex-end;">
+      <button type="button" class="btn-secondary" onclick="affCloseModal('affPreviewModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop aff-modal" id="affPayoutModal" onclick="if(event.target===this)affCloseModal('affPayoutModal')">
+  <div class="modal-inner aff-modal-inner" style="max-width:440px;">
+    <div class="modal-header">
+      <h2 class="modal-title">Record payout</h2>
+      <button class="modal-close" onclick="affCloseModal('affPayoutModal')">✕</button>
+    </div>
+    <form id="affPayoutForm" autocomplete="off" onsubmit="affSubmitPayout(event)">
+      <input type="hidden" name="id" />
+      <div class="aff-form-row">
+        <label>Amount (USD)<input name="amount" type="number" min="0.01" step="0.01" required /></label>
+        <label>Method
+          <select name="method" required>
+            <option value="venmo">Venmo</option>
+            <option value="paypal">PayPal</option>
+            <option value="zelle">Zelle</option>
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+      </div>
+      <label class="aff-stack">Date<input name="paidAt" type="date" required /></label>
+      <label class="aff-stack">Notes (optional)<textarea name="notes" rows="2" maxlength="500"></textarea></label>
+      <div class="aff-form-actions">
+        <button type="submit" class="btn-primary">Save payout</button>
+        <button type="button" class="btn-secondary" onclick="affCloseModal('affPayoutModal')">Cancel</button>
+      </div>
+      <div class="aff-form-error" id="affPayoutError" hidden></div>
+    </form>
+  </div>
+</div>
 
 <!-- ── Order Detail Modal ──────────────────────────────── -->
 <div class="modal-backdrop" id="order-modal" onclick="closeModal(event)">
@@ -1855,6 +2148,7 @@ function switchView(name) {
   try { localStorage.setItem('plf_last_view', name); } catch {}
   if (name === 'stats') renderStats();
   if (name === 'tasks') setTimeout(() => { const i = document.getElementById('task-input'); if (i) i.focus(); }, 50);
+  if (name === 'affiliate' && !Aff.loaded) affLoad();
 }
 (function restoreLastView() {
   try {
@@ -4082,6 +4376,401 @@ function dismissToast() { document.getElementById('toast').className = ''; }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  AFFILIATE TAB
+//    Reuses the same admin JWT (sessionStorage 'plf_admin_token').
+//    Endpoints: /api/affiliate-admin
+// ═══════════════════════════════════════════════════════════════════════════
+const Aff = { rows: [], loaded: false, selectedId: null };
+
+async function affApi(action, params = {}, asBlob = false) {
+  const res = await fetch('/api/affiliate-admin', {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(adminToken ? { 'Authorization': 'Bearer ' + adminToken } : {}),
+    },
+    body: JSON.stringify({ action, ...params }),
+  });
+  if (asBlob) {
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'API error');
+    }
+    return res.blob();
+  }
+  if (res.status === 401) {
+    sessionStorage.removeItem('plf_admin_token');
+    adminToken = null;
+    location.reload();
+    throw new Error('Session expired');
+  }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'API error');
+  return data;
+}
+
+function affFmtUsd(c) { if (c == null) return '—'; return '$' + (Number(c) / 100).toFixed(2); }
+function affFmtRel(iso) {
+  if (!iso) return '—';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0)    return 'just now';
+  const sec = Math.floor(ms / 1000); if (sec < 60) return sec + 's ago';
+  const min = Math.floor(sec / 60);  if (min < 60) return min + 'm ago';
+  const hr  = Math.floor(min / 60);  if (hr  < 24) return hr  + 'h ago';
+  const day = Math.floor(hr  / 24);  if (day < 30) return day + 'd ago';
+  return new Date(iso).toLocaleDateString();
+}
+function affEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function affLoad() {
+  const tb = document.getElementById('affTbody');
+  tb.innerHTML = '<tr><td colspan="11" class="aff-empty">Loading…</td></tr>';
+  try {
+    const { creators } = await affApi('list_creators');
+    Aff.rows   = creators || [];
+    Aff.loaded = true;
+    document.getElementById('nav-affiliate-count').textContent = Aff.rows.length || '';
+    affRender();
+  } catch (err) {
+    tb.innerHTML = `<tr><td colspan="11" class="aff-empty" style="color:var(--red,#ef4444)">Failed to load: ${affEsc(err.message)}</td></tr>`;
+  }
+}
+
+function affRender() {
+  const tb = document.getElementById('affTbody');
+  const q  = (document.getElementById('affSearch').value || '').trim().toLowerCase();
+  const f  = document.getElementById('affStatusFilter').value;
+  const dayMs = 24*60*60*1000;
+  const now = Date.now();
+
+  let rows = Aff.rows;
+  if (q) rows = rows.filter(r =>
+    (r.name||'').toLowerCase().includes(q) ||
+    (r.email||'').toLowerCase().includes(q) ||
+    (r.coupon_code||'').toLowerCase().includes(q));
+  if (f) rows = rows.filter(r => r.status === f);
+
+  if (!rows.length) {
+    tb.innerHTML = `<tr><td colspan="11" class="aff-empty">${Aff.rows.length ? 'No creators match the filter.' : 'No creators yet — click "Invite creator" above to add one.'}</td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = rows.map(r => {
+    const last      = r.last_activity_at ? new Date(r.last_activity_at).getTime() : 0;
+    const stale     = (now - last) > 14 * dayMs;
+    const veryFresh = (now - last) < 2  * dayMs;
+    return `<tr class="aff-row ${stale?'aff-stale':''} ${veryFresh?'aff-active':''}" data-id="${r.id}">
+      <td><div class="aff-name">${affEsc(r.name)}</div><div class="aff-email">${affEsc(r.email)}</div></td>
+      <td class="aff-code-cell">${affEsc(r.coupon_code)}</td>
+      <td><span class="aff-status ${r.status}">${affEsc(r.status.replace('_',' '))}</span></td>
+      <td class="aff-num">${r.clicks_7d}</td>
+      <td class="aff-num">${r.clicks_total}</td>
+      <td class="aff-num">${r.orders_count}</td>
+      <td class="aff-num">${affFmtUsd(r.gross_cents)}</td>
+      <td class="aff-num">${affFmtUsd(r.commission_earned_cents)}</td>
+      <td class="aff-num"><strong>${affFmtUsd(r.outstanding_cents)}</strong></td>
+      <td>${affFmtRel(r.last_activity_at)}</td>
+      <td><div class="aff-row-actions">
+        ${r.outstanding_cents > 0 ? `<button class="aff-row-mini-btn" data-act="payout">Payout</button>` : ''}
+        <button class="aff-row-mini-btn" data-act="resend">Email</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  tb.querySelectorAll('tr.aff-row').forEach(tr => {
+    tr.addEventListener('click', e => {
+      const act = e.target?.dataset?.act;
+      const id  = Number(tr.dataset.id);
+      if (act === 'payout') { e.stopPropagation(); affOpenPayout(id); return; }
+      if (act === 'resend') { e.stopPropagation(); affResend(id); return; }
+      affOpenDrawer(id);
+    });
+  });
+}
+
+// ── Invite ──
+function affOpenInvite() {
+  const m = document.getElementById('affInviteModal');
+  m.classList.add('open');
+  document.getElementById('affInviteForm').reset();
+  document.getElementById('affInviteError').hidden = true;
+  setTimeout(() => m.querySelector('input[name="name"]').focus(), 60);
+}
+function affCloseInvite() { document.getElementById('affInviteModal').classList.remove('open'); }
+function affCloseModal(id) { document.getElementById(id).classList.remove('open'); }
+
+async function affSubmitInvite(e) {
+  e.preventDefault();
+  const fd    = new FormData(e.target);
+  const errEl = document.getElementById('affInviteError');
+  errEl.hidden = true;
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  try {
+    const result = await affApi('invite_creator', {
+      name:                 fd.get('name'),
+      email:                fd.get('email'),
+      couponCode:           fd.get('couponCode'),
+      commissionRate:       Number(fd.get('commissionRate')),
+      customerDiscountRate: Number(fd.get('customerDiscountRate')),
+      notes:                fd.get('notes'),
+      skipEmail:            !!fd.get('skipEmail'),
+    });
+    affCloseInvite();
+    affShowInviteSuccess(result);
+    await affLoad();
+  } catch (err) {
+    errEl.textContent = err.message || 'Failed to create creator';
+    errEl.hidden = false;
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+function affShowInviteSuccess(result) {
+  document.getElementById('affPreviewTitle').textContent = '✅ Creator created';
+  document.getElementById('affPreviewBody').innerHTML = `
+    <div style="margin-bottom:12px;color:var(--green);font-weight:600;">All set. Onboarding email ${result?.email?.success ? 'sent' : (result?.email?.skipped ? 'skipped' : 'queued')}.</div>
+    <div class="aff-section-title">Affiliate code</div>
+    <div style="margin-bottom:10px"><code>${affEsc(result.codes.affiliate)}</code></div>
+    <div class="aff-section-title">Welcome freebie code</div>
+    <div style="margin-bottom:10px"><code>${affEsc(result.codes.freebie)}</code></div>
+    <div class="aff-section-title">Affiliate URL</div>
+    <div style="margin-bottom:10px"><code>${affEsc(result.urls.affiliate)}</code></div>
+    <div class="aff-section-title">Freebie checkout</div>
+    <div style="margin-bottom:10px"><code>${affEsc(result.urls.freebie)}</code></div>
+    <div class="aff-section-title">Dashboard magic link</div>
+    <div><code>${affEsc(result.urls.dashboard)}</code></div>
+  `;
+  document.getElementById('affPreviewModal').classList.add('open');
+}
+
+async function affPreviewOnboarding() {
+  const fd = new FormData(document.getElementById('affInviteForm'));
+  const errEl = document.getElementById('affInviteError');
+  errEl.hidden = true;
+  try {
+    const { preview } = await affApi('preview_onboarding', {
+      name:                 fd.get('name'),
+      email:                fd.get('email'),
+      couponCode:           fd.get('couponCode'),
+      commissionRate:       Number(fd.get('commissionRate')),
+      customerDiscountRate: Number(fd.get('customerDiscountRate')),
+    });
+    document.getElementById('affPreviewTitle').textContent = '📧 Onboarding email — preview';
+    document.getElementById('affPreviewBody').innerHTML = `
+      <div><strong>To:</strong> ${affEsc(preview.to)}</div>
+      <div style="margin-bottom:12px;"><strong>Subject:</strong> ${affEsc(preview.subject)}</div>
+      <div class="aff-section-title">Affiliate code</div>
+      <div style="margin-bottom:10px"><code>${affEsc(preview.affiliate_code)}</code> · ${preview.customer_discount_pct}% off · ${preview.commission_pct}% commission</div>
+      <div class="aff-section-title">Welcome freebie code</div>
+      <div style="margin-bottom:10px"><code>${affEsc(preview.freebie_code)}</code></div>
+      <div class="aff-section-title">Affiliate URL</div>
+      <div style="margin-bottom:10px"><code>${affEsc(preview.urls.affiliate)}</code></div>
+      <div class="aff-section-title">Freebie URL</div>
+      <div style="margin-bottom:10px"><code>${affEsc(preview.urls.freebie)}</code></div>
+      <div class="aff-section-title">Dashboard URL</div>
+      <div><code>${affEsc(preview.urls.dashboard)}</code></div>
+    `;
+    document.getElementById('affPreviewModal').classList.add('open');
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+  }
+}
+
+// ── Drawer ──
+async function affOpenDrawer(id) {
+  Aff.selectedId = id;
+  const drawer = document.getElementById('affDrawer');
+  drawer.classList.add('open');
+  document.getElementById('affDrawerName').textContent = 'Loading…';
+  document.getElementById('affDrawerSub').textContent  = '';
+  document.getElementById('affDrawerBody').innerHTML   = '<div class="aff-empty">Loading…</div>';
+  try {
+    const data = await affApi('get_creator', { id });
+    affRenderDrawer(data);
+  } catch (err) {
+    document.getElementById('affDrawerBody').innerHTML =
+      `<div class="aff-empty" style="color:var(--red,#ef4444)">${affEsc(err.message)}</div>`;
+  }
+}
+function affCloseDrawer() {
+  document.getElementById('affDrawer').classList.remove('open');
+  Aff.selectedId = null;
+}
+
+function affRenderDrawer(data) {
+  const c = data.creator;
+  const l = data.ledger;
+  const origin     = window.location.origin;
+  const refUrl     = `${origin}/?ref=${encodeURIComponent(c.coupon_code)}`;
+  const dashUrl    = `${origin}/dashboard.html?token=${encodeURIComponent(c.dashboard_token)}`;
+  const freebieUrl = c.freebie_code ? `${origin}/game.html?promo=${encodeURIComponent(c.freebie_code)}` : '';
+
+  document.getElementById('affDrawerName').textContent = c.name;
+  document.getElementById('affDrawerSub').textContent  = `${c.email} · ${Math.round(c.commission_rate*100)}% commission · ${Math.round(c.customer_discount_rate*100)}% customer discount`;
+
+  const setupBanner = c.setup_status === 'failed'
+    ? `<div class="aff-form-error" style="margin-bottom:14px;padding:10px 12px;border:1px solid var(--red,#ef4444);border-radius:var(--r-sm);">
+         Setup failed: ${affEsc(c.setup_error || '')}
+         <button class="aff-mini-btn" style="margin-left:10px;" data-retry="1">Retry setup</button>
+       </div>` : '';
+
+  const ordersHtml = data.orders.length
+    ? `<ul class="aff-history-list">${data.orders.map(o =>
+        `<li><span class="aff-h-when">${affFmtRel(o.created_at)}</span>
+            <span>${affEsc(o.order_id_text)} ${o.is_freebie ? '· <em>freebie</em>' : ''} ${o.commission_zeroed ? '· <em>refunded</em>' : ''}</span>
+            <span class="aff-h-amt">${affFmtUsd(o.commission_cents)}</span>
+            ${o.stripe_payment_intent ? `<a class="aff-mini-btn" href="https://dashboard.stripe.com/payments/${affEsc(o.stripe_payment_intent)}" target="_blank" rel="noopener">Stripe ↗</a>` : ''}
+        </li>`).join('')}</ul>`
+    : '<div class="aff-empty">No orders yet.</div>';
+
+  const clicksHtml = data.clicks.length
+    ? `<ul class="aff-history-list">${data.clicks.slice(0, 25).map(cl =>
+        `<li><span class="aff-h-when">${affFmtRel(cl.created_at)}</span>
+            <span>${affEsc(cl.referrer || cl.landing_path || '(direct)')}</span></li>`
+      ).join('')}</ul>`
+    : '<div class="aff-empty">No clicks yet.</div>';
+
+  const payoutsHtml = data.payouts.length
+    ? `<ul class="aff-history-list">${data.payouts.map(p =>
+        `<li><span class="aff-h-when">${affFmtRel(p.paid_at)}</span>
+            <span>${affEsc(p.method)} ${p.notes ? '· ' + affEsc(p.notes) : ''}</span>
+            <span class="aff-h-amt">${affFmtUsd(p.amount_cents)}</span>
+            <button class="aff-mini-btn aff-mini-danger" data-delpay="${p.id}">Undo</button></li>`).join('')}</ul>`
+    : '<div class="aff-empty">No payouts recorded.</div>';
+
+  document.getElementById('affDrawerBody').innerHTML = `
+    ${setupBanner}
+    <div class="aff-stats">
+      <div class="aff-stat"><div class="aff-stat-label">Earned</div><div class="aff-stat-value">${affFmtUsd(l.earned_cents)}</div></div>
+      <div class="aff-stat"><div class="aff-stat-label">Paid</div><div class="aff-stat-value">${affFmtUsd(l.paid_cents)}</div></div>
+      <div class="aff-stat"><div class="aff-stat-label">Outstanding</div><div class="aff-stat-value" style="color:var(--green)">${affFmtUsd(l.outstanding_cents)}</div></div>
+    </div>
+
+    <div class="aff-section">
+      <div class="aff-section-title">Codes &amp; links</div>
+      <div class="aff-codes">
+        <div class="aff-code-row"><code>${affEsc(c.coupon_code)}</code><button class="aff-mini-btn" data-copy="${affEsc(c.coupon_code)}">Copy code</button></div>
+        <div class="aff-code-row"><code>${affEsc(refUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(refUrl)}">Copy link</button></div>
+        ${freebieUrl ? `<div class="aff-code-row"><code>${affEsc(freebieUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(freebieUrl)}">Copy</button></div>` : ''}
+        <div class="aff-code-row"><code>${affEsc(dashUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(dashUrl)}">Copy</button></div>
+      </div>
+    </div>
+
+    <div class="aff-section">
+      <div class="aff-section-title">Actions</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="aff-mini-btn" data-act="payout">Mark payout paid</button>
+        <button class="aff-mini-btn" data-act="resend">Resend onboarding email</button>
+        <button class="aff-mini-btn aff-mini-danger" data-act="delete" style="margin-left:auto;">Delete creator</button>
+      </div>
+    </div>
+
+    <div class="aff-section">
+      <div class="aff-section-title">Order history</div>
+      ${ordersHtml}
+    </div>
+    <div class="aff-section">
+      <div class="aff-section-title">Click timeline (last 25)</div>
+      ${clicksHtml}
+    </div>
+    <div class="aff-section">
+      <div class="aff-section-title">Commission ledger</div>
+      ${payoutsHtml}
+    </div>
+  `;
+
+  // Wire up drawer buttons
+  document.getElementById('affDrawerBody').addEventListener('click', async (e) => {
+    const t = e.target;
+    if (t.dataset.copy)   { affCopy(t.dataset.copy); affFlash(t, 'Copied'); return; }
+    if (t.dataset.retry)  { try { await affApi('retry_creator_setup', { id: c.id }); affOpenDrawer(c.id); } catch (err) { alert(err.message); } return; }
+    if (t.dataset.delpay) { if (confirm('Undo this payout?')) { await affApi('delete_payout', { id: Number(t.dataset.delpay) }); affOpenDrawer(c.id); affLoad(); } return; }
+    if (t.dataset.act === 'payout') { affOpenPayout(c.id); return; }
+    if (t.dataset.act === 'resend') {
+      try { await affApi('resend_onboarding', { id: c.id }); affFlash(t, 'Sent'); }
+      catch (err) { alert(err.message); }
+      return;
+    }
+    if (t.dataset.act === 'delete') {
+      if (confirm(`Delete ${c.name}? This deactivates their Stripe codes and removes the record. Historical orders stay attributed.`)) {
+        try { await affApi('delete_creator', { id: c.id }); affCloseDrawer(); affLoad(); }
+        catch (err) { alert(err.message); }
+      }
+    }
+  }, { once: true });
+}
+
+function affFlash(btn, text) {
+  const orig = btn.textContent;
+  btn.textContent = text;
+  setTimeout(() => { btn.textContent = orig; }, 1200);
+}
+function affCopy(s) {
+  if (navigator.clipboard) navigator.clipboard.writeText(s);
+  else {
+    const ta = document.createElement('textarea'); ta.value = s; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); ta.remove();
+  }
+}
+
+// ── Payouts ──
+function affOpenPayout(creatorId) {
+  const m = document.getElementById('affPayoutModal');
+  const f = document.getElementById('affPayoutForm');
+  f.reset();
+  f.elements['id'].value = creatorId;
+  f.elements['paidAt'].value = new Date().toISOString().slice(0,10);
+  document.getElementById('affPayoutError').hidden = true;
+  m.classList.add('open');
+}
+
+async function affSubmitPayout(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const errEl = document.getElementById('affPayoutError');
+  errEl.hidden = true;
+  try {
+    await affApi('record_payout', {
+      id:     Number(fd.get('id')),
+      amount: Number(fd.get('amount')),
+      method: fd.get('method'),
+      paidAt: fd.get('paidAt'),
+      notes:  fd.get('notes'),
+    });
+    affCloseModal('affPayoutModal');
+    if (Aff.selectedId) affOpenDrawer(Aff.selectedId);
+    affLoad();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+  }
+}
+
+async function affResend(id) {
+  try { await affApi('resend_onboarding', { id }); }
+  catch (err) { alert('Email failed: ' + err.message); }
+}
+
+async function affExportCsv() {
+  try {
+    const blob = await affApi('export_outstanding_csv', {}, true);
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `affiliate-outstanding-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) { alert(err.message); }
+}
 </script>
 </body>
 </html>
