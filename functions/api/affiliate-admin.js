@@ -260,7 +260,7 @@ export async function onRequest(context) {
             customerDiscountPct: Math.round(customerDiscountRate * 100),
             commissionPct:       Math.round(commissionRate * 100),
             dashboardToken,
-            siteOrigin: env.URL || 'https://pet-licence-factory.pages.dev',
+            siteOrigin: env.URL || 'https://petlicensefactory.com',
           });
         }
 
@@ -272,9 +272,9 @@ export async function onRequest(context) {
             freebie:   coupons.freebie.code,
           },
           urls: {
-            affiliate: `${env.URL || 'https://pet-licence-factory.pages.dev'}/?ref=${encodeURIComponent(coupons.affiliate.code)}`,
-            freebie:   `${env.URL || 'https://pet-licence-factory.pages.dev'}/game.html?promo=${encodeURIComponent(coupons.freebie.code)}`,
-            dashboard: `${env.URL || 'https://pet-licence-factory.pages.dev'}/dashboard.html?token=${encodeURIComponent(dashboardToken)}`,
+            affiliate: `${env.URL || 'https://petlicensefactory.com'}/?ref=${encodeURIComponent(coupons.affiliate.code)}`,
+            freebie:   `${env.URL || 'https://petlicensefactory.com'}/game.html?promo=${encodeURIComponent(coupons.freebie.code)}`,
+            dashboard: `${env.URL || 'https://petlicensefactory.com'}/dashboard.html?token=${encodeURIComponent(dashboardToken)}`,
           },
           email: emailResult,
         });
@@ -349,7 +349,7 @@ export async function onRequest(context) {
           customerDiscountPct: Math.round(Number(c.customer_discount_rate) * 100),
           commissionPct:       Math.round(Number(c.commission_rate)        * 100),
           dashboardToken: c.dashboard_token,
-          siteOrigin: env.URL || 'https://pet-licence-factory.pages.dev',
+          siteOrigin: env.URL || 'https://petlicensefactory.com',
         });
         return json(200, { success: true, email: result });
       }
@@ -381,9 +381,9 @@ export async function onRequest(context) {
         // CSP would need updating. Simplest: send the same template helper
         // the same args and return the resulting `html` from the helper's
         // closure. We'll add a small refactor here by re-exporting.
-        const previewUrl = `${env.URL || 'https://pet-licence-factory.pages.dev'}/?ref=${encodeURIComponent(codeShape.code)}`;
-        const dashUrl    = `${env.URL || 'https://pet-licence-factory.pages.dev'}/dashboard.html?token=PREVIEW`;
-        const freebieUrl = `${env.URL || 'https://pet-licence-factory.pages.dev'}/game.html?promo=${encodeURIComponent(codeShape.code + '-WELCOME-XXXX')}`;
+        const previewUrl = `${env.URL || 'https://petlicensefactory.com'}/?ref=${encodeURIComponent(codeShape.code)}`;
+        const dashUrl    = `${env.URL || 'https://petlicensefactory.com'}/dashboard.html?token=PREVIEW`;
+        const freebieUrl = `${env.URL || 'https://petlicensefactory.com'}/game.html?promo=${encodeURIComponent(codeShape.code + '-WELCOME-XXXX')}`;
 
         // For preview we just describe the email components and let the UI
         // open the production template via a "send to me" test send.

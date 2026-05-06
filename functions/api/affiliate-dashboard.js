@@ -84,7 +84,7 @@ export async function onRequest(context) {
       commission_rate:        Number(creator.commission_rate),
       customer_discount_rate: Number(creator.customer_discount_rate),
     },
-    affiliate_url: `${env.URL || 'https://pet-licence-factory.pages.dev'}/?ref=${encodeURIComponent(creator.coupon_code)}`,
+    affiliate_url: `${env.URL || 'https://petlicensefactory.com'}/?ref=${encodeURIComponent(creator.coupon_code)}`,
     stats: {
       clicks_total:           Number(s.clicks_total),
       clicks_7d:              Number(s.clicks_7d),

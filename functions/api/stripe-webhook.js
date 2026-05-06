@@ -257,7 +257,7 @@ export async function onRequest(context) {
       petLastName:   orderRow.pet_last_name,
       sessionId:     session.id,
       reason:        verification.error || 'USPS could not verify the address.',
-      siteOrigin:    env.URL || 'https://pet-licence-factory.pages.dev',
+      siteOrigin:    env.URL || 'https://petlicensefactory.com',
     });
   } catch (emailErr) {
     console.error('Address-issue email failed (non-fatal):', emailErr);

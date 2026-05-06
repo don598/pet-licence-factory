@@ -72,7 +72,7 @@ export async function onRequest(context) {
       [creator.id, token, expiresAt.toISOString()]
     );
 
-    const siteOrigin = env.URL || 'https://pet-licence-factory.pages.dev';
+    const siteOrigin = env.URL || 'https://petlicensefactory.com';
     const magicUrl   = `${siteOrigin}/dashboard.html?magic=${encodeURIComponent(token)}`;
 
     const result = await sendCreatorMagicLinkEmail(env, {

@@ -101,8 +101,8 @@ export async function sendOrderConfirmationEmail(env, order) {
 
         <!-- Header -->
         <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
-          <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Order Confirmed!</h1>
           <p style="margin:12px 0 0;font-size:14px;color:#334477;line-height:1.5;">
             ${esc(petFull)} is now the most official animal in the neighbourhood.
@@ -210,8 +210,8 @@ export async function sendStampShippedEmail(env, order) {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
-          <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <div style="font-size:32px;margin-bottom:8px;">📮</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">It's In The Mail!</h1>
           <p style="margin:8px 0 20px;font-size:15px;color:#334477;line-height:1.5;">
@@ -258,7 +258,7 @@ export async function sendAddressIssueEmail(env, order) {
   if (!customerEmail) return { skipped: true, reason: 'no email' };
 
   const petFull = [petFirstName, petLastName].filter(Boolean).join(' ') || 'your pet';
-  const fixUrl  = `${siteOrigin || 'https://pet-licence-factory.pages.dev'}/success.html?session_id=${encodeURIComponent(sessionId || '')}&order_id=${encodeURIComponent(orderId || '')}`;
+  const fixUrl  = `${siteOrigin || 'https://petlicensefactory.com'}/success.html?session_id=${encodeURIComponent(sessionId || '')}&order_id=${encodeURIComponent(orderId || '')}`;
   const subject = `⚠️ We couldn't verify your shipping address for ${petFull}'s licence`;
 
   const html = `<!DOCTYPE html>
@@ -268,7 +268,7 @@ export async function sendAddressIssueEmail(env, order) {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #e0a800;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#fff8e1 0%,#ffffff 100%);">
-          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <div style="font-size:32px;margin-bottom:8px;">⚠️</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#a86c00;letter-spacing:2px;text-transform:uppercase;line-height:1.5;">Address Couldn't Be<br>Verified</h1>
           <p style="margin:14px 0 4px;font-size:15px;color:#334477;line-height:1.5;">
@@ -344,8 +344,8 @@ export async function sendShippingNotificationEmail(env, order) {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
-          <img src="https://pet-licence-factory.pages.dev/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <div style="font-size:32px;margin-bottom:8px;">📬</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Shipped!</h1>
           <p style="margin:8px 0 24px;font-size:15px;color:#334477;line-height:1.5;">
@@ -391,7 +391,7 @@ export async function sendCreatorOnboardingEmail(env, opts) {
   const {
     creatorName, creatorEmail,
     affiliateCode, freebieCode, customerDiscountPct, commissionPct,
-    siteOrigin = 'https://pet-licence-factory.pages.dev',
+    siteOrigin = 'https://petlicensefactory.com',
     dashboardToken,
   } = opts;
   if (!creatorEmail) return { skipped: true, reason: 'no email' };
@@ -410,7 +410,7 @@ export async function sendCreatorOnboardingEmail(env, opts) {
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
 
         <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;line-height:1.6;">Welcome To The<br>Creator Kit, ${esc(creatorName || 'Creator')}!</h1>
           <p style="margin:14px 0 0;font-size:14px;color:#334477;line-height:1.6;">
             Everything you need to start posting and earning is right here.
@@ -534,7 +534,7 @@ export async function sendCreatorMagicLinkEmail(env, opts) {
     <tr><td align="center">
       <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://pet-licence-factory.pages.dev/images/wordmark-email.png" alt="Pet Licence Factory" width="380" style="display:block;margin:0 auto 16px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="380" style="display:block;margin:0 auto 16px;max-width:80%;height:auto;image-rendering:pixelated;">
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Sign In</h1>
           <p style="margin:8px 0 20px;font-size:14px;color:#334477;line-height:1.5;">
             ${creatorName ? `Hey ${esc(creatorName)} — c` : 'C'}lick the button to open your dashboard.
