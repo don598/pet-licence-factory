@@ -103,12 +103,17 @@ export async function onRequest(context) {
       case 'list_orders': {
         const limit = Math.min(Math.max(parseInt(body.limit) || 500, 1), 1000);
         const result = await db.query(
-          `SELECT id, order_id, status, created_at, updated_at, pet_first_name, pet_last_name,
-                  customer_email, customer_name, shipping_option, total, pack_count, add_on,
-                  chip_size, tracking_number, notes, stripe_payment_id,
-                  ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country,
-                  verification_error, verification_attempts
-           FROM pet_orders ORDER BY created_at DESC LIMIT $1`,
+          `SELECT p.id, p.order_id, p.status, p.created_at, p.updated_at, p.pet_first_name, p.pet_last_name,
+                  p.customer_email, p.customer_name, p.shipping_option, p.total, p.pack_count, p.add_on,
+                  p.chip_size, p.tracking_number, p.notes, p.stripe_payment_id,
+                  p.ship_addr_line1, p.ship_addr_line2, p.ship_city, p.ship_state, p.ship_zip, p.ship_country,
+                  p.verification_error, p.verification_attempts,
+                  p.affiliate_creator_id, p.affiliate_coupon_code, p.affiliate_commission_rate,
+                  p.affiliate_commission_cents, p.affiliate_is_freebie,
+                  c.name AS affiliate_creator_name
+           FROM pet_orders p
+           LEFT JOIN affiliate_creators c ON c.id = p.affiliate_creator_id
+           ORDER BY p.created_at DESC LIMIT $1`,
           [limit]
         );
         return json(200, { orders: result.rows });
@@ -117,7 +122,13 @@ export async function onRequest(context) {
       case 'get_order': {
         const { id } = body;
         if (!id) return json(400, { error: 'Missing id' });
-        const result = await db.query('SELECT * FROM pet_orders WHERE id = $1', [id]);
+        const result = await db.query(
+          `SELECT p.*, c.name AS affiliate_creator_name, c.email AS affiliate_creator_email
+           FROM pet_orders p
+           LEFT JOIN affiliate_creators c ON c.id = p.affiliate_creator_id
+           WHERE p.id = $1`,
+          [id]
+        );
         if (result.rows.length === 0) return json(404, { error: 'Order not found' });
         return json(200, { order: result.rows[0] });
       }

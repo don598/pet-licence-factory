@@ -525,6 +525,48 @@ html, body {
   50%     { box-shadow: 0 0 0 4px rgba(220,38,38,.18); }
 }
 
+.affiliate-marker {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: var(--r-pill);
+  font-size: 11px; font-weight: 700; letter-spacing: .2px;
+  border: 1px solid var(--border);
+  background: var(--surface2); color: var(--muted);
+  max-width: 150px;
+}
+.affiliate-marker .aff-marker-code {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 10.5px;
+}
+.affiliate-marker.is-affiliate {
+  background: rgba(37,99,235,.12); color: var(--blue); border-color: rgba(37,99,235,.28);
+}
+.affiliate-marker.is-freebie {
+  background: rgba(217,119,6,.12); color: var(--amber); border-color: rgba(217,119,6,.3);
+}
+.affiliate-alert {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: rgba(37,99,235,.08);
+  border: 1px solid rgba(37,99,235,.28);
+  border-left: 4px solid var(--blue);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  color: var(--blue);
+}
+.affiliate-alert.freebie {
+  background: rgba(217,119,6,.08);
+  border-color: rgba(217,119,6,.32);
+  border-left-color: var(--amber);
+  color: var(--amber);
+}
+.affiliate-alert .affiliate-icon { font-size: 18px; line-height: 1.2; flex: 0 0 auto; }
+.affiliate-alert .affiliate-body { flex: 1; min-width: 0; font-size: 13px; line-height: 1.5; color: var(--text-soft); }
+.affiliate-alert .affiliate-body strong { display: block; color: var(--text); font-weight: 700; margin-bottom: 3px; }
+.affiliate-alert code {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  color: inherit; font-weight: 700; word-break: break-word;
+}
+
 /* Verification banner shown at the top of the order modal */
 .verify-alert {
   display: flex; align-items: flex-start; gap: 12px;
@@ -1723,12 +1765,13 @@ html, body {
                     <th onclick="setSort('pet_first_name')">Pet Name <span class="sort-icon">↕</span></th>
                     <th>Customer</th>
                     <th onclick="setSort('shipping_option')">Shipping <span class="sort-icon">↕</span></th>
+                    <th onclick="setSort('affiliate_coupon_code')">Affiliate <span class="sort-icon">↕</span></th>
                     <th onclick="setSort('status')">Status <span class="sort-icon">↕</span></th>
                     <th onclick="setSort('total')">Amount <span class="sort-icon">↕</span></th>
                   </tr>
                 </thead>
                 <tbody id="orders-tbody">
-                  <tr><td colspan="7" class="loading-row"><span class="spinner"></span> Loading orders…</td></tr>
+                  <tr><td colspan="8" class="loading-row"><span class="spinner"></span> Loading orders…</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1987,6 +2030,14 @@ html, body {
       <div id="decal-alert" class="decal-alert" style="display:none">
         <span class="decal-icon">🎯</span>
         <span>This order includes the <strong>8×8" Car Decal</strong> add-on — don't forget to include it!</span>
+      </div>
+
+      <div id="affiliate-alert" class="affiliate-alert" style="display:none">
+        <span class="affiliate-icon" id="affiliate-alert-icon">%</span>
+        <div class="affiliate-body">
+          <strong id="affiliate-alert-title">Affiliate order</strong>
+          <span id="affiliate-alert-message"></span>
+        </div>
       </div>
 
       <!-- Pet + Customer info grid (collapsible, closed by default) -->
@@ -2270,14 +2321,14 @@ async function loadAll() {
 
 async function loadOrders() {
   const tbody = document.getElementById('orders-tbody');
-  tbody.innerHTML = '<tr><td colspan="7"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
 
   let data;
   try {
     const res = await adminAPI('list_orders', { limit: 500 });
     data = res.orders || [];
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
     return;
   }
 
@@ -2516,14 +2567,16 @@ function setSort(key) {
   else { sortKey = key; sortAsc = false; }
   document.querySelectorAll('.orders-table th').forEach(th => {
     th.classList.remove('sorted');
-    th.querySelector('.sort-icon').textContent = '↕';
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = '↕';
   });
   const ths = document.querySelectorAll('.orders-table th');
-  const keyMap = { created_at: 0, pet_first_name: 1, shipping_option: 3, status: 4, total: 5 };
+  const keyMap = { created_at: 1, pet_first_name: 2, shipping_option: 4, affiliate_coupon_code: 5, status: 6, total: 7 };
   const idx = keyMap[sortKey];
-  if (idx !== undefined) {
+  if (idx !== undefined && ths[idx]) {
     ths[idx].classList.add('sorted');
-    ths[idx].querySelector('.sort-icon').textContent = sortAsc ? '↑' : '↓';
+    const icon = ths[idx].querySelector('.sort-icon');
+    if (icon) icon.textContent = sortAsc ? '↑' : '↓';
   }
   renderTable();
 }
@@ -2541,6 +2594,8 @@ function renderTable() {
     (o.pet_last_name   || '').toLowerCase().includes(search) ||
     (o.customer_email  || '').toLowerCase().includes(search) ||
     (o.customer_name   || '').toLowerCase().includes(search) ||
+    (o.affiliate_coupon_code || '').toLowerCase().includes(search) ||
+    (o.affiliate_creator_name || '').toLowerCase().includes(search) ||
     (o.order_id        || '').toLowerCase().includes(search)
   );
 
@@ -2555,7 +2610,7 @@ function renderTable() {
 
   const tbody = document.getElementById('orders-tbody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr class="empty"><td colspan="7">No orders found</td></tr>';
+    tbody.innerHTML = '<tr class="empty"><td colspan="8">No orders found</td></tr>';
     return;
   }
 
@@ -2566,6 +2621,7 @@ function renderTable() {
       <td onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>
       <td onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}">${esc(o.customer_email || '—')}</td>
       <td onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
+      <td onclick="openOrder(${o.id})">${renderAffiliateMarker(o)}</td>
       <td onclick="openOrder(${o.id})"><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
       <td onclick="openOrder(${o.id})">${o.total || '—'}</td>
     </tr>
@@ -2583,6 +2639,44 @@ function fmtDate(ts) {
 function fmtShipping(s) {
   if (!s) return '—';
   return { stamp: '📬 Stamp', standard: '📦 Standard', priority: '🚀 Priority' }[s] || s;
+}
+
+function isAffiliateOrder(o) {
+  return !!(o?.affiliate_creator_id || o?.affiliate_coupon_code || o?.affiliate_creator_name);
+}
+function isAffiliateFreebie(o) {
+  return o?.affiliate_is_freebie === true || String(o?.affiliate_is_freebie || '').toLowerCase() === 'true';
+}
+function fmtPct(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? `${Math.round(n * 100)}%` : '—';
+}
+function fmtCents(c) {
+  const n = Number(c);
+  return Number.isFinite(n) ? '$' + (n / 100).toFixed(2) : '—';
+}
+function affiliateCode(o) {
+  return o?.affiliate_coupon_code || '';
+}
+function affiliateCreator(o) {
+  return o?.affiliate_creator_name || 'Creator';
+}
+function renderAffiliateMarker(o) {
+  if (!isAffiliateOrder(o)) return '<span class="affiliate-marker">Direct</span>';
+  const code = affiliateCode(o) || 'Affiliate';
+  const cls = isAffiliateFreebie(o) ? 'is-freebie' : 'is-affiliate';
+  const label = isAffiliateFreebie(o) ? 'Sample' : 'Affiliate';
+  return `<span class="affiliate-marker ${cls}" title="${esc(affiliateCreator(o))}${code ? ' · ' + esc(code) : ''}">
+    <span>${label}</span>${code ? `<span class="aff-marker-code">${esc(code)}</span>` : ''}
+  </span>`;
+}
+function affiliateDetailText(o) {
+  if (!isAffiliateOrder(o)) return 'Direct order - no creator attribution.';
+  const code = affiliateCode(o);
+  const commission = isAffiliateFreebie(o)
+    ? 'Creator welcome sample - no commission owed.'
+    : `Commission: ${fmtCents(o.affiliate_commission_cents)}${fmtPct(o.affiliate_commission_rate) !== '—' ? ` at ${fmtPct(o.affiliate_commission_rate)}` : ''}.`;
+  return `${affiliateCreator(o)}${code ? ` · code ${code}` : ''}. ${commission}`;
 }
 
 function esc(str) {
@@ -2631,6 +2725,12 @@ async function openOrder(dbId) {
     ['Pack',        order.pack_count + '-Pack' + (order.add_on ? ' + Decal' : '')],
     ['Chip Size',   order.chip_size],
     ['Shipping',    fmtShipping(order.shipping_option)],
+    ['Affiliate',   isAffiliateOrder(order)
+      ? `${isAffiliateFreebie(order) ? 'Creator sample' : 'Affiliate order'} · ${affiliateCreator(order)}${affiliateCode(order) ? ' · ' + affiliateCode(order) : ''}`
+      : 'Direct order'],
+    ['Affiliate Commission', isAffiliateOrder(order)
+      ? (isAffiliateFreebie(order) ? 'None - welcome sample' : `${fmtCents(order.affiliate_commission_cents)} (${fmtPct(order.affiliate_commission_rate)})`)
+      : '—'],
     ['Total',       order.total],
     ['Discount',    order.discount_earned ? '15% Applied' : 'None'],
   ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
@@ -2648,6 +2748,19 @@ async function openOrder(dbId) {
   // Decal alert — only shown when car decal was added
   document.getElementById('decal-alert').style.display =
     order.add_on === 'car_decal' ? 'flex' : 'none';
+
+  const affiliateAlert = document.getElementById('affiliate-alert');
+  if (isAffiliateOrder(order)) {
+    const freebie = isAffiliateFreebie(order);
+    affiliateAlert.style.display = 'flex';
+    affiliateAlert.classList.toggle('freebie', freebie);
+    document.getElementById('affiliate-alert-icon').textContent = freebie ? '★' : '%';
+    document.getElementById('affiliate-alert-title').textContent = freebie ? 'Creator welcome sample' : 'Affiliate order';
+    document.getElementById('affiliate-alert-message').textContent = affiliateDetailText(order);
+  } else {
+    affiliateAlert.style.display = 'none';
+    affiliateAlert.classList.remove('freebie');
+  }
 
   // Address-verification banner — surfaces address_invalid + address_pending_verification
   const verifyAlert = document.getElementById('verify-alert');
