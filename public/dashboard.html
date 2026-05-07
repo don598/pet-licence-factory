@@ -48,6 +48,8 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
 .auth-msg { font-size:13px; margin-top:10px; }
 .auth-msg.ok  { color:var(--green); }
 .auth-msg.err { color:var(--red); }
+.signup-link { display:block; margin-top:14px; color:var(--accent); font-size:13px; font-weight:600; text-decoration:none; }
+.signup-link:hover { text-decoration:underline; }
 
 /* ── Dashboard ── */
 .greeting { padding:4px 4px 16px; }
@@ -147,6 +149,7 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
       <button type="submit" id="authBtn">Email me a link</button>
     </form>
     <div id="authMsg" class="auth-msg" hidden></div>
+    <a class="signup-link" href="/creators.html">Need a creator code? Sign up here.</a>
   </div>
 
   <!-- ── Dashboard body ── -->

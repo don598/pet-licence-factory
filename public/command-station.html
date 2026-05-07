@@ -1449,6 +1449,11 @@ html, body {
   flex: 1; font-family: 'SF Mono', Menlo, Consolas, monospace; color: var(--accent);
   word-break: break-all; font-weight: 600;
 }
+.aff-note-box {
+  white-space: pre-wrap; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 14px; color: var(--text-soft);
+  font-size: 12.5px; line-height: 1.55;
+}
 .aff-mini-btn {
   background: var(--surface); border: 1px solid var(--border); color: var(--text);
   font: inherit; font-size: 11.5px; font-weight: 600;
@@ -1780,6 +1785,7 @@ html, body {
             <div class="page-subtitle">Invite creators, track clicks &amp; sales, and pay them out.</div>
           </div>
           <div class="page-actions">
+            <button class="btn-secondary" onclick="affCopySignupLink()"><span>🔗</span> Signup page</button>
             <button class="btn-secondary" onclick="affOpenTemplates()"><span>📝</span> Templates</button>
             <button class="btn-secondary" onclick="affExportCsv()"><span>⬇</span> Export CSV</button>
             <button class="btn-primary" onclick="affOpenInvite()"><span>＋</span> Invite creator</button>
@@ -1851,7 +1857,7 @@ html, body {
         <label>Name<input name="name" required maxlength="100" /></label>
         <label>Email<input name="email" type="email" required maxlength="200" /></label>
       </div>
-      <label class="aff-stack">Coupon code (3–32 chars)<input name="couponCode" required pattern="[A-Za-z0-9_-]{3,32}" /></label>
+      <label class="aff-stack">Coupon code (3–32 chars)<input name="couponCode" required pattern="[A-Za-z0-9_\-]{3,32}" /></label>
       <div class="aff-form-row">
         <label>Commission %<input name="commissionRate" type="number" min="1" max="100" step="1" value="20" required /></label>
         <label>Customer discount %<input name="customerDiscountRate" type="number" min="1" max="100" step="1" value="15" required /></label>
@@ -4787,6 +4793,11 @@ function affRenderDrawer(data) {
       </div>
     </div>
 
+    ${c.notes ? `<div class="aff-section">
+      <div class="aff-section-title">Notes</div>
+      <div class="aff-note-box">${affEsc(c.notes)}</div>
+    </div>` : ''}
+
     <div class="aff-section">
       <div class="aff-section-title">Actions</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -4842,6 +4853,11 @@ function affCopy(s) {
     const ta = document.createElement('textarea'); ta.value = s; document.body.appendChild(ta);
     ta.select(); document.execCommand('copy'); ta.remove();
   }
+}
+function affCopySignupLink() {
+  const url = `${window.location.origin}/creators.html`;
+  affCopy(url);
+  showToast('Creator signup link copied');
 }
 
 // ── Payouts ──

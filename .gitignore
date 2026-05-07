@@ -13,6 +13,7 @@ _archive/
 
 # Build artifacts
 .claude/
+.wrangler/
 
 # Temp files
 *.tmp
