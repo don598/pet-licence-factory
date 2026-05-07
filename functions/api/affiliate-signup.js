@@ -1,15 +1,14 @@
 // ── Pet Licence Factory — Public Creator Signup ────────────────────────────
 // POST /api/affiliate-signup
 //
-// Creates a self-service affiliate creator using server-controlled program
-// terms, creates Stripe promo codes, and sends the standard onboarding email.
+// Creates a self-service creator application using server-controlled program
+// terms. Coupon/freebie creation is approval-gated in the command center.
 // ---------------------------------------------------------------------------
 
 import { getDb } from '../_shared/db.js';
 import {
-  createCreatorInvite,
+  createCreatorApplication,
   clampRate,
-  siteOrigin,
 } from '../_shared/affiliate-onboarding.js';
 
 const CORS_HEADERS = {
@@ -41,6 +40,7 @@ function creatorNotes(body, request) {
     cleanText(body.profileUrl, 240) && `Profile URL: ${cleanText(body.profileUrl, 240)}`,
     cleanText(body.primaryChannel, 80) && `Primary channel: ${cleanText(body.primaryChannel, 80)}`,
     cleanText(body.audienceSize, 80) && `Audience size: ${cleanText(body.audienceSize, 80)}`,
+    cleanText(body.phone, 40) && `Phone: ${cleanText(body.phone, 40)}`,
     cleanText(body.pitch, 500) && `Signup note: ${cleanText(body.pitch, 500)}`,
     `Submitted at: ${new Date().toISOString()}`,
     `Signup IP: ${request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown'}`,
@@ -75,35 +75,25 @@ export async function onRequest(context) {
     return json(400, { error: 'Please accept the creator program terms.' });
   }
   if (!cleanText(body.profileUrl, 240)) {
-    return json(400, { error: 'Public profile is required.' });
+    return json(400, { error: 'TikTok or public profile is required.' });
   }
 
   const db = getDb(env);
   try {
-    const result = await createCreatorInvite(env, db, {
+    const result = await createCreatorApplication(env, db, {
       name: cleanText(body.name, 100),
       email: cleanText(body.email, 200),
       couponCode: cleanText(body.couponCode, 32),
       commissionRate: clampRate(env.AFFILIATE_SELF_SIGNUP_COMMISSION_RATE, 0.20),
       customerDiscountRate: clampRate(env.AFFILIATE_SELF_SIGNUP_DISCOUNT_RATE, 0.15),
       notes: creatorNotes(body, request),
-      skipEmail: false,
     });
 
     return json(200, {
       success: true,
+      pending_review: true,
       creator_id: result.creator_id,
       creator: result.creator,
-      codes: result.codes,
-      urls: {
-        affiliate: result.urls.affiliate,
-        freebie: result.urls.freebie,
-        dashboard: `${siteOrigin(env)}/dashboard.html`,
-      },
-      email: {
-        sent: !!result.email?.success,
-        skipped: !!result.email?.skipped,
-      },
     });
   } catch (err) {
     if (err?.status && err?.body) return json(err.status, err.body);

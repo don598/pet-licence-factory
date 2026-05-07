@@ -536,7 +536,7 @@ h1 {
     <div class="hero-copy">
       <div class="eyebrow">Creator Kit</div>
       <h1>Make your pet content pay rent.</h1>
-      <p class="lead">Join the Pet Licence Factory creator program, claim your audience code, and use your welcome checkout to order a free sample licence.</p>
+      <p class="lead">Apply for the Pet Licence Factory creator program, reserve your audience code, and get your free sample checkout after approval.</p>
       <div class="program-row" aria-label="Program terms">
         <span class="program-pill"><strong>20%</strong> commission</span>
         <span class="program-pill"><strong>15%</strong> audience discount</span>
@@ -552,8 +552,8 @@ h1 {
     <section class="signup-panel" id="signupPanel" aria-label="Creator signup">
       <div class="panel-head">
         <div class="panel-kicker">Start here</div>
-        <div class="panel-title">Create your creator kit</div>
-        <div class="panel-copy">Your coupon, affiliate link, free sample checkout, and dashboard access arrive as soon as setup finishes.</div>
+        <div class="panel-title">Apply for your creator kit</div>
+        <div class="panel-copy">We review each public profile before sending the 100% off sample coupon, affiliate link, and dashboard access.</div>
       </div>
 
       <form class="signup-form" id="signupForm" novalidate>
@@ -567,8 +567,13 @@ h1 {
             <input name="email" id="email" type="email" autocomplete="email" maxlength="200" required placeholder="you@example.com">
           </label>
           <label class="field full">
-            <span>Public profile</span>
-            <input name="profileUrl" id="profileUrl" type="url" autocomplete="url" maxlength="240" required placeholder="https://www.instagram.com/yourhandle">
+            <span>Phone (optional)</span>
+            <input name="phone" id="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="(555) 123-4567">
+          </label>
+          <div class="help">Add a phone number to be texted with your 100% off coupon when approved.</div>
+          <label class="field full">
+            <span>TikTok or public profile</span>
+            <input name="profileUrl" id="profileUrl" type="url" autocomplete="url" maxlength="240" required placeholder="https://www.tiktok.com/@yourhandle">
           </label>
           <label class="field">
             <span>Main channel</span>
@@ -614,44 +619,17 @@ h1 {
 
         <label class="check">
           <input name="termsAccepted" id="termsAccepted" type="checkbox" required>
-          <span>I am signing myself up, and I understand the welcome checkout is single-use for my creator sample.</span>
+          <span>I am signing myself up, and I understand the welcome checkout is single-use and sent only after approval.</span>
         </label>
 
-        <button class="submit-btn" id="submitBtn" type="submit">Create creator kit</button>
+        <button class="submit-btn" id="submitBtn" type="submit">Submit application</button>
         <div class="form-error" id="formError" role="alert"></div>
       </form>
 
       <div class="result" id="result">
-        <div class="result-status">Creator kit ready</div>
-        <h2>Your codes are live.</h2>
-        <p id="resultCopy">We sent the welcome email with your dashboard access. You can order your free sample now.</p>
-        <div class="result-list">
-          <div class="result-row">
-            <div>
-              <div class="result-label">Audience coupon</div>
-              <code id="resultCode">-</code>
-            </div>
-            <button class="copy-btn" type="button" data-copy-target="resultCode">Copy</button>
-          </div>
-          <div class="result-row">
-            <div>
-              <div class="result-label">Affiliate link</div>
-              <code id="resultAffiliate">-</code>
-            </div>
-            <button class="copy-btn" type="button" data-copy-target="resultAffiliate">Copy</button>
-          </div>
-          <div class="result-row">
-            <div>
-              <div class="result-label">Free sample checkout</div>
-              <code id="resultFreebie">-</code>
-            </div>
-            <button class="copy-btn" type="button" data-copy-target="resultFreebie">Copy</button>
-          </div>
-        </div>
-        <div class="result-actions">
-          <a id="orderSample" href="/game.html">Order free sample</a>
-          <a class="secondary" href="/dashboard.html">Open dashboard</a>
-        </div>
+        <div class="result-status">Application received</div>
+        <h2>We’ll review your profile.</h2>
+        <p id="resultCopy">Most approvals are completed within 24 hours. Check your email for your 100% off sample coupon, affiliate link, and dashboard access if approved.</p>
       </div>
     </section>
   </section>
@@ -659,15 +637,15 @@ h1 {
   <section class="below" aria-label="Creator program details">
     <div class="info-card">
       <b>Code and link</b>
-      <p>Followers can use your coupon code directly or click your affiliate link before checkout.</p>
+      <p>Approved creators receive a private dashboard plus a shareable coupon code and affiliate link.</p>
     </div>
     <div class="info-card">
       <b>Welcome sample</b>
-      <p>Your creator email includes the same free sample checkout shown after signup.</p>
+      <p>Your approval email includes a single-use 100% off checkout for your creator sample.</p>
     </div>
     <div class="info-card">
-      <b>Creator dashboard</b>
-      <p>Track clicks, orders, commissions, and payouts from your private creator dashboard.</p>
+      <b>Quick review</b>
+      <p>Applications are usually reviewed within 24 hours, and profile quality is checked before coupons go out.</p>
     </div>
   </section>
 </main>
@@ -742,13 +720,10 @@ async function apiSignup(body) {
 }
 
 function renderResult(data) {
-  $('resultCode').textContent = data.codes.affiliate;
-  $('resultAffiliate').textContent = data.urls.affiliate;
-  $('resultFreebie').textContent = data.urls.freebie;
-  $('orderSample').href = data.urls.freebie;
-  if (!data.email || !data.email.sent) {
-    $('resultCopy').textContent = 'Your codes are active. If the welcome email does not arrive, use the dashboard sign-in link with the same email address.';
-  }
+  const email = data?.creator?.email;
+  $('resultCopy').textContent = email
+    ? `Most approvals are completed within 24 hours. Check ${email} for your 100% off sample coupon, affiliate link, and dashboard access if approved.`
+    : 'Most approvals are completed within 24 hours. Check your email for your 100% off sample coupon, affiliate link, and dashboard access if approved.';
   panel.classList.add('done');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -776,6 +751,7 @@ form.addEventListener('submit', async e => {
   const body = {
     name: fd.get('name'),
     email: fd.get('email'),
+    phone: fd.get('phone'),
     profileUrl: fd.get('profileUrl'),
     primaryChannel: fd.get('primaryChannel'),
     audienceSize: fd.get('audienceSize'),
@@ -786,7 +762,7 @@ form.addEventListener('submit', async e => {
   };
 
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Creating kit...';
+  submitBtn.textContent = 'Submitting...';
   try {
     const data = await apiSignup(body);
     renderResult(data);
@@ -797,7 +773,7 @@ form.addEventListener('submit', async e => {
       : msg);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Create creator kit';
+    submitBtn.textContent = 'Submit application';
   }
 });
 

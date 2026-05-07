@@ -1441,6 +1441,7 @@ html, body {
   font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
   padding: 3px 9px; border-radius: var(--r-pill); border: 1px solid transparent;
 }
+.aff-status.pending_review { color: var(--amber, #d97706); background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.3); }
 .aff-status.invited      { color: var(--muted); background: var(--surface2); border-color: var(--border); }
 .aff-status.activated    { color: var(--amber, #d97706); background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.3); }
 .aff-status.producing    { color: var(--blue);  background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.3); }
@@ -1840,6 +1841,7 @@ html, body {
             <input class="aff-search" id="affSearch" type="search" placeholder="Search by name, email, code…" oninput="affRender()" />
             <select class="aff-select" id="affStatusFilter" onchange="affRender()">
               <option value="">All statuses</option>
+              <option value="pending_review">Pending review</option>
               <option value="invited">Invited</option>
               <option value="activated">Activated</option>
               <option value="producing">Producing</option>
@@ -4718,8 +4720,9 @@ function affRender() {
       <td class="aff-num"><strong>${affFmtUsd(r.outstanding_cents)}</strong></td>
       <td>${affFmtRel(r.last_activity_at)}</td>
       <td><div class="aff-row-actions">
+        ${r.status === 'pending_review' ? `<button class="aff-row-mini-btn" data-act="approve">Approve</button>` : ''}
         ${r.outstanding_cents > 0 ? `<button class="aff-row-mini-btn" data-act="payout">Payout</button>` : ''}
-        <button class="aff-row-mini-btn" data-act="resend">Email</button>
+        ${r.status !== 'pending_review' ? `<button class="aff-row-mini-btn" data-act="resend">Email</button>` : ''}
       </div></td>
     </tr>`;
   }).join('');
@@ -4728,6 +4731,7 @@ function affRender() {
     tr.addEventListener('click', e => {
       const act = e.target?.dataset?.act;
       const id  = Number(tr.dataset.id);
+      if (act === 'approve') { e.stopPropagation(); affApprove(id); return; }
       if (act === 'payout') { e.stopPropagation(); affOpenPayout(id); return; }
       if (act === 'resend') { e.stopPropagation(); affResend(id); return; }
       affOpenDrawer(id);
@@ -4774,8 +4778,8 @@ async function affSubmitInvite(e) {
   }
 }
 
-function affShowInviteSuccess(result) {
-  document.getElementById('affPreviewTitle').textContent = '✅ Creator created';
+function affShowInviteSuccess(result, title = '✅ Creator created') {
+  document.getElementById('affPreviewTitle').textContent = title;
   document.getElementById('affPreviewBody').innerHTML = `
     <div style="margin-bottom:12px;color:var(--green);font-weight:600;">All set. Onboarding email ${result?.email?.success ? 'sent' : (result?.email?.skipped ? 'skipped' : 'queued')}.</div>
     <div class="aff-section-title">Affiliate code</div>
@@ -4851,6 +4855,7 @@ function affRenderDrawer(data) {
   const c = data.creator;
   const l = data.ledger;
   const origin     = window.location.origin;
+  const isPendingReview = c.setup_status === 'pending_review';
   const refUrl     = `${origin}/?ref=${encodeURIComponent(c.coupon_code)}`;
   const dashUrl    = `${origin}/dashboard.html?token=${encodeURIComponent(c.dashboard_token)}`;
   const freebieUrl = c.freebie_code ? `${origin}/game.html?promo=${encodeURIComponent(c.freebie_code)}` : '';
@@ -4858,7 +4863,12 @@ function affRenderDrawer(data) {
   document.getElementById('affDrawerName').textContent = c.name;
   document.getElementById('affDrawerSub').textContent  = `${c.email} · ${Math.round(c.commission_rate*100)}% commission · ${Math.round(c.customer_discount_rate*100)}% customer discount`;
 
-  const setupBanner = c.setup_status === 'failed'
+  const setupBanner = isPendingReview
+    ? `<div class="aff-form-error" style="margin-bottom:14px;padding:10px 12px;border:1px solid rgba(217,119,6,.35);background:rgba(217,119,6,.08);border-radius:var(--r-sm);color:var(--text);">
+         Pending review. Check the profile in notes, then approve to create the 100% off sample coupon and send the welcome email.
+         <button class="aff-mini-btn" style="margin-left:10px;" data-act="approve">Approve &amp; send kit</button>
+       </div>`
+    : c.setup_status === 'failed'
     ? `<div class="aff-form-error" style="margin-bottom:14px;padding:10px 12px;border:1px solid var(--red,#ef4444);border-radius:var(--r-sm);">
          Setup failed: ${affEsc(c.setup_error || '')}
          <button class="aff-mini-btn" style="margin-left:10px;" data-retry="1">Retry setup</button>
@@ -4900,9 +4910,11 @@ function affRenderDrawer(data) {
       <div class="aff-section-title">Codes &amp; links</div>
       <div class="aff-codes">
         <div class="aff-code-row"><code>${affEsc(c.coupon_code)}</code><button class="aff-mini-btn" data-copy="${affEsc(c.coupon_code)}">Copy code</button></div>
-        <div class="aff-code-row"><code>${affEsc(refUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(refUrl)}">Copy link</button></div>
-        ${freebieUrl ? `<div class="aff-code-row"><code>${affEsc(freebieUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(freebieUrl)}">Copy</button></div>` : ''}
-        <div class="aff-code-row"><code>${affEsc(dashUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(dashUrl)}">Copy</button></div>
+        ${isPendingReview ? `<div class="aff-empty" style="padding:8px 0;text-align:left;">Coupon, free sample, and dashboard links are created after approval.</div>` : `
+          <div class="aff-code-row"><code>${affEsc(refUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(refUrl)}">Copy link</button></div>
+          ${freebieUrl ? `<div class="aff-code-row"><code>${affEsc(freebieUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(freebieUrl)}">Copy</button></div>` : ''}
+          <div class="aff-code-row"><code>${affEsc(dashUrl)}</code><button class="aff-mini-btn" data-copy="${affEsc(dashUrl)}">Copy</button></div>
+        `}
       </div>
     </div>
 
@@ -4914,8 +4926,10 @@ function affRenderDrawer(data) {
     <div class="aff-section">
       <div class="aff-section-title">Actions</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="aff-mini-btn" data-act="payout">Mark payout paid</button>
-        <button class="aff-mini-btn" data-act="resend">Resend onboarding email</button>
+        ${isPendingReview ? `<button class="aff-mini-btn" data-act="approve">Approve &amp; send kit</button>` : `
+          <button class="aff-mini-btn" data-act="payout">Mark payout paid</button>
+          <button class="aff-mini-btn" data-act="resend">Resend onboarding email</button>
+        `}
         <button class="aff-mini-btn aff-mini-danger" data-act="delete" style="margin-left:auto;">Delete creator</button>
       </div>
     </div>
@@ -4935,11 +4949,12 @@ function affRenderDrawer(data) {
   `;
 
   // Wire up drawer buttons
-  document.getElementById('affDrawerBody').addEventListener('click', async (e) => {
+  document.getElementById('affDrawerBody').onclick = async (e) => {
     const t = e.target;
     if (t.dataset.copy)   { affCopy(t.dataset.copy); affFlash(t, 'Copied'); return; }
     if (t.dataset.retry)  { try { await affApi('retry_creator_setup', { id: c.id }); affOpenDrawer(c.id); } catch (err) { alert(err.message); } return; }
     if (t.dataset.delpay) { if (confirm('Undo this payout?')) { await affApi('delete_payout', { id: Number(t.dataset.delpay) }); affOpenDrawer(c.id); affLoad(); } return; }
+    if (t.dataset.act === 'approve') { affApprove(c.id, t); return; }
     if (t.dataset.act === 'payout') { affOpenPayout(c.id); return; }
     if (t.dataset.act === 'resend') {
       try { await affApi('resend_onboarding', { id: c.id }); affFlash(t, 'Sent'); }
@@ -4952,7 +4967,7 @@ function affRenderDrawer(data) {
         catch (err) { alert(err.message); }
       }
     }
-  }, { once: true });
+  };
 }
 
 function affFlash(btn, text) {
@@ -5009,6 +5024,28 @@ async function affSubmitPayout(e) {
 async function affResend(id) {
   try { await affApi('resend_onboarding', { id }); }
   catch (err) { alert('Email failed: ' + err.message); }
+}
+
+async function affApprove(id, btn) {
+  if (!confirm('Approve this creator and send their 100% off sample coupon email?')) return;
+  const orig = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Approving...';
+  }
+  try {
+    const result = await affApi('approve_creator', { id });
+    affShowInviteSuccess(result, '✅ Creator approved');
+    await affLoad();
+    if (Aff.selectedId === id) affOpenDrawer(id);
+  } catch (err) {
+    alert('Approval failed: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  }
 }
 
 // ── Outreach templates ────────────────────────────────────────────────────

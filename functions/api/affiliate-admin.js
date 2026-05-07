@@ -6,6 +6,7 @@
 //   list_creators           → list with derived stats
 //   get_creator             → full detail (orders, clicks, payouts, ledger)
 //   invite_creator          → create coupons, save row, email onboarding
+//   approve_creator         → approve a public application, create coupons, email onboarding
 //   retry_creator_setup     → re-run failed Stripe coupon creation
 //   resend_onboarding       → resend onboarding email
 //   preview_onboarding      → returns rendered HTML for the preview-before-send
@@ -20,9 +21,9 @@ import jwt from 'jsonwebtoken';
 import { getDb } from '../_shared/db.js';
 import {
   validateCodeShape,
-  createCreatorCoupons,
 } from '../_shared/affiliate.js';
 import {
+  activateReservedCreator,
   createCreatorInvite,
   clampRate,
   sendOnboardingAndLog,
@@ -184,6 +185,22 @@ export async function onRequest(context) {
         return json(200, result);
       }
 
+      // ── APPROVE PUBLIC APPLICATION ───────────────────────────────────
+      case 'approve_creator': {
+        const id = parseInt(body.id);
+        if (!id) return json(400, { error: 'Missing id' });
+
+        const cRes = await db.query('SELECT * FROM affiliate_creators WHERE id = $1', [id]);
+        if (cRes.rows.length === 0) return json(404, { error: 'Creator not found' });
+        const c = cRes.rows[0];
+        if (c.setup_status !== 'pending_review') {
+          return json(400, { error: `Creator is not pending review (status=${c.setup_status || 'unknown'}).` });
+        }
+
+        const result = await activateReservedCreator(env, db, c, { skipEmail: false });
+        return json(200, result);
+      }
+
       // ── RETRY SETUP ───────────────────────────────────────────────────
       case 'retry_creator_setup': {
         const id = parseInt(body.id);
@@ -195,42 +212,12 @@ export async function onRequest(context) {
         if (c.setup_status === 'invited' || c.setup_status === 'activated') {
           return json(400, { error: `Setup already complete (status=${c.setup_status})` });
         }
-
-        let coupons;
-        try {
-          coupons = await createCreatorCoupons(env, {
-            code:                 c.coupon_code,
-            customerDiscountRate: Number(c.customer_discount_rate),
-            name:                 c.name,
-          });
-        } catch (err) {
-          await db.query(
-            `UPDATE affiliate_creators
-             SET setup_error = $1, updated_at = NOW() WHERE id = $2`,
-            [String(err.message || err).slice(0, 500), id]
-          );
-          return json(500, { error: `Retry failed: ${err.message || err}` });
+        if (c.setup_status === 'pending_review') {
+          return json(400, { error: 'Creator is pending review — approve them to create coupons and send onboarding.' });
         }
 
-        await db.query(
-          `UPDATE affiliate_creators SET
-             stripe_coupon_id         = $1,
-             stripe_promo_code_id     = $2,
-             stripe_freebie_coupon_id = $3,
-             stripe_freebie_promo_id  = $4,
-             freebie_code             = $5,
-             setup_status             = 'invited',
-             setup_error              = NULL,
-             updated_at               = NOW()
-           WHERE id = $6`,
-          [
-            coupons.affiliate.couponId, coupons.affiliate.promoId,
-            coupons.freebie.couponId,   coupons.freebie.promoId,
-            coupons.freebie.code,       id,
-          ]
-        );
-
-        return json(200, { success: true });
+        const result = await activateReservedCreator(env, db, c, { skipEmail: true });
+        return json(200, { success: true, ...result });
       }
 
       // ── RESEND ONBOARDING ─────────────────────────────────────────────
@@ -451,6 +438,7 @@ function rowToListItem(row) {
   const paid   = Number(row.commission_paid_cents)   || 0;
   // Status derivation per the brief.
   let status = 'invited';
+  if (row.setup_status === 'pending_review') status = 'pending_review';
   if (row.freebie_redeemed_at)         status = 'activated';
   if (Number(row.orders_count) >= 1)   status = 'producing';
   if (Number(row.orders_count) >= 3)   status = 'performing';
