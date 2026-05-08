@@ -23,6 +23,7 @@ import jwt from 'jsonwebtoken';
 import { getDb } from '../_shared/db.js';
 import {
   validateCodeShape,
+  generateToken,
 } from '../_shared/affiliate.js';
 import {
   activateReservedCreator,
@@ -339,6 +340,49 @@ export async function onRequest(context) {
             urls: { affiliate: previewUrl, freebie: freebieUrl, dashboard: dashUrl },
           },
         });
+      }
+
+      // ── SEED FAKE PENDING CREATORS (admin convenience for previews) ──
+      case 'seed_test_pending': {
+        const requested = parseInt(body.count) || 3;
+        const count = Math.max(1, Math.min(10, requested));
+        const inserted = [];
+        const samples = [
+          { name: 'Luna Whiskers',  email: 'luna+seed@example.com',  audience: '10,000 - 50,000', code: 'LUNAWHISK',  pitch: 'Cat content + indie boutiques', tiktok: 'https://www.tiktok.com/@lunawhiskers' },
+          { name: 'Max Woofington', email: 'max+seed@example.com',   audience: '50,000 - 250,000', code: 'MAXWOOF',    pitch: 'Bulldog comedy reels',         tiktok: 'https://www.tiktok.com/@maxwoof' },
+          { name: 'Oliver Pawsley', email: 'oliver+seed@example.com', audience: '1,000 - 10,000',   code: 'OLIVERPAWS', pitch: 'Rescue rabbit storytime',      tiktok: 'https://www.tiktok.com/@oliverpawsley' },
+          { name: 'Bento the Cat',  email: 'bento+seed@example.com',  audience: '250,000+',         code: 'BENTOCAT',   pitch: 'Daily cat vlog with cooking',   tiktok: 'https://www.tiktok.com/@bento.cat' },
+          { name: 'Dash & Dot',     email: 'dashdot+seed@example.com', audience: '10,000 - 50,000', code: 'DASHANDDOT', pitch: 'Twin shiba inus on adventures', tiktok: 'https://www.tiktok.com/@dashanddot' },
+          { name: 'Captain Otter',  email: 'capt+seed@example.com',   audience: 'Under 1,000',      code: 'CAPTOTTER',  pitch: 'Otter rescue education',        tiktok: 'https://www.tiktok.com/@captainotter' },
+          { name: 'Pixel the Pup',  email: 'pixel+seed@example.com',  audience: '50,000 - 250,000', code: 'PIXELPUP',   pitch: 'Mini Aussie reaction videos',   tiktok: 'https://www.tiktok.com/@pixelthepup' },
+        ];
+        for (let i = 0; i < count && i < samples.length; i++) {
+          const s = samples[i];
+          // Skip if already present so the button is idempotent.
+          const dup = await db.query('SELECT id FROM affiliate_creators WHERE LOWER(email) = LOWER($1) LIMIT 1', [s.email]);
+          if (dup.rows.length > 0) continue;
+          const dashboardToken = generateToken();
+          const notes = [
+            'Source: seeded sample data (command center)',
+            `Profile URL: ${s.tiktok}`,
+            `Audience size: ${s.audience}`,
+            `Review video commitment accepted: yes`,
+            `Video usage/ad permission accepted: yes`,
+            `Signup note: ${s.pitch}`,
+            `Submitted at: ${new Date().toISOString()}`,
+          ].join('\n');
+          const r = await db.query(
+            `INSERT INTO affiliate_creators
+               (name, email, coupon_code, commission_rate, customer_discount_rate,
+                dashboard_token, setup_status, notes)
+             VALUES ($1, $2, $3, 0.20, 0.15, $4, 'pending_review', $5)
+             ON CONFLICT (email) DO NOTHING
+             RETURNING id`,
+            [s.name, s.email, s.code, dashboardToken, notes]
+          );
+          if (r.rows[0]?.id) inserted.push({ id: r.rows[0].id, name: s.name, email: s.email });
+        }
+        return json(200, { success: true, inserted, total_requested: count });
       }
 
       // ── DELETE CREATOR (deactivates Stripe coupons too) ──────────────

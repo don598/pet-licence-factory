@@ -1448,6 +1448,24 @@ html, body {
 .aff-status.performing   { color: var(--green); background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.3); }
 .aff-status.setup_failed { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); }
 
+.aff-quickbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 14px; }
+.aff-quickbar .label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-right:4px; }
+.aff-quickbtn {
+  display:inline-flex; align-items:center; gap:8px;
+  height:30px; padding:0 12px; border-radius:var(--r-pill); border:1px solid var(--border);
+  background:var(--surface); color:var(--text); font:inherit; font-size:12px; font-weight:700; cursor:pointer;
+}
+.aff-quickbtn:hover { border-color:var(--blue); color:var(--blue); }
+.aff-quickbtn .count {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:22px; height:20px; padding:0 6px; border-radius:var(--r-pill);
+  background:var(--surface2); color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums;
+}
+.aff-quickbtn.attention { border-color:rgba(217,119,6,.5); background:rgba(217,119,6,.06); color:var(--amber, #d97706); }
+.aff-quickbtn.attention .count { background:rgba(217,119,6,.18); color:var(--amber, #d97706); font-weight:800; }
+.aff-quickbtn.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+.aff-quickbtn.active .count { background:rgba(255,255,255,.22); color:#fff; }
+
 /* ── Drawer ── */
 .aff-drawer {
   position: absolute; top: 0; right: 28px; bottom: 24px; width: 580px; max-width: 92%;
@@ -1832,11 +1850,20 @@ html, body {
             <button class="btn-secondary" onclick="affCopySignupLink()"><span>🔗</span> Signup page</button>
             <button class="btn-secondary" onclick="affOpenTemplates()"><span>📝</span> Templates</button>
             <button class="btn-secondary" onclick="affExportCsv()"><span>⬇</span> Export CSV</button>
+            <button class="btn-secondary" onclick="affSeedPending(this)" title="Insert 3 fake pending applications so you can preview the review flow"><span>🌱</span> Seed pending</button>
             <button class="btn-primary" onclick="affOpenInvite()"><span>＋</span> Invite creator</button>
           </div>
         </div>
 
         <div class="aff-shell">
+          <div class="aff-quickbar" id="affQuickbar" aria-label="Quick filters">
+            <span class="label">Quick filters:</span>
+            <button class="aff-quickbtn" type="button" data-quick="">All <span class="count" id="affCountAll">0</span></button>
+            <button class="aff-quickbtn attention" type="button" data-quick="pending_review">⏳ Pending review <span class="count" id="affCountPending">0</span></button>
+            <button class="aff-quickbtn" type="button" data-quick="invited">Invited <span class="count" id="affCountInvited">0</span></button>
+            <button class="aff-quickbtn" type="button" data-quick="producing">Producing <span class="count" id="affCountProducing">0</span></button>
+            <button class="aff-quickbtn" type="button" data-quick="setup_failed">⚠ Setup failed <span class="count" id="affCountFailed">0</span></button>
+          </div>
           <div class="aff-toolbar">
             <input class="aff-search" id="affSearch" type="search" placeholder="Search by name, email, code…" oninput="affRender()" />
             <select class="aff-select" id="affStatusFilter" onchange="affRender()">
@@ -4679,16 +4706,48 @@ async function affLoad() {
     Aff.rows   = creators || [];
     Aff.loaded = true;
     document.getElementById('nav-affiliate-count').textContent = Aff.rows.length || '';
+    affUpdateQuickCounts();
     affRender();
   } catch (err) {
     tb.innerHTML = `<tr><td colspan="11" class="aff-empty" style="color:var(--red,#ef4444)">Failed to load: ${affEsc(err.message)}</td></tr>`;
   }
 }
 
+function affUpdateQuickCounts() {
+  const counts = { all: Aff.rows.length, pending_review: 0, invited: 0, producing: 0, setup_failed: 0 };
+  for (const r of Aff.rows) {
+    if (counts[r.status] != null) counts[r.status]++;
+  }
+  const set = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+  set('affCountAll', counts.all);
+  set('affCountPending', counts.pending_review);
+  set('affCountInvited', counts.invited);
+  set('affCountProducing', counts.producing);
+  set('affCountFailed', counts.setup_failed);
+}
+
+function affApplyQuickFilter(value) {
+  const filterEl = document.getElementById('affStatusFilter');
+  filterEl.value = value || '';
+  document.querySelectorAll('#affQuickbar [data-quick]').forEach(btn => {
+    btn.classList.toggle('active', (btn.dataset.quick || '') === (value || ''));
+  });
+  affRender();
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('#affQuickbar [data-quick]');
+  if (!btn) return;
+  affApplyQuickFilter(btn.dataset.quick || '');
+});
+
 function affRender() {
   const tb = document.getElementById('affTbody');
   const q  = (document.getElementById('affSearch').value || '').trim().toLowerCase();
   const f  = document.getElementById('affStatusFilter').value;
+  document.querySelectorAll('#affQuickbar [data-quick]').forEach(btn => {
+    btn.classList.toggle('active', (btn.dataset.quick || '') === (f || ''));
+  });
   const dayMs = 24*60*60*1000;
   const now = Date.now();
 
@@ -5058,6 +5117,23 @@ async function affSubmitPayout(e) {
   } catch (err) {
     errEl.textContent = err.message;
     errEl.hidden = false;
+  }
+}
+
+async function affSeedPending(btn) {
+  if (!confirm('Insert 3 fake "pending review" creator applications so you can preview the review flow?\n\nThis is safe to run multiple times — duplicates are skipped, and you can delete each row from its drawer when you\'re done.')) return;
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Seeding…';
+  try {
+    const r = await affApi('seed_test_pending', { count: 3 });
+    const n = r.inserted?.length || 0;
+    alert(n ? `Seeded ${n} pending creator${n === 1 ? '' : 's'}.` : 'Sample creators already exist — opening Pending review tab.');
+    affApplyQuickFilter('pending_review');
+    await affLoad();
+  } catch (err) {
+    alert('Seed failed: ' + (err.message || err));
+  } finally {
+    btn.disabled = false; btn.textContent = original;
   }
 }
 

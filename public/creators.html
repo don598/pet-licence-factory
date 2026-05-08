@@ -178,6 +178,34 @@ h1 {
   box-shadow: 0 1px 0 rgba(17,24,23,.03);
 }
 .program-pill strong { color: var(--ink); margin-right: 5px; }
+.program-pill.neon {
+  background: linear-gradient(95deg, #00ff95 0%, #00d4ff 60%, #00a3ff 100%);
+  border-color: rgba(0, 213, 255, .55);
+  color: #04121f;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.4) inset,
+    0 6px 18px rgba(0, 213, 255, .35),
+    0 0 22px rgba(0, 255, 149, .28);
+  animation: neonPulse 2.4s ease-in-out infinite;
+}
+.program-pill.neon strong { color: #04121f; }
+@keyframes neonPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.4) inset,
+      0 6px 18px rgba(0, 213, 255, .35),
+      0 0 22px rgba(0, 255, 149, .28);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.55) inset,
+      0 8px 22px rgba(0, 213, 255, .55),
+      0 0 32px rgba(0, 255, 149, .55);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .program-pill.neon { animation: none; }
+}
 .sample-strip {
   margin-top: clamp(28px, 6vh, 48px);
   display: grid;
@@ -746,9 +774,9 @@ h1 {
       <h1>Make your pet content pay rent.</h1>
       <p class="lead">Apply for the Pet Licence Factory creator program, reserve your audience code, and get your free sample checkout after approval.</p>
       <div class="program-row" aria-label="Program terms">
+        <span class="program-pill neon"><strong>1</strong> free sample</span>
         <span class="program-pill"><strong>20%</strong> commission</span>
         <span class="program-pill"><strong>15%</strong> audience discount</span>
-        <span class="program-pill"><strong>1</strong> free sample</span>
       </div>
       <div class="sample-strip" aria-label="Sample pet licences">
         <div class="sample" style="--tilt:-2deg"><img src="/images/preview-licences/luna-whiskers.png" alt="Luna Whiskers sample licence"></div>
@@ -790,22 +818,10 @@ h1 {
               </label>
               <div class="help">Add a phone number to be texted with your 100% off coupon when approved.</div>
               <label class="field full">
-                <span>TikTok or public profile</span>
-                <input name="profileUrl" id="profileUrl" type="url" autocomplete="url" maxlength="240" required placeholder="https://www.tiktok.com/@yourhandle">
+                <span>TikTok username</span>
+                <input name="profileUrl" id="profileUrl" type="text" autocomplete="username" maxlength="80" required placeholder="@yourhandle">
               </label>
-              <label class="field">
-                <span>Main channel</span>
-                <select name="primaryChannel" id="primaryChannel" required>
-                  <option value="">Choose one</option>
-                  <option>Instagram</option>
-                  <option>TikTok</option>
-                  <option>YouTube</option>
-                  <option>Newsletter</option>
-                  <option>Blog or website</option>
-                  <option>Other</option>
-                </select>
-              </label>
-              <label class="field">
+              <label class="field full">
                 <span>Audience size</span>
                 <select name="audienceSize" id="audienceSize" required>
                   <option value="">Choose one</option>
@@ -923,7 +939,7 @@ const submitBtn = $('submitBtn');
 const samples = [...document.querySelectorAll('.sample')];
 const steps = [...document.querySelectorAll('.step')];
 const STEP_FIELDS = {
-  1: ['name', 'email', 'profileUrl', 'primaryChannel', 'audienceSize'],
+  1: ['name', 'email', 'profileUrl', 'audienceSize'],
   2: ['couponCode', 'termsAccepted', 'reviewCommitmentAccepted', 'usagePermissionAccepted'],
 };
 let currentStep = 1;
@@ -931,6 +947,14 @@ let focusedSample = null;
 
 function cleanCode(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 32);
+}
+
+function tiktokToUrl(value) {
+  let v = String(value || '').trim();
+  if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  v = v.replace(/^@+/, '').replace(/\s+/g, '');
+  return v ? `https://www.tiktok.com/@${v}` : '';
 }
 
 function suggestCode() {
@@ -1100,8 +1124,7 @@ form.addEventListener('submit', async e => {
     name: fd.get('name'),
     email: fd.get('email'),
     phone: fd.get('phone'),
-    profileUrl: fd.get('profileUrl'),
-    primaryChannel: fd.get('primaryChannel'),
+    profileUrl: tiktokToUrl(fd.get('profileUrl')),
     audienceSize: fd.get('audienceSize'),
     couponCode: cleanCode(fd.get('couponCode')),
     pitch: fd.get('pitch'),
