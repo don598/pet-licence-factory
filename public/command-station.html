@@ -1466,6 +1466,89 @@ html, body {
 .aff-quickbtn.active { background:var(--blue); color:#fff; border-color:var(--blue); }
 .aff-quickbtn.active .count { background:rgba(255,255,255,.22); color:#fff; }
 
+/* ── Pending review screen (drawer body for setup_status=pending_review) ── */
+.aff-review {
+  display: flex; flex-direction: column; gap: 14px; padding: 4px 2px 0;
+}
+.aff-review-banner {
+  display:flex; align-items:center; gap:10px;
+  padding:12px 14px; border-radius:var(--r-sm);
+  background:rgba(217,119,6,.10); border:1px solid rgba(217,119,6,.32);
+  color:var(--amber, #d97706); font-weight:700; font-size:13px;
+}
+.aff-review-banner .glyph { font-size:18px; line-height:1; }
+.aff-review-banner small { display:block; font-weight:500; color:var(--muted); margin-top:3px; font-size:12px; }
+.aff-review-meta {
+  display:flex; flex-wrap:wrap; gap:8px 16px; padding:0 2px; color:var(--muted); font-size:13px;
+}
+.aff-review-meta strong { color:var(--text); }
+.aff-review-cta-row {
+  display:grid; grid-template-columns:1fr; gap:10px;
+}
+.aff-review-cta {
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  padding:14px 16px; border-radius:var(--r-sm);
+  background:var(--surface2); border:1px solid var(--border);
+  text-decoration:none; color:var(--text); font-weight:600;
+  transition: border-color .15s ease, background .15s ease;
+}
+.aff-review-cta:hover { border-color:var(--blue); background:var(--surface); }
+.aff-review-cta-main {
+  display:flex; flex-direction:column; min-width:0;
+}
+.aff-review-cta-label {
+  font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:700;
+}
+.aff-review-cta-value {
+  margin-top:3px; font-size:15px; font-weight:700; word-break:break-all; overflow-wrap:anywhere;
+}
+.aff-review-cta-arrow {
+  flex:0 0 auto; width:34px; height:34px; border-radius:999px; display:grid; place-items:center;
+  background:var(--blue); color:#fff; font-size:14px; font-weight:800;
+}
+.aff-review-grid {
+  display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px;
+}
+.aff-review-cell {
+  padding:12px 14px; border-radius:var(--r-sm);
+  background:var(--surface2); border:1px solid var(--border);
+}
+.aff-review-cell.full { grid-column: 1 / -1; }
+.aff-review-cell .l {
+  font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:700; margin-bottom:4px;
+}
+.aff-review-cell .v { font-size:14px; color:var(--text); font-weight:600; line-height:1.4; word-break:break-word; }
+.aff-review-cell .v code { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size:13px; }
+.aff-review-checks {
+  display:flex; flex-direction:column; gap:8px; padding:12px 14px;
+  border-radius:var(--r-sm); background:var(--surface2); border:1px solid var(--border);
+}
+.aff-review-check {
+  display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--text); line-height:1.4;
+}
+.aff-review-check .glyph {
+  flex:0 0 auto; width:20px; height:20px; border-radius:999px; display:grid; place-items:center;
+  background:rgba(34,197,94,.15); color:var(--green); font-weight:800; font-size:12px;
+}
+.aff-review-check.bad .glyph { background:rgba(239,68,68,.15); color:var(--red, #ef4444); }
+.aff-review-actions {
+  display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:6px;
+}
+.aff-review-btn {
+  min-height:50px; border-radius:var(--r-sm); border:1px solid transparent;
+  font:inherit; font-size:14px; font-weight:700; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+}
+.aff-review-btn.approve { background:var(--green); color:#fff; }
+.aff-review-btn.approve:hover { filter: brightness(1.06); }
+.aff-review-btn.deny { background:var(--surface); color:var(--red, #ef4444); border-color:rgba(239,68,68,.4); }
+.aff-review-btn.deny:hover { background:rgba(239,68,68,.06); border-color:var(--red, #ef4444); }
+.aff-review-btn:disabled { opacity:.6; cursor:wait; }
+@media (max-width: 560px) {
+  .aff-review-grid { grid-template-columns: 1fr; }
+  .aff-review-actions { grid-template-columns: 1fr; }
+}
+
 /* ── Drawer ── */
 .aff-drawer {
   position: absolute; top: 0; right: 28px; bottom: 24px; width: 580px; max-width: 92%;
@@ -4913,11 +4996,41 @@ function affCloseDrawer() {
   Aff.selectedId = null;
 }
 
+function affParseSignupNotes(text) {
+  const out = {};
+  if (!text) return out;
+  for (const raw of String(text).split('\n')) {
+    const m = raw.match(/^([^:]+):\s*(.+)$/);
+    if (!m) continue;
+    out[m[1].trim().toLowerCase()] = m[2].trim();
+  }
+  return out;
+}
+
+function affTiktokHandle(profileUrl) {
+  if (!profileUrl) return '';
+  try {
+    const u = new URL(profileUrl);
+    if (/tiktok\.com$/i.test(u.hostname.replace(/^www\./i, ''))) {
+      const seg = u.pathname.split('/').filter(Boolean)[0] || '';
+      return seg.startsWith('@') ? seg : (seg ? '@' + seg : profileUrl);
+    }
+    return profileUrl;
+  } catch {
+    const t = String(profileUrl).trim();
+    return t.startsWith('@') ? t : t;
+  }
+}
+
 function affRenderDrawer(data) {
   const c = data.creator;
   const l = data.ledger;
   const origin     = window.location.origin;
   const isPendingReview = c.setup_status === 'pending_review';
+  if (isPendingReview) {
+    affRenderReviewDrawer(c);
+    return;
+  }
   const refUrl     = `${origin}/?ref=${encodeURIComponent(c.coupon_code)}`;
   const dashUrl    = `${origin}/dashboard.html?token=${encodeURIComponent(c.dashboard_token)}`;
   const freebieUrl = c.freebie_code ? `${origin}/game.html?promo=${encodeURIComponent(c.freebie_code)}` : '';
@@ -5068,6 +5181,117 @@ function affRenderDrawer(data) {
         try { await affApi('delete_creator', { id: c.id }); affCloseDrawer(); affLoad(); }
         catch (err) { alert(err.message); }
       }
+    }
+  };
+}
+
+function affRenderReviewDrawer(c) {
+  const notes = affParseSignupNotes(c.notes || '');
+  const profileUrl   = notes['profile url'] || '';
+  const audience     = notes['audience size'] || '—';
+  const phone        = notes['phone'] || '';
+  const pitch        = notes['signup note'] || '';
+  const submittedAt  = notes['submitted at'] || c.created_at || '';
+  const submittedRel = submittedAt ? affFmtRel(submittedAt) : '—';
+  const ip           = notes['signup ip'] || '';
+  const source       = notes['source'] || 'Application';
+  const reviewAccepted = /yes/i.test(notes['review video commitment accepted'] || '');
+  const usageAccepted  = /yes/i.test(notes['video usage/ad permission accepted'] || '');
+  const handle = affTiktokHandle(profileUrl);
+
+  document.getElementById('affDrawerName').textContent = c.name;
+  document.getElementById('affDrawerSub').textContent  = `${c.email} · applied ${submittedRel}`;
+
+  const profileBlock = profileUrl
+    ? `<a class="aff-review-cta" href="${affEsc(profileUrl)}" target="_blank" rel="noopener noreferrer">
+         <div class="aff-review-cta-main">
+           <span class="aff-review-cta-label">Open creator profile</span>
+           <span class="aff-review-cta-value">${affEsc(handle || profileUrl)}</span>
+         </div>
+         <span class="aff-review-cta-arrow" aria-hidden="true">↗</span>
+       </a>`
+    : `<div class="aff-review-cta" style="cursor:default;">
+         <div class="aff-review-cta-main">
+           <span class="aff-review-cta-label">Profile URL</span>
+           <span class="aff-review-cta-value">No profile provided.</span>
+         </div>
+       </div>`;
+
+  document.getElementById('affDrawerBody').innerHTML = `
+    <div class="aff-review">
+      <div class="aff-review-banner">
+        <span class="glyph">⏳</span>
+        <div>
+          Pending review
+          <small>Approving creates the 100% off sample coupon, the affiliate code in Stripe, and emails the welcome kit. Denying removes the application.</small>
+        </div>
+      </div>
+
+      <div class="aff-review-meta">
+        <span><strong>Submitted</strong> ${affEsc(submittedRel)}</span>
+        <span><strong>Source</strong> ${affEsc(source)}</span>
+        ${ip ? `<span><strong>IP</strong> ${affEsc(ip)}</span>` : ''}
+      </div>
+
+      <div class="aff-review-cta-row">
+        ${profileBlock}
+      </div>
+
+      <div class="aff-review-grid">
+        <div class="aff-review-cell">
+          <div class="l">Audience size</div>
+          <div class="v">${affEsc(audience)}</div>
+        </div>
+        <div class="aff-review-cell">
+          <div class="l">Reserved coupon code</div>
+          <div class="v"><code>${affEsc(c.coupon_code)}</code></div>
+        </div>
+        ${phone ? `<div class="aff-review-cell"><div class="l">Phone</div><div class="v">${affEsc(phone)}</div></div>` : ''}
+        <div class="aff-review-cell">
+          <div class="l">Email</div>
+          <div class="v">${affEsc(c.email)}</div>
+        </div>
+        ${pitch ? `<div class="aff-review-cell full"><div class="l">Their pitch</div><div class="v">${affEsc(pitch)}</div></div>` : ''}
+      </div>
+
+      <div class="aff-review-checks">
+        <div class="aff-review-check ${reviewAccepted ? '' : 'bad'}">
+          <span class="glyph">${reviewAccepted ? '✓' : '✗'}</span>
+          <span>Agreed to post an authentic TikTok review video within 14 days of receiving the product.</span>
+        </div>
+        <div class="aff-review-check ${usageAccepted ? '' : 'bad'}">
+          <span class="glyph">${usageAccepted ? '✓' : '✗'}</span>
+          <span>Granted permission for Credit Card Art to feature, repost, or run their video as an ad.</span>
+        </div>
+      </div>
+
+      <div class="aff-review-actions">
+        <button class="aff-review-btn deny" type="button" data-act="reviewDeny">✕ Deny</button>
+        <button class="aff-review-btn approve" type="button" data-act="reviewApprove">✓ Approve &amp; send kit</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('affDrawerBody').onclick = async (e) => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.act === 'reviewApprove') {
+      affApprove(c.id, t);
+      return;
+    }
+    if (t.dataset.act === 'reviewDeny') {
+      if (!confirm(`Deny ${c.name}'s creator application?\n\nThis removes the application and frees up "${c.coupon_code}" for someone else. The applicant is not emailed.`)) return;
+      const orig = t.textContent;
+      t.disabled = true; t.textContent = 'Denying…';
+      try {
+        await affApi('delete_creator', { id: c.id });
+        affCloseDrawer();
+        await affLoad();
+      } catch (err) {
+        alert('Deny failed: ' + (err.message || err));
+        t.disabled = false; t.textContent = orig;
+      }
+      return;
     }
   };
 }
