@@ -75,8 +75,14 @@ const LIST_SQL = `
     COALESCE((SELECT SUM(gross_cents)    FROM affiliate_orders ao WHERE ao.creator_id = c.id AND ao.is_freebie = FALSE), 0) AS gross_cents,
     COALESCE((SELECT SUM(commission_cents) FROM affiliate_orders ao WHERE ao.creator_id = c.id AND ao.is_freebie = FALSE AND ao.commission_zeroed = FALSE), 0) AS commission_earned_cents,
 
-    -- Payouts
-    COALESCE((SELECT SUM(amount_cents)   FROM affiliate_payouts ap WHERE ap.creator_id = c.id), 0) AS commission_paid_cents,
+    -- Non-commission credits/debits (video bonuses, manual adjustments, clawbacks)
+    COALESCE((SELECT SUM(amount_cents) FROM creator_balance_ledger WHERE creator_id = c.id), 0) AS bonus_cents,
+
+    -- Payouts (excludes failed external payouts so the balance is restored
+    -- when a Tremendous gift card / Stripe Connect transfer fails).
+    COALESCE((SELECT SUM(amount_cents) FROM affiliate_payouts ap
+              WHERE ap.creator_id = c.id
+                AND ap.external_status IS DISTINCT FROM 'failed'), 0) AS commission_paid_cents,
 
     -- Last activity = most recent of: click, order, payout, freebie redeem, created
     GREATEST(
@@ -134,7 +140,7 @@ export async function onRequest(context) {
         if (cRes.rows.length === 0) return json(404, { error: 'Creator not found' });
         const c = cRes.rows[0];
 
-        const [orders, clicks, payouts] = await Promise.all([
+        const [orders, clicks, payouts, ledger] = await Promise.all([
           db.query(
             `SELECT id, order_id_text, attribution_method, is_freebie,
                     gross_cents, discount_cents, commission_rate, commission_cents,
@@ -149,17 +155,27 @@ export async function onRequest(context) {
             [id]
           ),
           db.query(
-            `SELECT id, amount_cents, method, paid_at, notes
+            `SELECT id, amount_cents, method, paid_at, notes,
+                    external_id, external_status, recipient_email, redemption_code, failure_reason
              FROM affiliate_payouts WHERE creator_id = $1 ORDER BY paid_at DESC`,
+            [id]
+          ),
+          db.query(
+            `SELECT id, kind, amount_cents, reference_type, reference_id, notes, created_at
+             FROM creator_balance_ledger WHERE creator_id = $1 ORDER BY created_at DESC LIMIT 200`,
             [id]
           ),
         ]);
 
-        // Ledger summary
+        // Balance summary. Failed external payouts are excluded so the
+        // reservation is rolled back when Tremendous / Stripe Connect fails.
         const earnedCents = orders.rows
           .filter(r => !r.is_freebie && !r.commission_zeroed)
           .reduce((s, r) => s + (r.commission_cents || 0), 0);
-        const paidCents   = payouts.rows.reduce((s, r) => s + (r.amount_cents || 0), 0);
+        const bonusCents  = ledger.rows.reduce((s, r) => s + (r.amount_cents || 0), 0);
+        const paidCents   = payouts.rows
+          .filter(r => r.external_status !== 'failed')
+          .reduce((s, r) => s + (r.amount_cents || 0), 0);
 
         return json(200, {
           creator: {
@@ -170,10 +186,13 @@ export async function onRequest(context) {
           orders:  orders.rows,
           clicks:  clicks.rows,
           payouts: payouts.rows,
+          ledger_entries: ledger.rows,
           ledger: {
-            earned_cents:      earnedCents,
-            paid_cents:        paidCents,
-            outstanding_cents: Math.max(0, earnedCents - paidCents),
+            earned_cents:        earnedCents,
+            bonus_cents:         bonusCents,
+            total_earned_cents:  earnedCents + bonusCents,
+            paid_cents:          paidCents,
+            outstanding_cents:   Math.max(0, earnedCents + bonusCents - paidCents),
           },
         });
       }
@@ -263,6 +282,9 @@ export async function onRequest(context) {
         const c = cRes.rows[0];
         if (!c.review_video_r2_key) return json(400, { error: 'Creator has not uploaded a review video yet.' });
 
+        const wasAlreadyApproved = c.review_video_status === 'approved';
+        const bonusCents = Number(c.review_video_bonus_cents) || 1000;
+
         await db.query(
           `UPDATE affiliate_creators
            SET review_video_status = 'approved',
@@ -272,7 +294,30 @@ export async function onRequest(context) {
            WHERE id = $2`,
           [notes, id]
         );
-        return json(200, { success: true });
+
+        // Credit the bonus to the balance ledger. The partial unique index on
+        // (creator_id, kind, reference_type, reference_id) WHERE kind='video_bonus'
+        // makes this idempotent if the admin re-clicks approve.
+        let credited = false;
+        if (!wasAlreadyApproved && bonusCents > 0) {
+          const ins = await db.query(
+            `INSERT INTO creator_balance_ledger
+               (creator_id, kind, amount_cents, reference_type, reference_id, notes)
+             VALUES ($1, 'video_bonus', $2, 'review_video', $1, $3)
+             ON CONFLICT (creator_id, kind, reference_type, reference_id)
+             WHERE kind = 'video_bonus'
+             DO NOTHING
+             RETURNING id`,
+            [id, bonusCents, `Video bonus on approval. ${notes}`]
+          );
+          credited = ins.rows.length > 0;
+        }
+
+        return json(200, {
+          success: true,
+          bonus_credited_cents: credited ? bonusCents : 0,
+          already_approved: wasAlreadyApproved,
+        });
       }
 
       case 'reject_review_video': {
@@ -567,6 +612,7 @@ export async function onRequest(context) {
 
 function rowToListItem(row) {
   const earned = Number(row.commission_earned_cents) || 0;
+  const bonus  = Number(row.bonus_cents)             || 0;
   const paid   = Number(row.commission_paid_cents)   || 0;
   // Status derivation per the brief.
   let status = 'invited';
@@ -598,8 +644,10 @@ function rowToListItem(row) {
     orders_count:             Number(row.orders_count),
     gross_cents:              Number(row.gross_cents),
     commission_earned_cents:  earned,
+    bonus_cents:              bonus,
+    total_earned_cents:       earned + bonus,
     commission_paid_cents:    paid,
-    outstanding_cents:        Math.max(0, earned - paid),
+    outstanding_cents:        Math.max(0, earned + bonus - paid),
     last_activity_at:         row.last_activity_at,
     created_at:               row.created_at,
   };

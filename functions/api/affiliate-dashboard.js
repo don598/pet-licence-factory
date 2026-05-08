@@ -133,11 +133,14 @@ async function dashboardPayload(env, db, creator, token) {
          (SELECT COUNT(*) FROM affiliate_clicks WHERE creator_id = $1 AND created_at > NOW() - INTERVAL '14 days' AND created_at <= NOW() - INTERVAL '7 days') AS clicks_prev_7d,
          (SELECT COUNT(*)             FROM affiliate_orders WHERE creator_id = $1 AND is_freebie = FALSE)        AS orders_count,
          (SELECT COALESCE(SUM(commission_cents), 0) FROM affiliate_orders WHERE creator_id = $1 AND is_freebie = FALSE AND commission_zeroed = FALSE) AS commission_earned_cents,
-         (SELECT COALESCE(SUM(amount_cents),     0) FROM affiliate_payouts WHERE creator_id = $1)             AS commission_paid_cents`,
+         (SELECT COALESCE(SUM(amount_cents),     0) FROM creator_balance_ledger WHERE creator_id = $1)        AS bonus_cents,
+         (SELECT COALESCE(SUM(amount_cents),     0) FROM affiliate_payouts
+            WHERE creator_id = $1 AND external_status IS DISTINCT FROM 'failed')                              AS commission_paid_cents`,
       [creator.id]
     ),
     db.query(
-      `SELECT id, amount_cents, method, paid_at, notes
+      `SELECT id, amount_cents, method, paid_at, notes,
+              external_id, external_status, recipient_email, redemption_code, failure_reason
        FROM affiliate_payouts WHERE creator_id = $1 ORDER BY paid_at DESC`,
       [creator.id]
     ),
@@ -147,6 +150,9 @@ async function dashboardPayload(env, db, creator, token) {
        UNION ALL
        (SELECT 'click'  AS kind, created_at AS at, COALESCE(referrer, landing_path) AS label, NULL::int AS cents, FALSE AS is_freebie
         FROM affiliate_clicks WHERE creator_id = $1 ORDER BY created_at DESC LIMIT 10)
+       UNION ALL
+       (SELECT 'bonus'  AS kind, created_at AS at, kind          AS label, amount_cents     AS cents, FALSE AS is_freebie
+        FROM creator_balance_ledger WHERE creator_id = $1 ORDER BY created_at DESC LIMIT 10)
        ORDER BY at DESC LIMIT 10`,
       [creator.id]
     ),
@@ -154,6 +160,7 @@ async function dashboardPayload(env, db, creator, token) {
 
   const s = stats.rows[0];
   const earnedCents = Number(s.commission_earned_cents) || 0;
+  const bonusCents  = Number(s.bonus_cents)             || 0;
   const paidCents   = Number(s.commission_paid_cents)   || 0;
 
   return {
@@ -173,6 +180,8 @@ async function dashboardPayload(env, db, creator, token) {
       review_video_size_bytes: Number(creator.review_video_size_bytes) || 0,
       review_video_bonus_cents: Number(creator.review_video_bonus_cents) || 1000,
       review_video_url:        creator.review_video_r2_key ? `/api/affiliate-video?token=${encodeURIComponent(token)}` : null,
+      stripe_connect_payouts_enabled: !!creator.stripe_connect_payouts_enabled,
+      stripe_connect_onboarded_at:    creator.stripe_connect_onboarded_at || null,
     },
     affiliate_url: `${env.URL || 'https://petlicensefactory.com'}/?ref=${encodeURIComponent(creator.coupon_code)}`,
     stats: {
@@ -181,8 +190,10 @@ async function dashboardPayload(env, db, creator, token) {
       clicks_prev_7d:         Number(s.clicks_prev_7d),
       orders_count:           Number(s.orders_count),
       commission_earned_cents: earnedCents,
+      bonus_cents:             bonusCents,
+      total_earned_cents:      earnedCents + bonusCents,
       commission_paid_cents:   paidCents,
-      commission_pending_cents: Math.max(0, earnedCents - paidCents),
+      commission_pending_cents: Math.max(0, earnedCents + bonusCents - paidCents),
     },
     payouts: payouts.rows,
     activity: recent.rows.map(r => ({

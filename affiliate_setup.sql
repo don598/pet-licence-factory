@@ -200,8 +200,69 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE INDEX IF NOT EXISTS idx_aff_templates_name ON affiliate_outreach_templates (name);
 
+
+-- ── 10. Balance ledger ─────────────────────────────────────────────────────
+-- Records non-commission credits/debits to a creator's balance: video-upload
+-- bonuses, manual admin adjustments, refund clawbacks, etc. Commissions stay
+-- in affiliate_orders. Payouts stay in affiliate_payouts. This is the third
+-- input to the balance equation:
+--   pending = SUM(orders.commission_cents)
+--           + SUM(ledger.amount_cents)        -- signed
+--           − SUM(payouts.amount_cents)
+CREATE TABLE IF NOT EXISTS creator_balance_ledger (
+  id             BIGSERIAL    PRIMARY KEY,
+  creator_id     BIGINT       NOT NULL REFERENCES affiliate_creators(id) ON DELETE CASCADE,
+  kind           TEXT         NOT NULL,          -- video_bonus | manual_adjustment | refund_clawback
+  amount_cents   INTEGER      NOT NULL,          -- signed: + credit, − debit
+  reference_type TEXT,                           -- e.g., 'review_video'
+  reference_id   BIGINT,                         -- e.g., the creator id when reference_type='review_video'
+  notes          TEXT,
+  created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_balance_ledger_creator
+  ON creator_balance_ledger (creator_id, created_at DESC);
+
+-- One-time-bonus idempotency: a given (creator, reference) can only be
+-- credited once per kind for kinds that should not repeat.
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_balance_ledger_video_bonus
+  ON creator_balance_ledger (creator_id, kind, reference_type, reference_id)
+  WHERE kind = 'video_bonus';
+
+
+-- ── 11. Payout rail extensions ─────────────────────────────────────────────
+-- Tracks external payout system state for Tremendous (gift cards), Stripe
+-- Connect (direct deposit), and PLF store credit (Stripe one-time promos).
+-- The existing `method` column is widened to include:
+--   gift_card_tremendous | stripe_connect | store_credit
+-- alongside the legacy manual values (venmo, paypal, zelle, cash, check, other).
+ALTER TABLE affiliate_payouts
+  ADD COLUMN IF NOT EXISTS external_id      TEXT,   -- Tremendous order id OR Stripe transfer id
+  ADD COLUMN IF NOT EXISTS external_status  TEXT,   -- requested|processing|delivered|failed
+  ADD COLUMN IF NOT EXISTS recipient_email  TEXT,   -- gift card delivery target
+  ADD COLUMN IF NOT EXISTS redemption_code  TEXT,   -- Stripe promo code for store-credit redemption
+  ADD COLUMN IF NOT EXISTS failure_reason   TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_aff_payouts_external_id
+  ON affiliate_payouts (external_id);
+
+
+-- ── 12. Stripe Connect Express on creators ────────────────────────────────
+-- Once a creator earns enough to unlock direct deposit (≥ $25), they connect
+-- a Stripe Express account. We track its id and whether payouts are enabled
+-- (Stripe sets this true after Stripe finishes verification).
+ALTER TABLE affiliate_creators
+  ADD COLUMN IF NOT EXISTS stripe_connect_account_id      TEXT,
+  ADD COLUMN IF NOT EXISTS stripe_connect_onboarded_at    TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS stripe_connect_payouts_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_aff_creators_stripe_connect
+  ON affiliate_creators (stripe_connect_account_id)
+  WHERE stripe_connect_account_id IS NOT NULL;
+
+
 -- ================================================================
 --  Done. Tables: affiliate_creators, affiliate_clicks, affiliate_orders,
 --  affiliate_payouts, affiliate_email_log, affiliate_magic_links,
---  affiliate_outreach_templates
+--  affiliate_outreach_templates, creator_balance_ledger
 -- ================================================================

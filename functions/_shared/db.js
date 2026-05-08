@@ -23,5 +23,26 @@ export function getDb(env) {
     connectionTimeoutMillis: 10000,
   });
 
-  return { query: (text, params) => pool.query(text, params) };
+  return {
+    query: (text, params) => pool.query(text, params),
+
+    // Run `fn(client)` inside a single connection wrapped in BEGIN/COMMIT.
+    // Rolls back and rethrows on error. Use this when you need row locks
+    // (SELECT ... FOR UPDATE) or multi-statement atomicity — e.g. payout
+    // reservation against a balance.
+    async withTransaction(fn) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const result = await fn(client);
+        await client.query('COMMIT');
+        return result;
+      } catch (err) {
+        try { await client.query('ROLLBACK'); } catch {}
+        throw err;
+      } finally {
+        client.release();
+      }
+    },
+  };
 }
