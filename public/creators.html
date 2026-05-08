@@ -294,6 +294,83 @@ h1 {
 .signup-form {
   padding: 24px 28px 28px;
 }
+.progress-wrap {
+  padding: 16px 28px 0;
+}
+.progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: 8px;
+}
+.progress-meta strong { color: var(--accent); }
+.progress-bar {
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: var(--pill);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.progress-bar-fill {
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(90deg, var(--accent), #16a34a);
+  border-radius: var(--pill);
+  transition: width .35s cubic-bezier(.2, .8, .2, 1);
+}
+.steps {
+  position: relative;
+  overflow: hidden;
+}
+.step {
+  display: none;
+  animation: stepIn .28s cubic-bezier(.2, .8, .2, 1);
+}
+.step.active { display: block; }
+@keyframes stepIn {
+  from { opacity: 0; transform: translateX(14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.step.back-anim { animation-name: stepInBack; }
+@keyframes stepInBack {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.step-actions {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  margin-top: 18px;
+  align-items: stretch;
+}
+.step-actions.first { grid-template-columns: 1fr; }
+.step-back-btn {
+  min-height: 50px;
+  padding: 0 18px;
+  border-radius: var(--pill);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--soft);
+  font-size: 14px;
+  font-weight: 800;
+}
+.step-back-btn:hover { border-color: var(--accent); color: var(--accent); }
+.step-next-btn {
+  width: 100%;
+  min-height: 50px;
+  border: none;
+  border-radius: var(--pill);
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+}
+.step-next-btn:hover { background: var(--accent-hover); }
 .field-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -612,82 +689,106 @@ h1 {
         <div class="panel-copy">We review each public profile before sending the 100% off sample coupon, affiliate link, and dashboard access.</div>
       </div>
 
-      <form class="signup-form" id="signupForm" novalidate>
-        <div class="field-grid">
-          <label class="field">
-            <span>Name</span>
-            <input name="name" id="name" type="text" autocomplete="name" maxlength="100" required placeholder="Your creator name">
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input name="email" id="email" type="email" autocomplete="email" maxlength="200" required placeholder="you@example.com">
-          </label>
-          <label class="field full">
-            <span>Phone (optional)</span>
-            <input name="phone" id="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="(555) 123-4567">
-          </label>
-          <div class="help">Add a phone number to be texted with your 100% off coupon when approved.</div>
-          <label class="field full">
-            <span>TikTok or public profile</span>
-            <input name="profileUrl" id="profileUrl" type="url" autocomplete="url" maxlength="240" required placeholder="https://www.tiktok.com/@yourhandle">
-          </label>
-          <label class="field">
-            <span>Main channel</span>
-            <select name="primaryChannel" id="primaryChannel" required>
-              <option value="">Choose one</option>
-              <option>Instagram</option>
-              <option>TikTok</option>
-              <option>YouTube</option>
-              <option>Newsletter</option>
-              <option>Blog or website</option>
-              <option>Other</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Audience size</span>
-            <select name="audienceSize" id="audienceSize" required>
-              <option value="">Choose one</option>
-              <option>Under 1,000</option>
-              <option>1,000 - 10,000</option>
-              <option>10,000 - 50,000</option>
-              <option>50,000 - 250,000</option>
-              <option>250,000+</option>
-            </select>
-          </label>
-          <label class="field full">
-            <span>Coupon code</span>
-            <div class="code-row">
-              <input name="couponCode" id="couponCode" type="text" maxlength="32" pattern="[A-Za-z0-9_\-]{3,32}" required placeholder="YOURCODE">
-              <button type="button" id="suggestCode">Suggest</button>
-            </div>
-          </label>
-          <div class="help">Use 3 to 32 letters, numbers, hyphens, or underscores. Your audience will enter this at checkout.</div>
-          <label class="field full">
-            <span>Anything we should know?</span>
-            <textarea name="pitch" id="pitch" maxlength="500" placeholder="Pet niche, launch idea, or your best contact handle. Optional."></textarea>
-          </label>
+      <div class="progress-wrap" aria-hidden="true">
+        <div class="progress-meta">
+          <span>Step <strong id="stepNum">1</strong> of 2</span>
+          <span id="stepLabel">About you</span>
         </div>
+        <div class="progress-bar"><div class="progress-bar-fill" id="progressFill"></div></div>
+      </div>
 
-        <label class="hp" aria-hidden="true">
-          Company website
-          <input name="companyWebsite" tabindex="-1" autocomplete="off">
-        </label>
+      <form class="signup-form" id="signupForm" novalidate>
+        <div class="steps">
+          <div class="step active" data-step="1" data-label="About you">
+            <div class="field-grid">
+              <label class="field">
+                <span>Name</span>
+                <input name="name" id="name" type="text" autocomplete="name" maxlength="100" required placeholder="Your creator name">
+              </label>
+              <label class="field">
+                <span>Email</span>
+                <input name="email" id="email" type="email" autocomplete="email" maxlength="200" required placeholder="you@example.com">
+              </label>
+              <label class="field full">
+                <span>Phone (optional)</span>
+                <input name="phone" id="phone" type="tel" autocomplete="tel" maxlength="40" placeholder="(555) 123-4567">
+              </label>
+              <div class="help">Add a phone number to be texted with your 100% off coupon when approved.</div>
+              <label class="field full">
+                <span>TikTok or public profile</span>
+                <input name="profileUrl" id="profileUrl" type="url" autocomplete="url" maxlength="240" required placeholder="https://www.tiktok.com/@yourhandle">
+              </label>
+              <label class="field">
+                <span>Main channel</span>
+                <select name="primaryChannel" id="primaryChannel" required>
+                  <option value="">Choose one</option>
+                  <option>Instagram</option>
+                  <option>TikTok</option>
+                  <option>YouTube</option>
+                  <option>Newsletter</option>
+                  <option>Blog or website</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Audience size</span>
+                <select name="audienceSize" id="audienceSize" required>
+                  <option value="">Choose one</option>
+                  <option>Under 1,000</option>
+                  <option>1,000 - 10,000</option>
+                  <option>10,000 - 50,000</option>
+                  <option>50,000 - 250,000</option>
+                  <option>250,000+</option>
+                </select>
+              </label>
+            </div>
 
-        <label class="check">
-          <input name="termsAccepted" id="termsAccepted" type="checkbox" required>
-          <span>I am signing myself up, and I understand the welcome checkout is single-use and sent only after approval.</span>
-        </label>
-        <label class="check">
-          <input name="reviewCommitmentAccepted" id="reviewCommitmentAccepted" type="checkbox" required>
-          <span>By claiming this free custom pet licence, I agree to post an authentic review video on TikTok within 14 days of receiving my product.</span>
-        </label>
-        <label class="check">
-          <input name="usagePermissionAccepted" id="usagePermissionAccepted" type="checkbox" required>
-          <span>I grant Credit Card Art permission to feature, repost, or run my video as an ad. (I understand this means my video may be promoted with ad spend, driving even more traffic to my personal affiliate code!)</span>
-        </label>
+            <div class="step-actions first">
+              <button class="step-next-btn" type="button" data-next>Continue</button>
+            </div>
+          </div>
 
-        <button class="submit-btn" id="submitBtn" type="submit">Submit application</button>
-        <div class="form-error" id="formError" role="alert"></div>
+          <div class="step" data-step="2" data-label="Your code &amp; terms">
+            <div class="field-grid">
+              <label class="field full">
+                <span>Coupon code</span>
+                <div class="code-row">
+                  <input name="couponCode" id="couponCode" type="text" maxlength="32" pattern="[A-Za-z0-9_\-]{3,32}" required placeholder="YOURCODE">
+                  <button type="button" id="suggestCode">Suggest</button>
+                </div>
+              </label>
+              <div class="help">Use 3 to 32 letters, numbers, hyphens, or underscores. Your audience will enter this at checkout.</div>
+              <label class="field full">
+                <span>Anything we should know?</span>
+                <textarea name="pitch" id="pitch" maxlength="500" placeholder="Pet niche, launch idea, or your best contact handle. Optional."></textarea>
+              </label>
+            </div>
+
+            <label class="hp" aria-hidden="true">
+              Company website
+              <input name="companyWebsite" tabindex="-1" autocomplete="off">
+            </label>
+
+            <label class="check">
+              <input name="termsAccepted" id="termsAccepted" type="checkbox" required>
+              <span>I am signing myself up, and I understand the welcome checkout is single-use and sent only after approval.</span>
+            </label>
+            <label class="check">
+              <input name="reviewCommitmentAccepted" id="reviewCommitmentAccepted" type="checkbox" required>
+              <span>By claiming this free custom pet licence, I agree to post an authentic review video on TikTok within 14 days of receiving my product.</span>
+            </label>
+            <label class="check">
+              <input name="usagePermissionAccepted" id="usagePermissionAccepted" type="checkbox" required>
+              <span>I grant Credit Card Art permission to feature, repost, or run my video as an ad. (I understand this means my video may be promoted with ad spend, driving even more traffic to my personal affiliate code!)</span>
+            </label>
+
+            <div class="step-actions">
+              <button class="step-back-btn" type="button" data-back>Back</button>
+              <button class="submit-btn" id="submitBtn" type="submit">Submit application</button>
+            </div>
+            <div class="form-error" id="formError" role="alert"></div>
+          </div>
+        </div>
       </form>
 
       <div class="result" id="result">
@@ -730,6 +831,12 @@ const panel = $('signupPanel');
 const formError = $('formError');
 const submitBtn = $('submitBtn');
 const samples = [...document.querySelectorAll('.sample')];
+const steps = [...document.querySelectorAll('.step')];
+const STEP_FIELDS = {
+  1: ['name', 'email', 'profileUrl', 'primaryChannel', 'audienceSize'],
+  2: ['couponCode', 'termsAccepted', 'reviewCommitmentAccepted', 'usagePermissionAccepted'],
+};
+let currentStep = 1;
 let focusedSample = null;
 
 function cleanCode(value) {
@@ -830,6 +937,55 @@ $('name').addEventListener('blur', () => {
 $('profileUrl').addEventListener('blur', () => {
   if (!$('couponCode').value.trim()) suggestCode();
 });
+
+function setStep(n, direction = 'forward') {
+  const target = Math.max(1, Math.min(steps.length, n));
+  if (target === currentStep) return;
+  currentStep = target;
+  steps.forEach(s => {
+    const isActive = Number(s.dataset.step) === target;
+    s.classList.remove('back-anim');
+    if (isActive && direction === 'back') s.classList.add('back-anim');
+    s.classList.toggle('active', isActive);
+  });
+  const active = steps.find(s => Number(s.dataset.step) === target);
+  $('stepNum').textContent = target;
+  $('stepLabel').textContent = active?.dataset.label || '';
+  $('progressFill').style.width = (target / steps.length * 100) + '%';
+  clearError();
+  // Focus the first input in the new step (skip on tiny screens to avoid jumpy keyboards).
+  const firstInput = active?.querySelector('input:not([type=hidden]):not([tabindex="-1"]),select,textarea');
+  if (firstInput && window.innerWidth >= 600) firstInput.focus();
+  // Scroll panel into view on mobile.
+  if (window.innerWidth < 900) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function validateStep(n) {
+  const ids = STEP_FIELDS[n] || [];
+  for (const id of ids) {
+    const el = $(id);
+    if (!el) continue;
+    if (!el.checkValidity()) {
+      el.reportValidity();
+      el.focus();
+      return false;
+    }
+  }
+  return true;
+}
+
+document.querySelectorAll('[data-next]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!validateStep(currentStep)) return;
+    setStep(currentStep + 1, 'forward');
+  });
+});
+document.querySelectorAll('[data-back]').forEach(btn => {
+  btn.addEventListener('click', () => setStep(currentStep - 1, 'back'));
+});
+
+// Initialise progress fill width.
+$('progressFill').style.width = (currentStep / steps.length * 100) + '%';
 
 samples.forEach(sample => {
   sample.tabIndex = 0;
