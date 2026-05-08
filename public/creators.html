@@ -524,8 +524,17 @@ h1 {
   padding: 24px 28px 28px;
 }
 .signup-panel.done .signup-form,
-.signup-panel.done .panel-head { display: none; }
+.signup-panel.done .panel-head,
+.signup-panel.done .progress-wrap { display: none; }
 .signup-panel.done .result { display: block; }
+.confetti-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 80;
+}
 .result-status {
   display: inline-flex;
   align-items: center;
@@ -1036,6 +1045,86 @@ function renderResult(data) {
     : 'Most approvals are completed within 24 hours. Check your email for your 100% off sample coupon, affiliate link, and dashboard access if approved.';
   panel.classList.add('done');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  fireConfetti();
+}
+
+function fireConfetti(durationMs = 2800) {
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return;
+  const canvas = document.createElement('canvas');
+  canvas.className = 'confetti-canvas';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  function resize() {
+    canvas.width  = window.innerWidth  * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width  = window.innerWidth  + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const colors = ['#0c5e32','#16a34a','#0077ff','#00d4ff','#00ff95','#e4573f','#facc15','#ec4899'];
+  const count = window.innerWidth < 600 ? 90 : 160;
+  const particles = [];
+  for (let i = 0; i < count; i++) {
+    const fromLeft = Math.random() < 0.5;
+    particles.push({
+      x: fromLeft ? -10 : window.innerWidth + 10,
+      y: window.innerHeight * (0.55 + Math.random() * 0.35),
+      vx: (fromLeft ? 1 : -1) * (8 + Math.random() * 9),
+      vy: -(10 + Math.random() * 14),
+      g: 0.32 + Math.random() * 0.18,
+      drag: 0.985,
+      size: 6 + Math.random() * 7,
+      rot: Math.random() * Math.PI * 2,
+      vr: (Math.random() - 0.5) * 0.42,
+      color: colors[(Math.random() * colors.length) | 0],
+      shape: Math.random() < 0.55 ? 'rect' : 'circle',
+      life: 1,
+    });
+  }
+
+  const start = performance.now();
+  let raf;
+  function frame(now) {
+    const elapsed = now - start;
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    let alive = false;
+    for (const p of particles) {
+      p.vx *= p.drag;
+      p.vy = p.vy * p.drag + p.g;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      if (elapsed > durationMs - 800) p.life = Math.max(0, p.life - 0.018);
+      if (p.life <= 0 || p.y - p.size > window.innerHeight + 40) continue;
+      alive = true;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      if (p.shape === 'rect') {
+        ctx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.66);
+      } else {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size / 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    if (alive && elapsed < durationMs + 400) {
+      raf = requestAnimationFrame(frame);
+    } else {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+      canvas.remove();
+    }
+  }
+  raf = requestAnimationFrame(frame);
 }
 
 $('couponCode').addEventListener('input', e => {
