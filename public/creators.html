@@ -76,14 +76,10 @@ button { cursor: pointer; }
 .brand-badge {
   width: 38px;
   height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--ink);
-  color: #60ff80;
-  font-family: var(--pixel);
-  font-size: 14px;
   flex: 0 0 auto;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 .brand-text {
   min-width: 0;
@@ -582,7 +578,7 @@ h1 {
 <body>
 <header class="topbar">
   <a class="brand" href="/">
-    <span class="brand-badge">PLF</span>
+    <img class="brand-badge" src="/favicon-192.png" alt="Pet Licence Factory bunny">
     <span class="brand-text">
       <span class="brand-name">Pet Licence Factory</span>
       <span class="brand-sub">Creator program</span>
