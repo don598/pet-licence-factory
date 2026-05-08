@@ -41,11 +41,17 @@ function creatorNotes(body, request) {
     cleanText(body.primaryChannel, 80) && `Primary channel: ${cleanText(body.primaryChannel, 80)}`,
     cleanText(body.audienceSize, 80) && `Audience size: ${cleanText(body.audienceSize, 80)}`,
     cleanText(body.phone, 40) && `Phone: ${cleanText(body.phone, 40)}`,
+    `Review video commitment accepted: ${accepted(body.reviewCommitmentAccepted) ? 'yes' : 'no'}`,
+    `Video usage/ad permission accepted: ${accepted(body.usagePermissionAccepted) ? 'yes' : 'no'}`,
     cleanText(body.pitch, 500) && `Signup note: ${cleanText(body.pitch, 500)}`,
     `Submitted at: ${new Date().toISOString()}`,
     `Signup IP: ${request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown'}`,
   ];
   return lines.filter(Boolean).join('\n').slice(0, 1000);
+}
+
+function accepted(value) {
+  return value === true || value === 'true' || value === 'on';
 }
 
 export async function onRequest(context) {
@@ -70,9 +76,15 @@ export async function onRequest(context) {
     return json(200, { success: true, queued: true });
   }
 
-  const termsAccepted = body.termsAccepted === true || body.termsAccepted === 'true' || body.termsAccepted === 'on';
+  const termsAccepted = accepted(body.termsAccepted);
   if (!termsAccepted) {
     return json(400, { error: 'Please accept the creator program terms.' });
+  }
+  if (!accepted(body.reviewCommitmentAccepted)) {
+    return json(400, { error: 'Please agree to post an authentic TikTok review video within 14 days of receiving your product.' });
+  }
+  if (!accepted(body.usagePermissionAccepted)) {
+    return json(400, { error: 'Please grant permission for Credit Card Art to feature, repost, or promote your video.' });
   }
   if (!cleanText(body.profileUrl, 240)) {
     return json(400, { error: 'TikTok or public profile is required.' });

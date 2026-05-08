@@ -9,6 +9,8 @@
 //   approve_creator         → approve a public application, create coupons, email onboarding
 //   retry_creator_setup     → re-run failed Stripe coupon creation
 //   resend_onboarding       → resend onboarding email
+//   approve_review_video    → approve creator video proof for $10 bonus
+//   reject_review_video     → reject creator video proof with optional note
 //   preview_onboarding      → returns rendered HTML for the preview-before-send
 //   delete_creator          → admin-only hard delete (deactivates Stripe coupons)
 //   record_payout           → write a manual payout row
@@ -28,6 +30,7 @@ import {
   clampRate,
   sendOnboardingAndLog,
 } from '../_shared/affiliate-onboarding.js';
+import { ensureAffiliateContentSchema } from '../_shared/affiliate-content-schema.js';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -58,7 +61,8 @@ const LIST_SQL = `
   SELECT
     c.id, c.name, c.email, c.coupon_code, c.commission_rate, c.customer_discount_rate,
     c.freebie_code, c.setup_status, c.setup_error, c.notes, c.created_at,
-    c.freebie_redeemed_at,
+    c.freebie_redeemed_at, c.tiktok_ad_code, c.review_video_status,
+    c.review_video_submitted_at, c.review_video_bonus_cents,
 
     -- Click stats
     COALESCE((SELECT COUNT(*) FROM affiliate_clicks ac WHERE ac.creator_id = c.id),                                0) AS clicks_total,
@@ -108,6 +112,7 @@ export async function onRequest(context) {
   if (!action) return json(400, { error: 'Missing action' });
 
   const db = getDb(env);
+  await ensureAffiliateContentSchema(db);
 
   try {
     switch (action) {
@@ -243,6 +248,51 @@ export async function onRequest(context) {
           siteOrigin: env.URL || 'https://petlicensefactory.com',
         });
         return json(200, { success: true, email: result });
+      }
+
+      // ── REVIEW VIDEO BONUS ───────────────────────────────────────────
+      case 'approve_review_video': {
+        const id = parseInt(body.id);
+        if (!id) return json(400, { error: 'Missing id' });
+        const notes = (body.notes || 'Approved for $10 TikTok review video bonus.').toString().slice(0, 500);
+
+        const cRes = await db.query('SELECT * FROM affiliate_creators WHERE id = $1', [id]);
+        if (cRes.rows.length === 0) return json(404, { error: 'Creator not found' });
+        const c = cRes.rows[0];
+        if (!c.review_video_r2_key) return json(400, { error: 'Creator has not uploaded a review video yet.' });
+
+        await db.query(
+          `UPDATE affiliate_creators
+           SET review_video_status = 'approved',
+               review_video_reviewed_at = NOW(),
+               review_video_review_notes = $1,
+               updated_at = NOW()
+           WHERE id = $2`,
+          [notes, id]
+        );
+        return json(200, { success: true });
+      }
+
+      case 'reject_review_video': {
+        const id = parseInt(body.id);
+        if (!id) return json(400, { error: 'Missing id' });
+        const notes = (body.notes || 'Please upload a clearer TikTok review video.').toString().slice(0, 500);
+
+        const cRes = await db.query('SELECT * FROM affiliate_creators WHERE id = $1', [id]);
+        if (cRes.rows.length === 0) return json(404, { error: 'Creator not found' });
+        const c = cRes.rows[0];
+        if (!c.review_video_r2_key) return json(400, { error: 'Creator has not uploaded a review video yet.' });
+
+        await db.query(
+          `UPDATE affiliate_creators
+           SET review_video_status = 'rejected',
+               review_video_reviewed_at = NOW(),
+               review_video_review_notes = $1,
+               updated_at = NOW()
+           WHERE id = $2`,
+          [notes, id]
+        );
+        return json(200, { success: true });
       }
 
       // ── PREVIEW ONBOARDING (renders HTML, no send) ───────────────────
@@ -456,6 +506,10 @@ function rowToListItem(row) {
     setup_error:              row.setup_error,
     freebie_code:             row.freebie_code,
     freebie_redeemed_at:      row.freebie_redeemed_at,
+    tiktok_ad_code:           row.tiktok_ad_code,
+    review_video_status:      row.review_video_status,
+    review_video_submitted_at: row.review_video_submitted_at,
+    review_video_bonus_cents: Number(row.review_video_bonus_cents) || 1000,
     status,
     clicks_total:             Number(row.clicks_total),
     clicks_7d:                Number(row.clicks_7d),

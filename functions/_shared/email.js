@@ -458,12 +458,25 @@ export async function sendCreatorOnboardingEmail(env, opts) {
           </div>
         </td></tr>
 
+        <!-- Package -->
+        <tr><td style="padding:16px 32px 8px;">
+          <div style="background:#f7faff;border:1px solid rgba(0,102,255,.18);border-radius:6px;padding:18px 20px;">
+            <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:10px;">What you get</div>
+            <ol style="margin:0;padding-left:20px;font-size:13px;color:#223355;line-height:1.7;">
+              <li><strong>Free product</strong> — claim your complimentary Pet Licence sample above.</li>
+              <li><strong>Commission package</strong> — share your code/link and earn ${esc(commissionPct)}% on paid orders.</li>
+              <li><strong>$10 video bonus</strong> — upload your TikTok review video in your dashboard after posting. Once reviewed, we’ll add the bonus.</li>
+            </ol>
+          </div>
+        </td></tr>
+
         <!-- Brief -->
         <tr><td style="padding:20px 32px 8px;">
           <h2 style="margin:0 0 10px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">📋 The Brief</h2>
           <ul style="margin:0;padding-left:20px;font-size:13px;color:#223355;line-height:1.7;">
-            <li>Post at least one piece of content featuring your Pet Licence in the next 14 days.</li>
-            <li>You're free to use organic OR paid ads — just don't bid on our brand terms.</li>
+            <li>Post an authentic TikTok review video within 14 days of receiving your product.</li>
+            <li>Upload that video in your dashboard as proof so we can review it for the $10 bonus.</li>
+            <li>Add your TikTok Spark Ads authorization code in the dashboard if you want us to promote the video with ad spend.</li>
             <li>Tag <strong>@petlicencefactory</strong> so we can re-share.</li>
             <li>Be honest. Show the licence; show your pet's reaction. Authenticity outperforms polish.</li>
           </ul>
@@ -504,9 +517,15 @@ ${freebieUrl}
 📊 Your dashboard:
 ${dashboardUrl}
 
+What you get:
+1. Free product — claim your complimentary sample above.
+2. Commission package — share your code/link and earn ${commissionPct}% on paid orders.
+3. $10 video bonus — upload your TikTok review video in your dashboard after posting. Once reviewed, we'll add the bonus.
+
 The brief:
-- Post at least one piece featuring your Pet Licence in the next 14 days.
-- Organic or paid ads OK — just don't bid on our brand terms.
+- Post an authentic TikTok review video within 14 days of receiving your product.
+- Upload that video in your dashboard as proof so we can review it for the $10 bonus.
+- Add your TikTok Spark Ads authorization code in the dashboard if you want us to promote the video with ad spend.
 - Tag @petlicencefactory.
 - Authenticity > polish.
 

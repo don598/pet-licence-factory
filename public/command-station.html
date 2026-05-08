@@ -4859,6 +4859,9 @@ function affRenderDrawer(data) {
   const refUrl     = `${origin}/?ref=${encodeURIComponent(c.coupon_code)}`;
   const dashUrl    = `${origin}/dashboard.html?token=${encodeURIComponent(c.dashboard_token)}`;
   const freebieUrl = c.freebie_code ? `${origin}/game.html?promo=${encodeURIComponent(c.freebie_code)}` : '';
+  const reviewStatus = c.review_video_status || 'not_submitted';
+  const reviewVideoUrl = c.review_video_r2_key ? `/api/affiliate-video?token=${encodeURIComponent(c.dashboard_token)}` : '';
+  const reviewBonus = affFmtUsd(c.review_video_bonus_cents || 1000);
 
   document.getElementById('affDrawerName').textContent = c.name;
   document.getElementById('affDrawerSub').textContent  = `${c.email} · ${Math.round(c.commission_rate*100)}% commission · ${Math.round(c.customer_discount_rate*100)}% customer discount`;
@@ -4898,6 +4901,29 @@ function affRenderDrawer(data) {
             <button class="aff-mini-btn aff-mini-danger" data-delpay="${p.id}">Undo</button></li>`).join('')}</ul>`
     : '<div class="aff-empty">No payouts recorded.</div>';
 
+  const creatorContentHtml = `
+    <div class="aff-section">
+      <div class="aff-section-title">TikTok content &amp; bonus</div>
+      <div class="aff-codes">
+        <div class="aff-code-row">
+          <code>${affEsc(c.tiktok_ad_code || 'No TikTok ad authorization code yet')}</code>
+          ${c.tiktok_ad_code ? `<button class="aff-mini-btn" data-copy="${affEsc(c.tiktok_ad_code)}">Copy ad code</button>` : ''}
+        </div>
+      </div>
+      <div class="aff-note-box" style="margin-top:10px;">
+        <strong>Status:</strong> ${affEsc(reviewStatus.replace('_', ' '))}<br>
+        <strong>Bonus:</strong> ${reviewBonus}<br>
+        ${c.review_video_submitted_at ? `<strong>Submitted:</strong> ${affEsc(affFmtRel(c.review_video_submitted_at))}<br>` : ''}
+        ${c.review_video_filename ? `<strong>File:</strong> ${affEsc(c.review_video_filename)}<br>` : ''}
+        ${c.review_video_review_notes ? `<strong>Review note:</strong> ${affEsc(c.review_video_review_notes)}<br>` : ''}
+        ${reviewVideoUrl ? `<a class="aff-mini-btn" href="${affEsc(reviewVideoUrl)}" target="_blank" rel="noopener" style="margin-top:8px;">Open video</a>` : '<div class="aff-empty" style="padding:8px 0 0;text-align:left;">No review video uploaded yet.</div>'}
+      </div>
+      ${reviewVideoUrl ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        <button class="aff-mini-btn" data-act="approveVideo">Approve ${reviewBonus} bonus</button>
+        <button class="aff-mini-btn aff-mini-danger" data-act="rejectVideo">Reject video</button>
+      </div>` : ''}
+    </div>`;
+
   document.getElementById('affDrawerBody').innerHTML = `
     ${setupBanner}
     <div class="aff-stats">
@@ -4922,6 +4948,8 @@ function affRenderDrawer(data) {
       <div class="aff-section-title">Notes</div>
       <div class="aff-note-box">${affEsc(c.notes)}</div>
     </div>` : ''}
+
+    ${creatorContentHtml}
 
     <div class="aff-section">
       <div class="aff-section-title">Actions</div>
@@ -4955,6 +4983,18 @@ function affRenderDrawer(data) {
     if (t.dataset.retry)  { try { await affApi('retry_creator_setup', { id: c.id }); affOpenDrawer(c.id); } catch (err) { alert(err.message); } return; }
     if (t.dataset.delpay) { if (confirm('Undo this payout?')) { await affApi('delete_payout', { id: Number(t.dataset.delpay) }); affOpenDrawer(c.id); affLoad(); } return; }
     if (t.dataset.act === 'approve') { affApprove(c.id, t); return; }
+    if (t.dataset.act === 'approveVideo') {
+      try { await affApi('approve_review_video', { id: c.id }); affOpenDrawer(c.id); affLoad(); }
+      catch (err) { alert(err.message); }
+      return;
+    }
+    if (t.dataset.act === 'rejectVideo') {
+      const notes = prompt('Reason to show in the creator dashboard?', 'Please upload a clearer TikTok review video.');
+      if (notes === null) return;
+      try { await affApi('reject_review_video', { id: c.id, notes }); affOpenDrawer(c.id); affLoad(); }
+      catch (err) { alert(err.message); }
+      return;
+    }
     if (t.dataset.act === 'payout') { affOpenPayout(c.id); return; }
     if (t.dataset.act === 'resend') {
       try { await affApi('resend_onboarding', { id: c.id }); affFlash(t, 'Sent'); }

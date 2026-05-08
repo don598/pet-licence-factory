@@ -37,6 +37,23 @@ CREATE INDEX IF NOT EXISTS idx_aff_creators_coupon ON affiliate_creators (LOWER(
 CREATE INDEX IF NOT EXISTS idx_aff_creators_email  ON affiliate_creators (LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_aff_creators_token  ON affiliate_creators (dashboard_token);
 
+-- Creator UGC / paid amplification fields
+ALTER TABLE affiliate_creators
+  ADD COLUMN IF NOT EXISTS tiktok_ad_code TEXT,
+  ADD COLUMN IF NOT EXISTS tiktok_ad_code_updated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS review_video_r2_key TEXT,
+  ADD COLUMN IF NOT EXISTS review_video_filename TEXT,
+  ADD COLUMN IF NOT EXISTS review_video_content_type TEXT,
+  ADD COLUMN IF NOT EXISTS review_video_size_bytes BIGINT,
+  ADD COLUMN IF NOT EXISTS review_video_status TEXT NOT NULL DEFAULT 'not_submitted',
+  ADD COLUMN IF NOT EXISTS review_video_submitted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS review_video_reviewed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS review_video_review_notes TEXT,
+  ADD COLUMN IF NOT EXISTS review_video_bonus_cents INTEGER NOT NULL DEFAULT 1000;
+
+CREATE INDEX IF NOT EXISTS idx_aff_creators_review_video_status
+  ON affiliate_creators (review_video_status);
+
 
 -- ── 2. Clicks ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS affiliate_clicks (

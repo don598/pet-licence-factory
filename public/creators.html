@@ -197,6 +197,12 @@ h1 {
   background: var(--surface);
   box-shadow: 0 12px 24px rgba(17,24,23,.10);
   transform: rotate(var(--tilt));
+  cursor: pointer;
+  transition: transform .24s ease, box-shadow .24s ease, filter .24s ease;
+}
+.sample:hover {
+  box-shadow: 0 18px 36px rgba(17,24,23,.16);
+  filter: brightness(1.04);
 }
 .sample img {
   display: block;
@@ -204,6 +210,60 @@ h1 {
   aspect-ratio: 1322 / 830;
   object-fit: cover;
 }
+.preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: none;
+  background: rgba(17, 24, 23, .66);
+}
+.preview-backdrop.show { display: block; }
+.sample.preview-focus {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  top: 50%;
+  width: min(86vw, 660px);
+  transform: translate(-50%, -58%) rotate(0deg) !important;
+  box-shadow: 0 28px 70px rgba(17,24,23,.42);
+  cursor: default;
+}
+.sample-strip.previewing .sample:not(.preview-focus) {
+  filter: brightness(.55);
+}
+.preview-actions {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(28px, 9vh, 76px);
+  z-index: 72;
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: min(86vw, 420px);
+  transform: translateX(-50%);
+}
+.preview-actions.show { display: grid; }
+.preview-actions button,
+.preview-actions a {
+  min-height: 46px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.preview-actions a {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.preview-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.preview-actions a:hover { background: var(--accent-hover); }
 .signup-panel {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -621,6 +681,14 @@ h1 {
           <input name="termsAccepted" id="termsAccepted" type="checkbox" required>
           <span>I am signing myself up, and I understand the welcome checkout is single-use and sent only after approval.</span>
         </label>
+        <label class="check">
+          <input name="reviewCommitmentAccepted" id="reviewCommitmentAccepted" type="checkbox" required>
+          <span>By claiming this free custom pet licence, I agree to post an authentic review video on TikTok within 14 days of receiving my product.</span>
+        </label>
+        <label class="check">
+          <input name="usagePermissionAccepted" id="usagePermissionAccepted" type="checkbox" required>
+          <span>I grant Credit Card Art permission to feature, repost, or run my video as an ad. (I understand this means my video may be promoted with ad spend, driving even more traffic to my personal affiliate code!)</span>
+        </label>
 
         <button class="submit-btn" id="submitBtn" type="submit">Submit application</button>
         <div class="form-error" id="formError" role="alert"></div>
@@ -651,6 +719,11 @@ h1 {
 </main>
 
 <div class="toast" id="toast"></div>
+<div class="preview-backdrop" id="sampleBackdrop"></div>
+<div class="preview-actions" id="samplePreviewActions">
+  <button type="button" id="sampleBack">Back</button>
+  <a href="/game.html">Build yours</a>
+</div>
 
 <script>
 'use strict';
@@ -660,6 +733,8 @@ const form = $('signupForm');
 const panel = $('signupPanel');
 const formError = $('formError');
 const submitBtn = $('submitBtn');
+const samples = [...document.querySelectorAll('.sample')];
+let focusedSample = null;
 
 function cleanCode(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 32);
@@ -696,6 +771,24 @@ function showError(msg) {
 function clearError() {
   formError.textContent = '';
   formError.classList.remove('show');
+}
+
+function closeSamplePreview() {
+  if (focusedSample) focusedSample.classList.remove('preview-focus');
+  focusedSample = null;
+  document.querySelector('.sample-strip')?.classList.remove('previewing');
+  $('sampleBackdrop').classList.remove('show');
+  $('samplePreviewActions').classList.remove('show');
+}
+
+function openSamplePreview(sample) {
+  if (focusedSample === sample) { closeSamplePreview(); return; }
+  closeSamplePreview();
+  focusedSample = sample;
+  document.querySelector('.sample-strip')?.classList.add('previewing');
+  sample.classList.add('preview-focus');
+  $('sampleBackdrop').classList.add('show');
+  $('samplePreviewActions').classList.add('show');
 }
 
 async function apiSignup(body) {
@@ -742,6 +835,19 @@ $('profileUrl').addEventListener('blur', () => {
   if (!$('couponCode').value.trim()) suggestCode();
 });
 
+samples.forEach(sample => {
+  sample.tabIndex = 0;
+  sample.addEventListener('click', e => { e.stopPropagation(); openSamplePreview(sample); });
+  sample.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSamplePreview(sample); }
+  });
+});
+$('sampleBackdrop').addEventListener('click', closeSamplePreview);
+$('sampleBack').addEventListener('click', closeSamplePreview);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeSamplePreview();
+});
+
 form.addEventListener('submit', async e => {
   e.preventDefault();
   clearError();
@@ -759,6 +865,8 @@ form.addEventListener('submit', async e => {
     pitch: fd.get('pitch'),
     companyWebsite: fd.get('companyWebsite'),
     termsAccepted: !!fd.get('termsAccepted'),
+    reviewCommitmentAccepted: !!fd.get('reviewCommitmentAccepted'),
+    usagePermissionAccepted: !!fd.get('usagePermissionAccepted'),
   };
 
   submitBtn.disabled = true;

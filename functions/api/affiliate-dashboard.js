@@ -1,5 +1,5 @@
 // ── Pet Licence Factory — Creator Dashboard Data ────────────────────────────
-// POST /api/affiliate-dashboard   { token }
+// POST /api/affiliate-dashboard   { token, action? }
 //
 // Returns the data the dashboard renders: identity, coupon code, affiliate
 // URL, click counts (7-day + all-time), order count, commission earned,
@@ -11,6 +11,7 @@
 
 import { getDb } from '../_shared/db.js';
 import { findCreatorByDashboardToken } from '../_shared/affiliate.js';
+import { ensureAffiliateContentSchema } from '../_shared/affiliate-content-schema.js';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -18,6 +19,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 
 function json(status, body) {
   return new Response(JSON.stringify(body), { status, headers: CORS_HEADERS });
@@ -34,16 +37,93 @@ export async function onRequest(context) {
   }
 
   let body;
-  try { body = await request.json(); }
+  let isForm = false;
+  try {
+    const contentType = request.headers.get('Content-Type') || '';
+    if (contentType.includes('multipart/form-data')) {
+      body = await request.formData();
+      isForm = true;
+    } else {
+      body = await request.json();
+    }
+  }
   catch { return json(400, { error: 'Invalid JSON' }); }
 
-  const token = String(body.token || '').trim();
+  const token = String(isForm ? body.get('token') : body.token || '').trim();
   if (!token) return json(401, { error: 'Missing token' });
 
   const db      = getDb(env);
+  await ensureAffiliateContentSchema(db);
   const creator = await findCreatorByDashboardToken(db, token);
   if (!creator) return json(401, { error: 'Invalid token' });
 
+  const action = String(isForm ? body.get('action') : body.action || 'get_dashboard').trim() || 'get_dashboard';
+
+  if (action === 'save_ad_code') {
+    const tiktokAdCode = cleanText(isForm ? body.get('tiktokAdCode') : body.tiktokAdCode, 500);
+    await db.query(
+      `UPDATE affiliate_creators
+       SET tiktok_ad_code = $1, tiktok_ad_code_updated_at = NOW(), updated_at = NOW()
+       WHERE id = $2`,
+      [tiktokAdCode || null, creator.id]
+    );
+    const fresh = await findCreatorByDashboardToken(db, token);
+    return json(200, await dashboardPayload(env, db, fresh, token));
+  }
+
+  if (action === 'upload_video') {
+    if (!env.CREATOR_UPLOADS) {
+      return json(503, { error: 'Video uploads are not configured yet. Ask Pet Licence Factory to attach the CREATOR_UPLOADS R2 bucket.' });
+    }
+    const file = body.get('video');
+    if (!file || typeof file.stream !== 'function') {
+      return json(400, { error: 'Choose a video file to upload.' });
+    }
+    if (!String(file.type || '').startsWith('video/')) {
+      return json(400, { error: 'Please upload a video file.' });
+    }
+    if (Number(file.size) > MAX_VIDEO_BYTES) {
+      return json(400, { error: 'Video is too large. Please keep uploads under 100 MB.' });
+    }
+
+    const fileName = safeFileName(file.name || 'creator-video.mp4');
+    const key = `creator-videos/${creator.id}/${Date.now()}-${crypto.randomUUID()}-${fileName}`;
+    await env.CREATOR_UPLOADS.put(key, file.stream(), {
+      httpMetadata: { contentType: file.type || 'video/mp4' },
+      customMetadata: {
+        creatorId: String(creator.id),
+        creatorEmail: String(creator.email || ''),
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+
+    await db.query(
+      `UPDATE affiliate_creators
+       SET review_video_r2_key = $1,
+           review_video_filename = $2,
+           review_video_content_type = $3,
+           review_video_size_bytes = $4,
+           review_video_status = 'pending',
+           review_video_submitted_at = NOW(),
+           review_video_reviewed_at = NULL,
+           review_video_review_notes = NULL,
+           updated_at = NOW()
+       WHERE id = $5`,
+      [key, file.name || fileName, file.type || 'video/mp4', Number(file.size) || 0, creator.id]
+    );
+
+    const fresh = await findCreatorByDashboardToken(db, token);
+    return json(200, await dashboardPayload(env, db, fresh, token));
+  }
+
+  if (action !== 'get_dashboard') {
+    return json(400, { error: `Unknown action: ${action}` });
+  }
+
+  return json(200, await dashboardPayload(env, db, creator, token));
+}
+
+async function dashboardPayload(env, db, creator, token) {
   // ── Aggregate stats in parallel ────────────────────────────────────────
   const [stats, payouts, recent] = await Promise.all([
     db.query(
@@ -76,13 +156,23 @@ export async function onRequest(context) {
   const earnedCents = Number(s.commission_earned_cents) || 0;
   const paidCents   = Number(s.commission_paid_cents)   || 0;
 
-  return json(200, {
+  return {
     creator: {
       name:                   creator.name,
       email:                  creator.email,
       coupon_code:            creator.coupon_code,
       commission_rate:        Number(creator.commission_rate),
       customer_discount_rate: Number(creator.customer_discount_rate),
+      tiktok_ad_code:          creator.tiktok_ad_code || '',
+      tiktok_ad_code_updated_at: creator.tiktok_ad_code_updated_at || null,
+      review_video_status:     creator.review_video_status || 'not_submitted',
+      review_video_submitted_at: creator.review_video_submitted_at || null,
+      review_video_reviewed_at: creator.review_video_reviewed_at || null,
+      review_video_review_notes: creator.review_video_review_notes || null,
+      review_video_filename:   creator.review_video_filename || null,
+      review_video_size_bytes: Number(creator.review_video_size_bytes) || 0,
+      review_video_bonus_cents: Number(creator.review_video_bonus_cents) || 1000,
+      review_video_url:        creator.review_video_r2_key ? `/api/affiliate-video?token=${encodeURIComponent(token)}` : null,
     },
     affiliate_url: `${env.URL || 'https://petlicensefactory.com'}/?ref=${encodeURIComponent(creator.coupon_code)}`,
     stats: {
@@ -102,5 +192,17 @@ export async function onRequest(context) {
       cents:      r.cents !== null ? Number(r.cents) : null,
       is_freebie: r.is_freebie,
     })),
-  });
+  };
+}
+
+function cleanText(value, maxLen) {
+  return String(value || '').trim().slice(0, maxLen);
+}
+
+function safeFileName(value) {
+  const cleaned = String(value || 'creator-video.mp4')
+    .replace(/[/\\?%*:|"<>]/g, '-')
+    .replace(/\s+/g, '-')
+    .slice(0, 120);
+  return cleaned || 'creator-video.mp4';
 }

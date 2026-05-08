@@ -86,6 +86,44 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
   flex:1; font-family:'SF Mono',Menlo,monospace; color:var(--accent);
   word-break:break-all; line-height:1.4;
 }
+.brief-grid { display:grid; grid-template-columns:1fr; gap:10px; }
+.brief-item {
+  border:1px solid var(--line); border-radius:10px; background:#f7faff;
+  padding:12px 13px; font-size:13px; line-height:1.45;
+}
+.brief-item strong { display:block; color:var(--ink); margin-bottom:3px; }
+.dash-copy { color:var(--muted); font-size:13px; line-height:1.55; margin-bottom:14px; }
+.field-label {
+  display:block; color:var(--muted); font-size:11px; text-transform:uppercase;
+  letter-spacing:.6px; margin:12px 0 7px;
+}
+.dash-input {
+  width:100%; border:1px solid var(--line); border-radius:10px; background:#fafbff;
+  color:var(--ink); padding:12px 13px; font:inherit; font-size:14px;
+}
+.dash-input:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+.dash-action {
+  width:100%; min-height:44px; border:none; border-radius:10px; background:var(--accent);
+  color:#fff; font:inherit; font-size:14px; font-weight:700; cursor:pointer; margin-top:9px;
+}
+.dash-action:disabled { opacity:.65; cursor:wait; }
+.video-box {
+  display:block; border:1px dashed var(--accent); border-radius:10px; background:#f7faff;
+  padding:14px; color:var(--muted); font-size:13px; line-height:1.45; cursor:pointer;
+}
+.video-box input { display:none; }
+.video-box strong { display:block; color:var(--accent); margin-bottom:3px; }
+.status-pill {
+  display:inline-flex; align-items:center; min-height:26px; padding:0 10px;
+  border-radius:var(--pill); font-size:11px; font-weight:700; text-transform:uppercase;
+  border:1px solid var(--line); color:var(--muted); background:#f7faff; margin-bottom:8px;
+}
+.status-pill.pending { color:var(--amber); background:rgba(217,119,6,.08); border-color:rgba(217,119,6,.24); }
+.status-pill.approved { color:var(--green); background:var(--green-soft); border-color:rgba(22,163,74,.24); }
+.status-pill.rejected { color:var(--red); background:rgba(220,38,38,.08); border-color:rgba(220,38,38,.24); }
+.content-meta { margin-top:12px; color:var(--muted); font-size:12px; line-height:1.55; }
+.content-meta a { color:var(--accent); font-weight:700; text-decoration:none; }
+.content-meta a:hover { text-decoration:underline; }
 
 /* ── Stats grid ── */
 .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
@@ -170,6 +208,31 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
         <code id="dUrl">—</code>
         <button class="copy-btn" data-copy-target="dUrl">Copy</button>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Creator package</div>
+      <div class="brief-grid">
+        <div class="brief-item"><strong>1. Free product</strong>Claim your sample, then post an authentic TikTok review within 14 days of receiving it.</div>
+        <div class="brief-item"><strong>2. Commission package</strong>Your audience gets a discount and you earn commission on paid orders tied to your code or link.</div>
+        <div class="brief-item"><strong>3. $10 video bonus</strong>Upload your finished review video below. Once reviewed, we’ll add a $10 bonus.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">TikTok video &amp; ad code</div>
+      <p class="dash-copy">Upload your review video as proof, and add your TikTok Spark Ads authorization code if you want us to promote the post with ad spend.</p>
+      <div id="videoStatus" class="content-meta"></div>
+      <label class="field-label" for="tiktokAdCode">TikTok ad authorization code</label>
+      <input class="dash-input" id="tiktokAdCode" type="text" maxlength="500" placeholder="Paste Spark Ads authorization code">
+      <button class="dash-action" id="saveAdCode" type="button">Save ad code</button>
+      <label class="field-label" for="reviewVideo">Review video upload</label>
+      <label class="video-box" for="reviewVideo">
+        <strong id="videoFileName">Choose a video file</strong>
+        <span>MP4, MOV, or any video file under 100 MB.</span>
+        <input id="reviewVideo" type="file" accept="video/*">
+      </label>
+      <button class="dash-action" id="uploadVideo" type="button">Upload video for review</button>
     </div>
 
     <div class="stats-grid">
@@ -290,6 +353,13 @@ async function api(path, body) {
   return data;
 }
 
+async function apiForm(path, formData) {
+  const res = await fetch(path, { method: 'POST', body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Network error');
+  return data;
+}
+
 // ── Auth (magic-link flow) ──
 function showAuth(msg) {
   $('auth').hidden = false;
@@ -341,6 +411,8 @@ function renderDashboard(d) {
   $('greetSub').textContent  = `${Math.round(d.creator.commission_rate*100)}% commission · ${Math.round(d.creator.customer_discount_rate*100)}% off for your audience`;
   $('dCode').textContent = d.creator.coupon_code;
   $('dUrl').textContent  = d.affiliate_url;
+  $('tiktokAdCode').value = d.creator.tiktok_ad_code || '';
+  renderVideoStatus(d.creator);
 
   $('sClicks').textContent = d.stats.clicks_7d;
   const trend = d.stats.clicks_prev_7d > 0
@@ -389,6 +461,19 @@ function renderDashboard(d) {
   }
 }
 
+function renderVideoStatus(c) {
+  const status = c.review_video_status || 'not_submitted';
+  const statusLabel = status.replace('_', ' ');
+  const submitted = c.review_video_submitted_at ? `Submitted ${fmtRel(c.review_video_submitted_at)}.` : 'No video uploaded yet.';
+  const bonus = fmtUsd(c.review_video_bonus_cents || 1000);
+  const link = c.review_video_url ? ` <a href="${esc(c.review_video_url)}" target="_blank" rel="noopener">View uploaded video</a>` : '';
+  const note = c.review_video_review_notes ? `<br>${esc(c.review_video_review_notes)}` : '';
+  $('videoStatus').innerHTML = `
+    <span class="status-pill ${esc(status)}">${esc(statusLabel)}</span><br>
+    ${esc(submitted)} ${status === 'approved' ? `${bonus} bonus approved.` : `Upload proof to qualify for the ${bonus} bonus.`}${link}${note}
+  `;
+}
+
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -408,6 +493,51 @@ document.addEventListener('click', (e) => {
   btn.classList.add('copied'); btn.textContent = 'Copied';
   setTimeout(() => { btn.classList.remove('copied'); btn.textContent = 'Copy'; }, 1500);
   toast('Copied to clipboard');
+});
+
+$('reviewVideo').addEventListener('change', () => {
+  const file = $('reviewVideo').files?.[0];
+  $('videoFileName').textContent = file ? file.name : 'Choose a video file';
+});
+
+$('saveAdCode').addEventListener('click', async () => {
+  const btn = $('saveAdCode');
+  btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const data = await api('/api/affiliate-dashboard', {
+      token: dashboardToken,
+      action: 'save_ad_code',
+      tiktokAdCode: $('tiktokAdCode').value,
+    });
+    renderDashboard(data);
+    toast('Ad code saved');
+  } catch (err) {
+    alert(err.message || 'Could not save ad code.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save ad code';
+  }
+});
+
+$('uploadVideo').addEventListener('click', async () => {
+  const file = $('reviewVideo').files?.[0];
+  if (!file) { alert('Choose a video file first.'); return; }
+  const btn = $('uploadVideo');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  try {
+    const fd = new FormData();
+    fd.set('token', dashboardToken);
+    fd.set('action', 'upload_video');
+    fd.set('video', file);
+    const data = await apiForm('/api/affiliate-dashboard', fd);
+    renderDashboard(data);
+    $('reviewVideo').value = '';
+    $('videoFileName').textContent = 'Choose a video file';
+    toast('Video uploaded for review');
+  } catch (err) {
+    alert(err.message || 'Upload failed.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Upload video for review';
+  }
 });
 
 boot();

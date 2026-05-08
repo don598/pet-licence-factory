@@ -1,0 +1,33 @@
+// ── Pet Licence Factory — Affiliate Content Schema ─────────────────────────
+// Small, safe runtime migration for creator UGC fields. The base affiliate
+// schema is still in affiliate_setup.sql; this keeps production compatible
+// when new dashboard fields deploy before the SQL file is manually re-run.
+// ---------------------------------------------------------------------------
+
+let readyPromise = null;
+
+export function ensureAffiliateContentSchema(db) {
+  if (!readyPromise) {
+    readyPromise = db.query(`
+      ALTER TABLE affiliate_creators
+        ADD COLUMN IF NOT EXISTS tiktok_ad_code TEXT,
+        ADD COLUMN IF NOT EXISTS tiktok_ad_code_updated_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS review_video_r2_key TEXT,
+        ADD COLUMN IF NOT EXISTS review_video_filename TEXT,
+        ADD COLUMN IF NOT EXISTS review_video_content_type TEXT,
+        ADD COLUMN IF NOT EXISTS review_video_size_bytes BIGINT,
+        ADD COLUMN IF NOT EXISTS review_video_status TEXT NOT NULL DEFAULT 'not_submitted',
+        ADD COLUMN IF NOT EXISTS review_video_submitted_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS review_video_reviewed_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS review_video_review_notes TEXT,
+        ADD COLUMN IF NOT EXISTS review_video_bonus_cents INTEGER NOT NULL DEFAULT 1000;
+
+      CREATE INDEX IF NOT EXISTS idx_aff_creators_review_video_status
+        ON affiliate_creators (review_video_status);
+    `).catch(err => {
+      readyPromise = null;
+      throw err;
+    });
+  }
+  return readyPromise;
+}
