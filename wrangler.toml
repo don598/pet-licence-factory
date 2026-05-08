@@ -12,3 +12,8 @@ URL = "https://petlicensefactory.com"
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "ab7308b07e2448f18af81c0a1169a3cb"
+
+# Private R2 bucket for creator review video uploads
+[[r2_buckets]]
+binding = "CREATOR_UPLOADS"
+bucket_name = "pet-licence-factory-creator-uploads"
