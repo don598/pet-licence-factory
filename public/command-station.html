@@ -1550,6 +1550,37 @@ html, body {
 }
 
 /* ── Email-preview modal body ── */
+/* Wider container than other admin modals so the 600px email + meta fit. */
+#affPreviewModal .aff-modal-inner { max-width: 760px; }
+
+/* Fullscreen mode: removes outer padding, fills the viewport, and grows the
+   iframe so the user can see the entire email without scrolling. */
+.aff-modal.fullscreen { padding: 0 !important; }
+.aff-modal.fullscreen .modal-inner {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  display: flex; flex-direction: column;
+}
+.aff-modal.fullscreen .aff-preview-body {
+  flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px 24px 24px;
+}
+.aff-modal.fullscreen .aff-form-actions { display: none; }
+.aff-modal.fullscreen .aff-email-preview { height: 100%; }
+.aff-modal.fullscreen .aff-email-iframe-wrap {
+  flex: 1 1 auto; min-height: 0; display: flex;
+}
+.aff-modal.fullscreen .aff-email-iframe { height: 100%; }
+.modal-fs-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer;
+  width: 32px; height: 32px; border-radius: var(--r-sm);
+  display: inline-grid; place-items: center; font-size: 14px;
+  margin-right: 6px;
+}
+.modal-fs-btn:hover { color: var(--text); border-color: var(--blue); }
+
 .aff-email-preview {
   display:flex; flex-direction:column; gap:12px;
 }
@@ -2057,7 +2088,10 @@ html, body {
   <div class="modal-inner aff-modal-inner">
     <div class="modal-header">
       <h2 class="modal-title" id="affPreviewTitle">Onboarding preview</h2>
-      <button class="modal-close" onclick="affCloseModal('affPreviewModal')">✕</button>
+      <div style="display:flex;align-items:center;">
+        <button class="modal-fs-btn" type="button" id="affPreviewFsBtn" onclick="affTogglePreviewFullscreen()" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen">⤢</button>
+        <button class="modal-close" onclick="affCloseModal('affPreviewModal')">✕</button>
+      </div>
     </div>
     <div id="affPreviewBody" class="aff-preview-body"></div>
     <div class="aff-form-actions" style="justify-content:flex-end;">
@@ -4964,7 +4998,38 @@ function affShowInviteSuccess(result, title = '✅ Creator created') {
   document.getElementById('affPreviewModal').classList.add('open');
 }
 
+function affTogglePreviewFullscreen(force) {
+  const modal = document.getElementById('affPreviewModal');
+  const btn   = document.getElementById('affPreviewFsBtn');
+  const next  = typeof force === 'boolean' ? force : !modal.classList.contains('fullscreen');
+  modal.classList.toggle('fullscreen', next);
+  if (btn) {
+    btn.textContent = next ? '⤡' : '⤢';
+    btn.title       = next ? 'Exit fullscreen (F or Esc)' : 'Toggle fullscreen (F)';
+  }
+}
+
+function affPreviewKeyHandler(e) {
+  const modal = document.getElementById('affPreviewModal');
+  if (!modal.classList.contains('open')) return;
+  if (e.key === 'f' || e.key === 'F') {
+    if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA') return;
+    e.preventDefault();
+    affTogglePreviewFullscreen();
+  } else if (e.key === 'Escape') {
+    if (modal.classList.contains('fullscreen')) {
+      e.preventDefault();
+      e.stopPropagation();
+      affTogglePreviewFullscreen(false);
+    }
+  }
+}
+document.addEventListener('keydown', affPreviewKeyHandler);
+
 function affRenderEmailPreviewModal(preview, opts = {}) {
+  // Reset fullscreen state each time the modal is opened so the next preview
+  // starts in the standard window.
+  affTogglePreviewFullscreen(false);
   const subtitle = opts.subtitle || '';
   const previewBanner = opts.is_real_kit === false
     ? `<div class="aff-form-error" style="margin-bottom:0;padding:9px 12px;border:1px solid rgba(217,119,6,.35);background:rgba(217,119,6,.08);color:var(--text);border-radius:var(--r-sm);font-size:12px;font-weight:600;">
