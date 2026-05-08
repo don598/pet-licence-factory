@@ -593,6 +593,81 @@ h1 {
   line-height: 1.55;
   font-weight: 600;
 }
+.product-box {
+  margin-top: clamp(22px, 4vw, 36px);
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 22px clamp(20px, 3vw, 28px);
+  box-shadow: 0 8px 24px rgba(17,24,23,.06);
+}
+.product-box-icon {
+  width: 78px;
+  height: 78px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.product-box-icon img {
+  width: 60px;
+  height: 60px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.product-box-title {
+  font-family: var(--pixel);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.product-box-headline {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.product-box-headline em {
+  font-style: normal;
+  color: var(--accent);
+}
+.product-box-meta {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.product-box-meta span {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--pill);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .product-box {
+    grid-template-columns: 1fr;
+    text-align: center;
+    padding: 20px 18px;
+  }
+  .product-box-icon { margin: 0 auto; }
+  .product-box-meta { justify-content: center; }
+}
 .toast {
   position: fixed;
   left: 50%;
@@ -813,6 +888,21 @@ h1 {
       <p>Applications are usually reviewed within 24 hours, and profile quality is checked before coupons go out.</p>
     </div>
   </section>
+
+  <aside class="product-box" aria-label="What is a Pet Licence?">
+    <div class="product-box-icon">
+      <img src="/favicon-192.png" alt="">
+    </div>
+    <div>
+      <div class="product-box-title">What is a Pet Licence?</div>
+      <div class="product-box-headline">Turn any credit card into a customized <em>pet driver's licence</em>, while keeping your card fully functional.</div>
+      <div class="product-box-meta">
+        <span>Tap</span>
+        <span>Insert</span>
+        <span>Swipe</span>
+      </div>
+    </div>
+  </aside>
 </main>
 
 <div class="toast" id="toast"></div>
