@@ -145,6 +145,71 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
 .money-paid { text-align:right; font-size:12px; color:var(--muted); line-height:1.4; }
 .money-paid strong { font-size:14px; color:var(--ink); display:block; font-variant-numeric:tabular-nums; }
 
+/* ── Cashout: progress bar + tier picker ── */
+.progress {
+  margin-top:14px; height:8px; background:#eef2fb; border-radius:999px; overflow:hidden;
+  border:1px solid var(--line);
+}
+.progress-fill {
+  display:block; height:100%; background:linear-gradient(90deg, var(--accent), #00c2a0);
+  border-radius:999px; transition:width .4s ease;
+}
+.progress-label { font-size:12px; color:var(--muted); margin-top:6px; }
+.progress-label b { color:var(--ink); font-weight:600; }
+
+.tier-list { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+.tier {
+  width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  border:1px solid var(--line); border-radius:12px; background:#fafbff;
+  padding:12px 14px; font:inherit; font-size:14px; cursor:pointer; text-align:left;
+  transition:all .15s; color:var(--ink);
+}
+.tier:hover:not(:disabled) { border-color:var(--accent); background:var(--accent-soft); }
+.tier:disabled { cursor:not-allowed; opacity:.6; }
+.tier .tier-icon { font-size:22px; flex-shrink:0; width:32px; text-align:center; }
+.tier .tier-body { flex:1; min-width:0; }
+.tier .tier-title { font-weight:600; font-size:14px; color:var(--ink); }
+.tier .tier-sub   { font-size:12px; color:var(--muted); margin-top:2px; }
+.tier .tier-meta {
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+  padding:3px 8px; border-radius:999px; flex-shrink:0;
+}
+.tier .tier-meta.ready  { color:var(--green); background:var(--green-soft); }
+.tier .tier-meta.locked { color:var(--muted); background:#eef2fb; }
+.tier.selected { border-color:var(--accent); background:#fff; box-shadow:0 0 0 2px var(--accent-soft); }
+
+.cashout-form {
+  margin-top:14px; padding:14px; background:var(--accent-soft);
+  border:1px solid rgba(0,119,255,.2); border-radius:12px;
+}
+.cashout-amounts { display:flex; gap:6px; margin:10px 0; flex-wrap:wrap; }
+.cashout-amounts button {
+  font:inherit; font-size:12px; font-weight:600; padding:6px 11px; border-radius:999px;
+  border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;
+}
+.cashout-amounts button:hover { border-color:var(--accent); color:var(--accent); }
+.cashout-amounts button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.cashout-form input[type=number] {
+  width:100%; font:inherit; font-size:18px; font-weight:600; padding:11px 13px;
+  border-radius:10px; border:1px solid var(--line); background:#fff; color:var(--ink);
+  font-variant-numeric:tabular-nums; -moz-appearance:textfield;
+}
+.cashout-form input[type=number]::-webkit-outer-spin-button,
+.cashout-form input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.cashout-form input[type=number]:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+.cashout-summary { font-size:12px; color:var(--muted); margin:8px 0 12px; line-height:1.5; }
+.cashout-summary b { color:var(--ink); font-weight:600; }
+.cashout-error { font-size:12px; color:var(--red); margin-top:8px; }
+
+.payout-row .pill {
+  display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.5px; padding:2px 7px; border-radius:999px; margin-left:6px;
+}
+.payout-row .pill.delivered { color:var(--green); background:var(--green-soft); }
+.payout-row .pill.processing { color:var(--amber); background:rgba(217,119,6,.08); }
+.payout-row .pill.requested  { color:var(--accent); background:var(--accent-soft); }
+.payout-row .pill.failed     { color:var(--red); background:rgba(220,38,38,.08); }
+
 /* ── Lists ── */
 .row {
   display:flex; align-items:center; gap:10px;
@@ -252,16 +317,57 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
     </div>
 
     <div class="card">
-      <div class="card-label">Commission balance</div>
+      <div class="card-label">Available to cash out</div>
       <div class="money">
         <div class="money-pending">
           <div class="v" id="mPending">$0</div>
-          <div class="l">Pending payout</div>
+          <div class="l" id="mPendingBreakdown">Pending payout</div>
         </div>
         <div class="money-paid">
           <strong id="mPaid">$0</strong>
           <span>paid lifetime</span>
         </div>
+      </div>
+
+      <div id="dProgress" hidden>
+        <div class="progress"><span class="progress-fill" id="dProgressFill" style="width:0%"></span></div>
+        <div class="progress-label" id="dProgressLabel"></div>
+      </div>
+
+      <div class="tier-list" id="tierList">
+        <button class="tier" type="button" data-method="gift_card_tremendous">
+          <span class="tier-icon">💳</span>
+          <span class="tier-body">
+            <span class="tier-title">Gift card</span>
+            <span class="tier-sub">Amazon, Visa, PayPal &amp; more · $10 min · email delivery</span>
+          </span>
+          <span class="tier-meta ready" id="tierMeta-gift_card_tremendous">Ready</span>
+        </button>
+        <button class="tier" type="button" data-method="store_credit">
+          <span class="tier-icon">🛍️</span>
+          <span class="tier-body">
+            <span class="tier-title">PLF store credit</span>
+            <span class="tier-sub">Any amount · +10% bonus when you spend it on a licence</span>
+          </span>
+          <span class="tier-meta ready" id="tierMeta-store_credit">+10%</span>
+        </button>
+        <button class="tier" type="button" data-method="stripe_connect">
+          <span class="tier-icon">🏦</span>
+          <span class="tier-body">
+            <span class="tier-title">Direct deposit</span>
+            <span class="tier-sub" id="connectSub">$25 minimum · ACH to your bank · Stripe Connect</span>
+          </span>
+          <span class="tier-meta locked" id="tierMeta-stripe_connect">Locked</span>
+        </button>
+      </div>
+
+      <div id="cashoutForm" class="cashout-form" hidden>
+        <div class="card-label" id="cashoutTitle">Cash out</div>
+        <input id="cashoutAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+        <div class="cashout-amounts" id="cashoutQuickPicks"></div>
+        <div class="cashout-summary" id="cashoutSummary"></div>
+        <button class="dash-action" id="cashoutBtn" type="button">Cash out</button>
+        <div class="cashout-error" id="cashoutError" hidden></div>
       </div>
     </div>
 
@@ -334,7 +440,7 @@ async function boot() {
   }
 
   if (!dashboardToken) { showAuth(''); return; }
-  loadDashboard();
+  await loadDashboard();
 }
 function cleanUrl() {
   url.searchParams.delete('token');
@@ -406,7 +512,16 @@ async function loadDashboard() {
   }
 }
 
+// Local state for the cashout flow.
+let lastDashboard = null;
+let selectedMethod = null;
+
+const STRIPE_CONNECT_MIN_CENTS = 2500;
+const GIFT_CARD_MIN_CENTS      = 1000;
+const STORE_CREDIT_BONUS_RATE  = 0.10;
+
 function renderDashboard(d) {
+  lastDashboard = d;
   $('greetName').textContent = `Hey ${d.creator.name.split(' ')[0]} 👋`;
   $('greetSub').textContent  = `${Math.round(d.creator.commission_rate*100)}% commission · ${Math.round(d.creator.customer_discount_rate*100)}% off for your audience`;
   $('dCode').textContent = d.creator.coupon_code;
@@ -426,39 +541,244 @@ function renderDashboard(d) {
     $('sClicksTrend').textContent = `· ${d.stats.clicks_total} all-time`;
   }
 
-  $('sOrders').textContent = d.stats.orders_count;
-  $('sEarned').textContent = fmtUsd(d.stats.commission_earned_cents);
+  $('sOrders').textContent  = d.stats.orders_count;
+  $('sEarned').textContent  = fmtUsd(d.stats.commission_earned_cents);
   $('mPending').textContent = fmtUsd(d.stats.commission_pending_cents);
   $('mPaid').textContent    = fmtUsd(d.stats.commission_paid_cents);
+  $('mPendingBreakdown').textContent =
+    (d.stats.bonus_cents > 0)
+      ? `${fmtUsd(d.stats.commission_earned_cents)} commissions + ${fmtUsd(d.stats.bonus_cents)} bonuses`
+      : 'available to cash out';
 
-  // Activity feed
+  renderCashoutTiers(d);
+  renderActivity(d);
+  renderPayouts(d);
+}
+
+function renderCashoutTiers(d) {
+  const balance = d.stats.commission_pending_cents || 0;
+  const connect = d.creator || {};
+
+  // Progress bar to direct deposit
+  if (balance < STRIPE_CONNECT_MIN_CENTS) {
+    const pct = Math.min(100, Math.round(balance / STRIPE_CONNECT_MIN_CENTS * 100));
+    $('dProgress').hidden = false;
+    $('dProgressFill').style.width = pct + '%';
+    $('dProgressLabel').innerHTML =
+      `Earn <b>${fmtUsd(STRIPE_CONNECT_MIN_CENTS - balance)}</b> more to unlock direct deposit.`;
+  } else {
+    $('dProgress').hidden = true;
+  }
+
+  // Per-tier readiness
+  setTierState('gift_card_tremendous',
+    balance >= GIFT_CARD_MIN_CENTS,
+    balance >= GIFT_CARD_MIN_CENTS ? 'Ready' : `${fmtUsd(GIFT_CARD_MIN_CENTS)} min`
+  );
+  setTierState('store_credit', balance > 0, '+10%');
+
+  // Direct deposit tier has three states: locked / connect-needed / ready
+  const ddBtn = document.querySelector('[data-method="stripe_connect"]');
+  const ddMeta = $('tierMeta-stripe_connect');
+  const sub    = $('connectSub');
+  if (balance < STRIPE_CONNECT_MIN_CENTS) {
+    ddBtn.disabled = true; ddMeta.textContent = 'Locked'; ddMeta.className = 'tier-meta locked';
+    sub.textContent = '$25 minimum · ACH to your bank · Stripe Connect';
+  } else if (!connect.stripe_connect_payouts_enabled) {
+    ddBtn.disabled = false; ddMeta.textContent = 'Connect →'; ddMeta.className = 'tier-meta locked';
+    sub.textContent = 'Tap to connect a bank account (Stripe-hosted, ~3 min).';
+  } else {
+    ddBtn.disabled = false; ddMeta.textContent = 'Ready'; ddMeta.className = 'tier-meta ready';
+    sub.textContent = 'ACH to your bank · 2–3 business days';
+  }
+
+  // Reset any in-progress form when balance updates
+  if (selectedMethod) selectMethod(selectedMethod);
+}
+
+function setTierState(method, ready, metaText) {
+  const btn  = document.querySelector(`[data-method="${method}"]`);
+  const meta = $(`tierMeta-${method}`);
+  if (!btn || !meta) return;
+  btn.disabled = !ready;
+  meta.textContent = metaText;
+  meta.className = 'tier-meta ' + (ready ? 'ready' : 'locked');
+}
+
+function selectMethod(method) {
+  selectedMethod = method;
+  document.querySelectorAll('.tier').forEach(t => t.classList.toggle('selected', t.dataset.method === method));
+
+  // If user picked direct deposit but isn't onboarded, divert to Connect.
+  const d = lastDashboard;
+  if (method === 'stripe_connect' && !d?.creator?.stripe_connect_payouts_enabled) {
+    $('cashoutForm').hidden = true;
+    startConnectOnboarding();
+    return;
+  }
+
+  $('cashoutForm').hidden = false;
+  $('cashoutError').hidden = true;
+  $('cashoutAmount').value = '';
+
+  const balance = d?.stats?.commission_pending_cents || 0;
+  const titles = {
+    gift_card_tremendous: '💳 Gift card cashout',
+    store_credit:         '🛍️ PLF store credit',
+    stripe_connect:       '🏦 Direct deposit',
+  };
+  $('cashoutTitle').textContent = titles[method] || 'Cash out';
+
+  // Quick pick chips: $5, $10, $25, full balance (clamped to method min/max)
+  const chips = [];
+  const candidates = [500, 1000, 2500, 5000, balance];
+  const seen = new Set();
+  for (const c of candidates) {
+    if (c <= 0) continue;
+    if (c > balance) continue;
+    if (seen.has(c)) continue;
+    seen.add(c);
+    chips.push(c);
+  }
+  const wrap = $('cashoutQuickPicks');
+  wrap.innerHTML = chips.map(c =>
+    `<button type="button" data-cents="${c}">${c === balance ? 'All ' : ''}${fmtUsd(c)}</button>`
+  ).join('') + (balance > 0 ? '' : '<span style="font-size:12px;color:var(--muted);">No balance available yet.</span>');
+
+  updateCashoutSummary();
+}
+
+function getCashoutCents() {
+  const v = parseFloat($('cashoutAmount').value || '0');
+  return Math.round(v * 100);
+}
+
+function updateCashoutSummary() {
+  const cents = getCashoutCents();
+  const balance = lastDashboard?.stats?.commission_pending_cents || 0;
+  const m = selectedMethod;
+  const btn = $('cashoutBtn');
+  const sum = $('cashoutSummary');
+
+  let valid = cents > 0 && cents <= balance;
+  let msg = '';
+
+  if (cents <= 0) {
+    msg = `Enter an amount up to <b>${fmtUsd(balance)}</b>.`;
+    valid = false;
+  } else if (cents > balance) {
+    msg = `Only ${fmtUsd(balance)} available — try a smaller amount.`;
+    valid = false;
+  } else if (m === 'gift_card_tremendous' && cents < GIFT_CARD_MIN_CENTS) {
+    msg = `Gift card minimum is ${fmtUsd(GIFT_CARD_MIN_CENTS)}.`;
+    valid = false;
+  } else if (m === 'stripe_connect' && cents < STRIPE_CONNECT_MIN_CENTS) {
+    msg = `Direct deposit minimum is ${fmtUsd(STRIPE_CONNECT_MIN_CENTS)}.`;
+    valid = false;
+  } else if (m === 'store_credit') {
+    const bonus  = Math.round(cents * STORE_CREDIT_BONUS_RATE);
+    const redeem = cents + bonus;
+    msg = `You'll get a code worth <b>${fmtUsd(redeem)}</b> (${fmtUsd(cents)} cashout + ${fmtUsd(bonus)} bonus). Single-use, expires in 90 days.`;
+  } else if (m === 'gift_card_tremendous') {
+    msg = `We'll email a <b>${fmtUsd(cents)}</b> reward to <b>${esc(lastDashboard?.creator?.email || '')}</b>. You pick the brand at claim time.`;
+  } else if (m === 'stripe_connect') {
+    msg = `<b>${fmtUsd(cents)}</b> will land in your linked bank account in 2–3 business days.`;
+  }
+
+  sum.innerHTML = msg;
+  btn.disabled = !valid;
+  btn.textContent = valid ? `Cash out ${fmtUsd(cents)}` : 'Cash out';
+}
+
+async function submitCashout() {
+  if (!selectedMethod) return;
+  const cents = getCashoutCents();
+  if (cents <= 0) return;
+  const btn = $('cashoutBtn'); const errEl = $('cashoutError');
+  btn.disabled = true; btn.textContent = 'Processing…'; errEl.hidden = true;
+  try {
+    const res = await api('/api/creator-payout', {
+      token: dashboardToken,
+      method: selectedMethod,
+      amountCents: cents,
+    });
+    handleCashoutSuccess(res);
+    selectedMethod = null;
+    $('cashoutForm').hidden = true;
+    document.querySelectorAll('.tier').forEach(t => t.classList.remove('selected'));
+    await loadDashboard();
+  } catch (err) {
+    errEl.hidden = false;
+    errEl.textContent = err.message || 'Cashout failed.';
+    btn.disabled = false;
+    btn.textContent = `Cash out ${fmtUsd(cents)}`;
+  }
+}
+
+function handleCashoutSuccess(res) {
+  if (res.method === 'store_credit' && res.redemption_code) {
+    toast(`Code: ${res.redemption_code} — also emailed to you`);
+  } else if (res.method === 'gift_card_tremendous') {
+    toast(`Gift card sent to ${res.recipient_email}`);
+  } else if (res.method === 'stripe_connect') {
+    toast('Direct deposit on the way (2–3 business days)');
+  } else {
+    toast('Cashout requested');
+  }
+}
+
+async function startConnectOnboarding() {
+  try {
+    const res = await api('/api/creator-connect-onboard', { token: dashboardToken, action: 'start' });
+    if (res.url) window.location.href = res.url;
+  } catch (err) {
+    alert(err.message || 'Could not start Stripe onboarding.');
+  }
+}
+
+function renderActivity(d) {
   const act = $('dActivity');
   if (!d.activity || d.activity.length === 0) {
     act.innerHTML = '<div class="empty">Once people click your link or use your code, it\'ll show up here.</div>';
-  } else {
-    act.innerHTML = d.activity.map(a => {
-      if (a.kind === 'click') {
-        return `<div class="row"><span class="when">${fmtRel(a.at)}</span><span class="what">Click — ${esc(a.label || '(direct)')}</span><span class="amt"></span></div>`;
-      }
-      const cls = a.cents > 0 ? 'pos' : (a.is_freebie ? '' : 'zero');
-      const tag = a.is_freebie ? '🎁 freebie' : 'Sale';
-      return `<div class="row"><span class="when">${fmtRel(a.at)}</span><span class="what">${tag} · ${esc(a.label)}</span><span class="amt ${cls}">${fmtUsd(a.cents)}</span></div>`;
-    }).join('');
+    return;
   }
+  act.innerHTML = d.activity.map(a => {
+    if (a.kind === 'click') {
+      return `<div class="row"><span class="when">${fmtRel(a.at)}</span><span class="what">Click — ${esc(a.label || '(direct)')}</span><span class="amt"></span></div>`;
+    }
+    if (a.kind === 'bonus') {
+      return `<div class="row"><span class="when">${fmtRel(a.at)}</span><span class="what">🎉 Bonus — ${esc(a.label)}</span><span class="amt pos">${fmtUsd(a.cents)}</span></div>`;
+    }
+    const cls = a.cents > 0 ? 'pos' : (a.is_freebie ? '' : 'zero');
+    const tag = a.is_freebie ? '🎁 Freebie' : 'Sale';
+    return `<div class="row"><span class="when">${fmtRel(a.at)}</span><span class="what">${tag} · ${esc(a.label)}</span><span class="amt ${cls}">${fmtUsd(a.cents)}</span></div>`;
+  }).join('');
+}
 
-  // Payouts
+function renderPayouts(d) {
   const p = $('dPayouts');
   if (!d.payouts || d.payouts.length === 0) {
-    p.innerHTML = '<div class="empty">No payouts recorded yet — your first payout will land here once we send it.</div>';
-  } else {
-    p.innerHTML = d.payouts.map(po =>
-      `<div class="row">
-         <span class="when">${fmtRel(po.paid_at)}</span>
-         <span class="what">${esc(po.method)}${po.notes ? ' · ' + esc(po.notes) : ''}</span>
-         <span class="amt pos">${fmtUsd(po.amount_cents)}</span>
-       </div>`
-    ).join('');
+    p.innerHTML = '<div class="empty">No payouts yet — try one of the cashout options above.</div>';
+    return;
   }
+  const methodLabels = {
+    gift_card_tremendous: '💳 Gift card',
+    store_credit:         '🛍️ Store credit',
+    stripe_connect:       '🏦 Direct deposit',
+    venmo:                'Venmo',  paypal: 'PayPal', zelle: 'Zelle',
+    cash:                 'Cash',   check:  'Check',  other:  'Other',
+  };
+  p.innerHTML = d.payouts.map(po => {
+    const label = methodLabels[po.method] || po.method;
+    const status = po.external_status;
+    const pill = status ? `<span class="pill ${esc(status)}">${esc(status)}</span>` : '';
+    const code = po.redemption_code ? `<br><span style="font-family:monospace;font-size:12px;color:var(--accent);">${esc(po.redemption_code)}</span>` : '';
+    return `<div class="row payout-row">
+       <span class="when">${fmtRel(po.paid_at)}</span>
+       <span class="what">${esc(label)}${pill}${code}</span>
+       <span class="amt ${status === 'failed' ? 'zero' : 'pos'}">${fmtUsd(po.amount_cents)}</span>
+     </div>`;
+  }).join('');
 }
 
 function renderVideoStatus(c) {
@@ -540,7 +860,49 @@ $('uploadVideo').addEventListener('click', async () => {
   }
 });
 
-boot();
+// ── Cashout: tier picker + amount input + submit ──
+document.addEventListener('click', (e) => {
+  const tier = e.target.closest('.tier');
+  if (tier && !tier.disabled) selectMethod(tier.dataset.method);
+
+  const chip = e.target.closest('.cashout-amounts button');
+  if (chip) {
+    const cents = Number(chip.dataset.cents) || 0;
+    $('cashoutAmount').value = (cents / 100).toFixed(2);
+    document.querySelectorAll('.cashout-amounts button').forEach(b => b.classList.remove('active'));
+    chip.classList.add('active');
+    updateCashoutSummary();
+  }
+});
+$('cashoutAmount').addEventListener('input', () => {
+  document.querySelectorAll('.cashout-amounts button').forEach(b => b.classList.remove('active'));
+  updateCashoutSummary();
+});
+$('cashoutBtn').addEventListener('click', submitCashout);
+
+// Handle return from Stripe Connect onboarding (?connect=ok|refresh).
+async function handleConnectReturn() {
+  const flag = url.searchParams.get('connect');
+  if (!flag || !dashboardToken) return;
+  try {
+    await api('/api/creator-connect-onboard', { token: dashboardToken, action: 'status' });
+    toast(flag === 'ok' ? 'Stripe account synced' : 'Resumed Stripe onboarding');
+  } catch (err) {
+    console.warn('Connect status sync failed:', err);
+  } finally {
+    url.searchParams.delete('connect');
+    history.replaceState({}, document.title, url.pathname + (url.searchParams.toString() ? '?' + url.searchParams : ''));
+  }
+}
+
+(async function init() {
+  await boot();                              // resolves token and (if valid) loads the dashboard
+  if (!dashboardToken) return;
+  if (url.searchParams.get('connect')) {
+    await handleConnectReturn();             // sync Stripe Connect state
+    await loadDashboard();                   // re-render with fresh `payouts_enabled`
+  }
+})();
 </script>
 </body>
 </html>
