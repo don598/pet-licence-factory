@@ -301,6 +301,16 @@ async function attributeOrder(env, db, stripe, session, orderId) {
     for (const promoId of promoIds) {
       try {
         const pc = await stripe.promotionCodes.retrieve(promoId);
+
+        // Store-credit redemptions: the creator already earned (and cashed
+        // out) commission on whatever produced this balance. The redemption
+        // itself is not a new attributable order — bailing out here also
+        // suppresses path 1 (cookie ref), which would otherwise let a
+        // creator re-commission themselves by spending their own credit.
+        if (pc.coupon?.metadata?.kind === 'store_credit') {
+          return;
+        }
+
         const code = normalizeCode(pc.code);
         const c = await findCreatorByCode(db, code);
         if (c) {

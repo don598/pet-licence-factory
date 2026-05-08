@@ -3,11 +3,11 @@
 // Body: { token, method, amountCents, recipientEmail? }
 // Auth: creator dashboard_token (creator-facing, NOT admin JWT)
 //
-// Methods (Phase 2):
+// Methods:
 //   gift_card_tremendous — creates a Tremendous reward order
-//
-// Future methods (later phases):
 //   store_credit         — generates a one-time Stripe promo, +10% bonus
+//
+// Future:
 //   stripe_connect       — direct deposit (requires onboarded Connect account)
 //
 // The flow:
@@ -16,14 +16,18 @@
 //   3. Validate the requested amount against balance + per-method minimum.
 //   4. Insert affiliate_payouts row with external_status='requested'.
 //   5. Commit. (Lock released; balance is reserved.)
-//   6. Call Tremendous outside the transaction. On failure, mark the row
-//      external_status='failed' (which excludes it from "paid" → balance
-//      becomes available again).
+//   6. Call the external rail (Tremendous or Stripe) outside the transaction.
+//      On failure, mark the row external_status='failed' (excluded from
+//      "paid" → balance becomes available again).
 // ---------------------------------------------------------------------------
 
+import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { findCreatorByDashboardToken } from '../_shared/affiliate.js';
 import { createRewardOrder, TremendousError } from '../_shared/tremendous.js';
+import { createTransfer, getAccount, isAccountReady } from '../_shared/stripe-connect.js';
+import { syncAccountStatus } from './creator-connect-onboard.js';
+import { sendEmail, esc } from '../_shared/email.js';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -33,10 +37,13 @@ const CORS_HEADERS = {
 };
 
 const PAYOUT_RULES = {
-  gift_card_tremendous: { minCents: 1000 },  // $10 minimum
-  // store_credit:      { minCents:    0 },  // Phase 3
-  // stripe_connect:    { minCents: 2500 },  // Phase 4 ($25)
+  gift_card_tremendous: { minCents: 1000 },   // $10 minimum
+  store_credit:         { minCents:    0 },   // any amount, +10% bonus when redeemed
+  stripe_connect:       { minCents: 2500 },   // $25 minimum (direct deposit)
 };
+
+const STORE_CREDIT_BONUS_RATE = 0.10;          // +10% bonus on top of cashout amount
+const STORE_CREDIT_EXPIRY_DAYS = 90;
 
 function json(status, body) {
   return new Response(JSON.stringify(body), { status, headers: CORS_HEADERS });
@@ -148,56 +155,292 @@ export async function onRequest(context) {
   }
 
   // ── Step 5–6: external call after commit ──────────────────────────────
-  if (method === 'gift_card_tremendous') {
-    try {
-      const externalId = `plf-payout-${payoutRow.id}-${Date.now()}`;
-      const order = await createRewardOrder(env, {
-        amountCents,
-        recipientName:  creator.name,
-        recipientEmail,
-        externalId,
-        message: `Thanks for promoting Pet Licence Factory! Your $${(amountCents / 100).toFixed(2)} reward.`,
+  const siteOrigin = env.URL || 'https://petlicensefactory.com';
+  try {
+    if (method === 'gift_card_tremendous') {
+      return await handleGiftCardTremendous({
+        env, db, creator, payoutRow, amountCents, recipientEmail,
       });
-
-      const orderId = order?.id || null;
-      // Tremendous orders may transition to EXECUTED immediately or sit in
-      // PENDING_APPROVAL. The webhook handler will reconcile final state.
-      const initialStatus = order?.status === 'EXECUTED' ? 'processing' : 'requested';
-
-      await db.query(
-        `UPDATE affiliate_payouts
-         SET external_id = $1, external_status = $2
-         WHERE id = $3`,
-        [orderId, initialStatus, payoutRow.id]
-      );
-
-      return json(200, {
-        success:        true,
-        payout_id:      payoutRow.id,
-        method,
-        amount_cents:   amountCents,
-        recipient_email: recipientEmail,
-        external_id:    orderId,
-        external_status: initialStatus,
-      });
-    } catch (err) {
-      const reason = err instanceof TremendousError ? err.message : (err?.message || 'Tremendous call failed');
-      // Mark the reservation failed so the balance is restored.
-      try {
-        await db.query(
-          `UPDATE affiliate_payouts
-           SET external_status = 'failed', failure_reason = $1
-           WHERE id = $2`,
-          [String(reason).slice(0, 500), payoutRow.id]
-        );
-      } catch (markErr) {
-        console.error('Failed to mark payout failed:', markErr);
-      }
-      console.error('Tremendous order failed:', err);
-      return json(502, { error: `Could not send gift card: ${reason}` });
     }
+    if (method === 'store_credit') {
+      return await handleStoreCredit({
+        env, db, creator, payoutRow, amountCents, recipientEmail, siteOrigin,
+      });
+    }
+    if (method === 'stripe_connect') {
+      return await handleStripeConnect({
+        env, db, creator, payoutRow, amountCents,
+      });
+    }
+    // Unreachable — PAYOUT_RULES gate above prevents other methods.
+    await markPayoutFailed(db, payoutRow.id, 'Method handler not implemented');
+    return json(500, { error: 'Method handler not implemented' });
+  } catch (err) {
+    console.error('Payout dispatch failed:', err);
+    await markPayoutFailed(db, payoutRow.id, err?.message || 'Unknown error');
+    return json(500, { error: 'Payout failed' });
+  }
+}
+
+// ── Per-method handlers ─────────────────────────────────────────────────────
+
+async function handleGiftCardTremendous({ env, db, creator, payoutRow, amountCents, recipientEmail }) {
+  try {
+    const externalId = `plf-payout-${payoutRow.id}-${Date.now()}`;
+    const order = await createRewardOrder(env, {
+      amountCents,
+      recipientName:  creator.name,
+      recipientEmail,
+      externalId,
+      message: `Thanks for promoting Pet Licence Factory! Your $${(amountCents / 100).toFixed(2)} reward.`,
+    });
+
+    const orderId = order?.id || null;
+    // Tremendous orders may transition to EXECUTED immediately or sit in
+    // PENDING_APPROVAL. The webhook handler will reconcile final state.
+    const initialStatus = order?.status === 'EXECUTED' ? 'processing' : 'requested';
+
+    await db.query(
+      `UPDATE affiliate_payouts
+       SET external_id = $1, external_status = $2
+       WHERE id = $3`,
+      [orderId, initialStatus, payoutRow.id]
+    );
+
+    return json(200, {
+      success:        true,
+      payout_id:      payoutRow.id,
+      method:         'gift_card_tremendous',
+      amount_cents:   amountCents,
+      recipient_email: recipientEmail,
+      external_id:    orderId,
+      external_status: initialStatus,
+    });
+  } catch (err) {
+    const reason = err instanceof TremendousError ? err.message : (err?.message || 'Tremendous call failed');
+    await markPayoutFailed(db, payoutRow.id, reason);
+    console.error('Tremendous order failed:', err);
+    return json(502, { error: `Could not send gift card: ${reason}` });
+  }
+}
+
+async function handleStoreCredit({ env, db, creator, payoutRow, amountCents, recipientEmail, siteOrigin }) {
+  // Bonus: the redemption code is worth +10% on top of the cashout amount.
+  const bonusCents      = Math.round(amountCents * STORE_CREDIT_BONUS_RATE);
+  const redemptionCents = amountCents + bonusCents;
+  const expiresAt       = Math.floor(Date.now() / 1000) + STORE_CREDIT_EXPIRY_DAYS * 24 * 60 * 60;
+  const code            = generateCreditCode();
+
+  try {
+    const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+
+    const coupon = await stripe.coupons.create({
+      amount_off: redemptionCents,
+      currency:   'usd',
+      duration:   'once',
+      name:       `PLF Credit ($${(amountCents / 100).toFixed(2)} + 10% bonus)`,
+      metadata: {
+        kind:        'store_credit',
+        creator_id:  String(creator.id),
+        payout_id:   String(payoutRow.id),
+        base_cents:  String(amountCents),
+        bonus_cents: String(bonusCents),
+      },
+    });
+
+    const promo = await stripe.promotionCodes.create({
+      coupon:          coupon.id,
+      code,
+      max_redemptions: 1,
+      expires_at:      expiresAt,
+      active:          true,
+      metadata: {
+        kind:       'store_credit',
+        creator_id: String(creator.id),
+        payout_id:  String(payoutRow.id),
+      },
+    });
+
+    // Mark delivered immediately — the code is live and emailed; we treat
+    // delivery as complete the moment Stripe accepts it. Actual redemption
+    // is a separate event tracked by Stripe usage stats.
+    await db.query(
+      `UPDATE affiliate_payouts
+       SET external_id      = $1,
+           external_status  = 'delivered',
+           redemption_code  = $2,
+           recipient_email  = $3,
+           notes            = $4
+       WHERE id = $5`,
+      [
+        promo.id,
+        code,
+        recipientEmail,
+        `Store credit code ${code} ($${(redemptionCents / 100).toFixed(2)} value, expires ${new Date(expiresAt * 1000).toISOString().slice(0, 10)}).`,
+        payoutRow.id,
+      ]
+    );
+
+    // Email the creator the code. Non-fatal if SendGrid hiccups — the code
+    // is also visible on the dashboard payout history.
+    try {
+      const link = `${siteOrigin}/game.html?promo=${encodeURIComponent(code)}`;
+      const subject = `Your $${(redemptionCents / 100).toFixed(2)} Pet Licence Factory credit (code ${code})`;
+      const html = renderStoreCreditEmail({
+        creatorName:    creator.name,
+        baseCents:      amountCents,
+        bonusCents,
+        redemptionCents,
+        code,
+        link,
+        expiresAt,
+      });
+      await sendEmail(env, { to: recipientEmail, subject, html });
+    } catch (mailErr) {
+      console.error('Store credit email failed (non-fatal):', mailErr);
+    }
+
+    return json(200, {
+      success:          true,
+      payout_id:        payoutRow.id,
+      method:           'store_credit',
+      amount_cents:     amountCents,
+      bonus_cents:      bonusCents,
+      redemption_cents: redemptionCents,
+      redemption_code:  code,
+      redemption_url:   `${siteOrigin}/game.html?promo=${encodeURIComponent(code)}`,
+      expires_at:       new Date(expiresAt * 1000).toISOString(),
+      recipient_email:  recipientEmail,
+      external_status:  'delivered',
+    });
+  } catch (err) {
+    const reason = err?.message || 'Stripe coupon creation failed';
+    await markPayoutFailed(db, payoutRow.id, reason);
+    console.error('Store credit creation failed:', err);
+    return json(502, { error: `Could not generate store credit: ${reason}` });
+  }
+}
+
+async function handleStripeConnect({ env, db, creator, payoutRow, amountCents }) {
+  // Gating: must have an onboarded Connect account that Stripe has marked
+  // ready for transfers. We re-fetch the account in case the cached flag
+  // is stale (e.g., a webhook hasn't landed yet).
+  if (!creator.stripe_connect_account_id) {
+    await markPayoutFailed(db, payoutRow.id, 'No Stripe Connect account on file.');
+    return json(400, {
+      error: 'Direct deposit requires connecting a Stripe account first.',
+      code:  'CONNECT_NOT_ONBOARDED',
+    });
   }
 
-  // Unreachable today — PAYOUT_RULES gate above prevents other methods.
-  return json(500, { error: 'Method handler not implemented' });
+  let account;
+  try {
+    account = await getAccount(env, creator.stripe_connect_account_id);
+    await syncAccountStatus(db, creator.id, account);
+  } catch (err) {
+    await markPayoutFailed(db, payoutRow.id, err?.message || 'Account fetch failed');
+    return json(502, { error: 'Could not verify Stripe Connect account.' });
+  }
+  if (!isAccountReady(account)) {
+    await markPayoutFailed(db, payoutRow.id, 'Stripe Connect account not ready (verification pending).');
+    return json(400, {
+      error: 'Your Stripe account is still being verified. Try again once Stripe finishes the review.',
+      code:  'CONNECT_NOT_READY',
+      requirements: account.requirements || {},
+    });
+  }
+
+  try {
+    const transfer = await createTransfer(env, {
+      amountCents,
+      accountId:     account.id,
+      transferGroup: `plf-payout-${payoutRow.id}`,
+      metadata: {
+        plf_payout_id:  String(payoutRow.id),
+        plf_creator_id: String(creator.id),
+        plf_coupon:     creator.coupon_code,
+      },
+    });
+
+    await db.query(
+      `UPDATE affiliate_payouts
+       SET external_id     = $1,
+           external_status = 'processing',
+           recipient_email = $2,
+           notes           = $3
+       WHERE id = $4`,
+      [
+        transfer.id,
+        creator.email,
+        `Stripe Connect transfer ${transfer.id} → ${account.id}.`,
+        payoutRow.id,
+      ]
+    );
+
+    return json(200, {
+      success:         true,
+      payout_id:       payoutRow.id,
+      method:          'stripe_connect',
+      amount_cents:    amountCents,
+      external_id:     transfer.id,
+      external_status: 'processing',
+      account_id:      account.id,
+    });
+  } catch (err) {
+    const reason = err?.raw?.message || err?.message || 'Stripe transfer failed';
+    await markPayoutFailed(db, payoutRow.id, reason);
+    console.error('Stripe Connect transfer failed:', err);
+    return json(502, { error: `Could not transfer funds: ${reason}` });
+  }
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+async function markPayoutFailed(db, payoutId, reason) {
+  try {
+    await db.query(
+      `UPDATE affiliate_payouts
+       SET external_status = 'failed', failure_reason = $1
+       WHERE id = $2`,
+      [String(reason).slice(0, 500), payoutId]
+    );
+  } catch (err) {
+    console.error('Failed to mark payout failed:', err);
+  }
+}
+
+// 8 chars from an unambiguous alphabet → 30^8 ≈ 6.5e11 codes. Collisions in
+// practice are negligible; if Stripe rejects on duplicate we'd surface the
+// error and the caller can retry.
+function generateCreditCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRTUVWXY346789';
+  const buf = new Uint8Array(8);
+  crypto.getRandomValues(buf);
+  let suffix = '';
+  for (let i = 0; i < 8; i++) suffix += alphabet[buf[i] % alphabet.length];
+  return `PLFCR-${suffix}`;
+}
+
+function renderStoreCreditEmail({ creatorName, baseCents, bonusCents, redemptionCents, code, link, expiresAt }) {
+  const baseUsd      = (baseCents / 100).toFixed(2);
+  const bonusUsd     = (bonusCents / 100).toFixed(2);
+  const redeemUsd    = (redemptionCents / 100).toFixed(2);
+  const expiresHuman = new Date(expiresAt * 1000).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
+  return `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,sans-serif;background:#f6f6f8;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e7e7ee;">
+    <h1 style="margin:0 0 8px;font-size:22px;color:#1a1a1f;">Your PLF credit is ready</h1>
+    <p style="margin:0 0 16px;color:#444;">Hi ${esc(creatorName || 'Creator')} — you cashed out $${esc(baseUsd)} as Pet Licence Factory store credit. We added a 10% bonus on top, so your code is worth <b>$${esc(redeemUsd)}</b> when you check out.</p>
+    <div style="background:#fff8e1;border:2px dashed #f6c343;border-radius:10px;padding:18px;text-align:center;margin:20px 0;">
+      <div style="font-family:monospace;font-size:24px;letter-spacing:2px;font-weight:bold;color:#1a1a1f;">${esc(code)}</div>
+      <div style="font-size:13px;color:#777;margin-top:6px;">$${esc(baseUsd)} cashout + $${esc(bonusUsd)} bonus = $${esc(redeemUsd)} redeemable</div>
+    </div>
+    <p style="margin:0 0 16px;color:#444;">Tap the button below to start a new licence with the credit pre-applied:</p>
+    <p style="text-align:center;margin:0 0 24px;">
+      <a href="${esc(link)}" style="display:inline-block;background:#ff6b6b;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Use my credit →</a>
+    </p>
+    <p style="margin:0;color:#888;font-size:13px;">Single-use code, expires ${esc(expiresHuman)}. If your order is smaller than the credit value, the unused portion is forfeited — so cash out an amount that matches what you plan to buy.</p>
+  </div>
+</body></html>`;
 }
