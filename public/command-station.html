@@ -1553,25 +1553,50 @@ html, body {
 /* Wider container than other admin modals so the 600px email + meta fit. */
 #affPreviewModal .aff-modal-inner { max-width: 760px; }
 
-/* Fullscreen mode: removes outer padding, fills the viewport, and grows the
-   iframe so the user can see the entire email without scrolling. */
-.aff-modal.fullscreen { padding: 0 !important; }
+/* Fullscreen mode: hide the meta chrome and hand the entire body over to the
+   iframe so the welcome email is actually readable. JS also sets an explicit
+   iframe height on toggle as a flex-chain backstop. */
+.aff-modal.fullscreen { padding: 0 !important; align-items: stretch !important; }
 .aff-modal.fullscreen .modal-inner {
   width: 100vw !important;
   max-width: 100vw !important;
   height: 100vh !important;
   border-radius: 0 !important;
-  display: flex; flex-direction: column;
+  display: flex !important; flex-direction: column !important;
 }
 .aff-modal.fullscreen .aff-preview-body {
-  flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px 24px 24px;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
 }
-.aff-modal.fullscreen .aff-form-actions { display: none; }
-.aff-modal.fullscreen .aff-email-preview { height: 100%; }
+.aff-modal.fullscreen .aff-form-actions,
+.aff-modal.fullscreen .aff-email-meta,
+.aff-modal.fullscreen .aff-form-error { display: none !important; }
+.aff-modal.fullscreen .aff-email-preview {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  gap: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
 .aff-modal.fullscreen .aff-email-iframe-wrap {
-  flex: 1 1 auto; min-height: 0; display: flex;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  display: flex !important;
 }
-.aff-modal.fullscreen .aff-email-iframe { height: 100%; }
+.aff-modal.fullscreen .aff-email-iframe {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+}
 .modal-fs-btn {
   background: transparent; border: 1px solid var(--border);
   color: var(--muted); cursor: pointer;
@@ -1713,6 +1738,14 @@ html, body {
   font-size: 12.5px; color: var(--text); padding: 14px;
   background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm);
   margin-bottom: 12px; max-height: 360px; overflow: auto; line-height: 1.5;
+}
+/* When the preview body contains the email-preview iframe, drop the 360px
+   clamp so the iframe gets its full natural / fullscreen height. */
+.aff-preview-body:has(.aff-email-preview) {
+  max-height: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
 }
 .aff-preview-body code { color: var(--accent); font-size: 11.5px; word-break: break-all; }
 .aff-modal-inner [hidden] { display: none !important; }
@@ -4998,6 +5031,22 @@ function affShowInviteSuccess(result, title = '✅ Creator created') {
   document.getElementById('affPreviewModal').classList.add('open');
 }
 
+function affApplyPreviewIframeSize(isFullscreen) {
+  const iframe = document.getElementById('affPreviewFrame');
+  if (!iframe) return;
+  if (isFullscreen) {
+    // Sit just below the modal header. The header is ~64px in this UI; we
+    // round up so a one-pixel border doesn't introduce a scrollbar.
+    const headerEl = document.querySelector('#affPreviewModal .modal-header');
+    const headerH  = headerEl ? headerEl.getBoundingClientRect().height : 64;
+    iframe.style.height = (window.innerHeight - headerH) + 'px';
+    iframe.style.width  = '100%';
+  } else {
+    iframe.style.height = '';
+    iframe.style.width  = '';
+  }
+}
+
 function affTogglePreviewFullscreen(force) {
   const modal = document.getElementById('affPreviewModal');
   const btn   = document.getElementById('affPreviewFsBtn');
@@ -5007,7 +5056,15 @@ function affTogglePreviewFullscreen(force) {
     btn.textContent = next ? '⤡' : '⤢';
     btn.title       = next ? 'Exit fullscreen (F or Esc)' : 'Toggle fullscreen (F)';
   }
+  affApplyPreviewIframeSize(next);
 }
+
+// Re-apply the iframe height on resize so the fullscreen view tracks
+// window changes (e.g. zoom, devtools open/close).
+window.addEventListener('resize', () => {
+  const modal = document.getElementById('affPreviewModal');
+  if (modal && modal.classList.contains('fullscreen')) affApplyPreviewIframeSize(true);
+});
 
 function affPreviewKeyHandler(e) {
   const modal = document.getElementById('affPreviewModal');
