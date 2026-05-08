@@ -519,6 +519,49 @@ export async function onRequest(context) {
         return json(200, { success: true });
       }
 
+      // ── BALANCE LEDGER ────────────────────────────────────────────────
+      // Manual credit/debit on a creator's balance. Used to compensate for
+      // bugs, comp out-of-band promotion bonuses, or claw back over-credited
+      // amounts. Positive cents = credit, negative = debit.
+      case 'adjust_balance': {
+        const id      = parseInt(body.id);
+        const dollars = Number(body.amount);
+        const note    = (body.notes || '').toString().slice(0, 500) || null;
+
+        if (!id)                                       return json(400, { error: 'Missing id' });
+        if (!Number.isFinite(dollars) || dollars === 0) return json(400, { error: 'Amount must be a non-zero number' });
+        if (!note)                                     return json(400, { error: 'Notes required (audit trail)' });
+
+        const cents = Math.round(dollars * 100);
+        const r = await db.query(
+          `INSERT INTO creator_balance_ledger
+             (creator_id, kind, amount_cents, reference_type, reference_id, notes)
+           VALUES ($1, 'manual_adjustment', $2, 'admin_adjustment', NULL, $3)
+           RETURNING *`,
+          [id, cents, note]
+        );
+        return json(200, { success: true, entry: r.rows[0] });
+      }
+
+      case 'delete_ledger_entry': {
+        const id = parseInt(body.id);
+        if (!id) return json(400, { error: 'Missing id' });
+        // Only allow deleting manual adjustments — video bonuses are
+        // protected so a re-approval of the same video can't double-credit
+        // (the partial unique index would block it but the row would also
+        // need the original to exist).
+        const r = await db.query(
+          `DELETE FROM creator_balance_ledger
+           WHERE id = $1 AND kind = 'manual_adjustment'
+           RETURNING id`,
+          [id]
+        );
+        if (r.rows.length === 0) {
+          return json(400, { error: 'Only manual adjustments can be deleted.' });
+        }
+        return json(200, { success: true });
+      }
+
       // ── OUTREACH TEMPLATES ────────────────────────────────────────────
       case 'list_templates': {
         const r = await db.query(

@@ -1697,6 +1697,25 @@ html, body {
 .aff-history-list li:last-child { border-bottom: none; }
 .aff-history-list .aff-h-when { color: var(--muted); width: 110px; flex-shrink: 0; font-size: 11.5px; }
 .aff-history-list .aff-h-amt  { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.aff-pill {
+  display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; padding: 2px 7px; border-radius: 999px; margin-left: 6px;
+  vertical-align: 1px;
+}
+.aff-pill.delivered  { color: var(--green, #16a34a); background: rgba(22,163,74,.10); }
+.aff-pill.processing { color: var(--amber, #d97706); background: rgba(217,119,6,.10); }
+.aff-pill.requested  { color: #2563eb; background: rgba(37,99,235,.10); }
+.aff-pill.failed     { color: var(--red, #dc2626); background: rgba(220,38,38,.10); }
+.aff-pill.video_bonus       { color: var(--green, #16a34a); background: rgba(22,163,74,.10); }
+.aff-pill.manual_adjustment { color: #6b7280; background: rgba(107,114,128,.12); }
+.aff-pill.refund_clawback   { color: var(--red, #dc2626); background: rgba(220,38,38,.10); }
+.aff-redeem-code {
+  display: inline-block; margin-left: 8px; font-family: 'SF Mono', Menlo, monospace;
+  font-size: 11.5px; color: #2563eb; padding: 1px 6px; border-radius: 4px;
+  background: rgba(37,99,235,.08);
+}
+.aff-amt.neg { color: var(--red, #dc2626); }
+.aff-amt.zero { color: var(--muted); text-decoration: line-through; }
 
 /* ── Modals (use the existing modal-backdrop / modal-inner styles) ── */
 .aff-modal { display: none; }
@@ -5241,13 +5260,60 @@ function affRenderDrawer(data) {
       ).join('')}</ul>`
     : '<div class="aff-empty">No clicks yet.</div>';
 
+  const methodLabels = {
+    gift_card_tremendous: '💳 Gift card',
+    store_credit:         '🛍️ Store credit',
+    stripe_connect:       '🏦 Direct deposit',
+    venmo: 'Venmo', paypal: 'PayPal', zelle: 'Zelle',
+    cash: 'Cash', check: 'Check', other: 'Other',
+  };
   const payoutsHtml = data.payouts.length
-    ? `<ul class="aff-history-list">${data.payouts.map(p =>
-        `<li><span class="aff-h-when">${affFmtRel(p.paid_at)}</span>
-            <span>${affEsc(p.method)} ${p.notes ? '· ' + affEsc(p.notes) : ''}</span>
-            <span class="aff-h-amt">${affFmtUsd(p.amount_cents)}</span>
-            <button class="aff-mini-btn aff-mini-danger" data-delpay="${p.id}">Undo</button></li>`).join('')}</ul>`
+    ? `<ul class="aff-history-list">${data.payouts.map(p => {
+        const label = methodLabels[p.method] || p.method;
+        const pill  = p.external_status ? `<span class="aff-pill ${affEsc(p.external_status)}">${affEsc(p.external_status)}</span>` : '';
+        const code  = p.redemption_code  ? `<span class="aff-redeem-code">${affEsc(p.redemption_code)}</span>` : '';
+        const fail  = p.failure_reason   ? `<br><small style="color:var(--red,#dc2626)">${affEsc(p.failure_reason)}</small>` : '';
+        const note  = p.notes && !p.failure_reason ? `<br><small style="color:var(--muted)">${affEsc(p.notes)}</small>` : '';
+        const amtCls = p.external_status === 'failed' ? 'aff-amt zero' : '';
+        // Only allow undo for manual payouts (no external rail) — external
+        // rows are an audit trail, deleting them desyncs Tremendous/Stripe.
+        const undoBtn = !p.external_status
+          ? `<button class="aff-mini-btn aff-mini-danger" data-delpay="${p.id}">Undo</button>`
+          : '';
+        return `<li>
+          <span class="aff-h-when">${affFmtRel(p.paid_at)}</span>
+          <span>${affEsc(label)}${pill}${code}${fail}${note}</span>
+          <span class="aff-h-amt ${amtCls}">${affFmtUsd(p.amount_cents)}</span>
+          ${undoBtn}
+        </li>`;
+      }).join('')}</ul>`
     : '<div class="aff-empty">No payouts recorded.</div>';
+
+  const ledgerEntries = data.ledger_entries || [];
+  const kindLabels = {
+    video_bonus:        '🎉 Video bonus',
+    manual_adjustment:  '⚖️ Adjustment',
+    refund_clawback:    '↩️ Refund clawback',
+  };
+  const ledgerHtml = ledgerEntries.length
+    ? `<ul class="aff-history-list">${ledgerEntries.map(e => {
+        const label = kindLabels[e.kind] || e.kind;
+        const pill  = `<span class="aff-pill ${affEsc(e.kind)}">${affEsc(e.kind.replace(/_/g, ' '))}</span>`;
+        const note  = e.notes ? `<br><small style="color:var(--muted)">${affEsc(e.notes)}</small>` : '';
+        const amt   = Number(e.amount_cents) || 0;
+        const amtCls = amt < 0 ? 'aff-amt neg' : '';
+        const sign  = amt < 0 ? '−' : '+';
+        const undoBtn = e.kind === 'manual_adjustment'
+          ? `<button class="aff-mini-btn aff-mini-danger" data-delledger="${e.id}">Undo</button>`
+          : '';
+        return `<li>
+          <span class="aff-h-when">${affFmtRel(e.created_at)}</span>
+          <span>${affEsc(label)}${pill}${note}</span>
+          <span class="aff-h-amt ${amtCls}">${sign}${affFmtUsd(Math.abs(amt))}</span>
+          ${undoBtn}
+        </li>`;
+      }).join('')}</ul>`
+    : '<div class="aff-empty">No bonus credits or adjustments yet.</div>';
 
   const creatorContentHtml = `
     <div class="aff-section">
@@ -5272,10 +5338,12 @@ function affRenderDrawer(data) {
       </div>` : ''}
     </div>`;
 
+  const bonusCents = Number(l.bonus_cents) || 0;
   document.getElementById('affDrawerBody').innerHTML = `
     ${setupBanner}
     <div class="aff-stats">
-      <div class="aff-stat"><div class="aff-stat-label">Earned</div><div class="aff-stat-value">${affFmtUsd(l.earned_cents)}</div></div>
+      <div class="aff-stat"><div class="aff-stat-label">Commissions</div><div class="aff-stat-value">${affFmtUsd(l.earned_cents)}</div></div>
+      <div class="aff-stat"><div class="aff-stat-label">Bonuses</div><div class="aff-stat-value" style="color:${bonusCents < 0 ? 'var(--red,#dc2626)' : 'var(--ink)'}">${bonusCents < 0 ? '−' : ''}${affFmtUsd(Math.abs(bonusCents))}</div></div>
       <div class="aff-stat"><div class="aff-stat-label">Paid</div><div class="aff-stat-value">${affFmtUsd(l.paid_cents)}</div></div>
       <div class="aff-stat"><div class="aff-stat-label">Outstanding</div><div class="aff-stat-value" style="color:var(--green)">${affFmtUsd(l.outstanding_cents)}</div></div>
     </div>
@@ -5304,6 +5372,7 @@ function affRenderDrawer(data) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         ${isPendingReview ? `<button class="aff-mini-btn" data-act="approve">Approve &amp; send kit</button>` : `
           <button class="aff-mini-btn" data-act="payout">Mark payout paid</button>
+          <button class="aff-mini-btn" data-act="adjust">⚖️ Adjust balance</button>
           <button class="aff-mini-btn" data-act="previewEmail">📧 Preview welcome email</button>
           <button class="aff-mini-btn" data-act="resend">Resend onboarding email</button>
         `}
@@ -5320,7 +5389,11 @@ function affRenderDrawer(data) {
       ${clicksHtml}
     </div>
     <div class="aff-section">
-      <div class="aff-section-title">Commission ledger</div>
+      <div class="aff-section-title">Bonuses &amp; adjustments</div>
+      ${ledgerHtml}
+    </div>
+    <div class="aff-section">
+      <div class="aff-section-title">Payout history</div>
       ${payoutsHtml}
     </div>
   `;
@@ -5328,9 +5401,10 @@ function affRenderDrawer(data) {
   // Wire up drawer buttons
   document.getElementById('affDrawerBody').onclick = async (e) => {
     const t = e.target;
-    if (t.dataset.copy)   { affCopy(t.dataset.copy); affFlash(t, 'Copied'); return; }
-    if (t.dataset.retry)  { try { await affApi('retry_creator_setup', { id: c.id }); affOpenDrawer(c.id); } catch (err) { alert(err.message); } return; }
-    if (t.dataset.delpay) { if (confirm('Undo this payout?')) { await affApi('delete_payout', { id: Number(t.dataset.delpay) }); affOpenDrawer(c.id); affLoad(); } return; }
+    if (t.dataset.copy)      { affCopy(t.dataset.copy); affFlash(t, 'Copied'); return; }
+    if (t.dataset.retry)     { try { await affApi('retry_creator_setup', { id: c.id }); affOpenDrawer(c.id); } catch (err) { alert(err.message); } return; }
+    if (t.dataset.delpay)    { if (confirm('Undo this payout?')) { await affApi('delete_payout', { id: Number(t.dataset.delpay) }); affOpenDrawer(c.id); affLoad(); } return; }
+    if (t.dataset.delledger) { if (confirm('Undo this manual adjustment?')) { try { await affApi('delete_ledger_entry', { id: Number(t.dataset.delledger) }); affOpenDrawer(c.id); affLoad(); } catch (err) { alert(err.message); } } return; }
     if (t.dataset.act === 'approve') { affApprove(c.id, t); return; }
     if (t.dataset.act === 'approveVideo') {
       try { await affApi('approve_review_video', { id: c.id }); affOpenDrawer(c.id); affLoad(); }
@@ -5345,6 +5419,17 @@ function affRenderDrawer(data) {
       return;
     }
     if (t.dataset.act === 'payout') { affOpenPayout(c.id); return; }
+    if (t.dataset.act === 'adjust') {
+      const raw = prompt('Adjust balance — enter dollar amount.\nUse a negative number to debit (e.g., -5 to remove $5).', '0');
+      if (raw === null) return;
+      const dollars = Number(raw);
+      if (!Number.isFinite(dollars) || dollars === 0) { alert('Enter a non-zero dollar amount.'); return; }
+      const note = prompt(`Why? (audit trail — required)\n${dollars > 0 ? 'Crediting' : 'Debiting'} $${Math.abs(dollars).toFixed(2)}.`, '');
+      if (!note) return;
+      try { await affApi('adjust_balance', { id: c.id, amount: dollars, notes: note }); affOpenDrawer(c.id); affLoad(); }
+      catch (err) { alert(err.message); }
+      return;
+    }
     if (t.dataset.act === 'previewEmail') { affPreviewCreatorEmail(c.id, t); return; }
     if (t.dataset.act === 'resend') {
       try { await affApi('resend_onboarding', { id: c.id }); affFlash(t, 'Sent'); }
