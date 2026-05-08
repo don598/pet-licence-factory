@@ -384,17 +384,16 @@ Track it: ${trackUrl}
 // Sent at invite time. Carries everything the creator needs in one email:
 // affiliate URL, customer-facing coupon code, magic-link to their dashboard,
 // one-time freebie checkout URL with the welcome code pre-applied.
-//
-// Returns { success, status, error, messageId } so callers can log to
-// affiliate_email_log with the SendGrid message id.
-export async function sendCreatorOnboardingEmail(env, opts) {
+
+// Pure render: returns { subject, html, text, urls } without touching SendGrid.
+// Used by the admin "Preview email" action and by the actual sender below.
+export function renderCreatorOnboardingEmail(opts) {
   const {
-    creatorName, creatorEmail,
+    creatorName,
     affiliateCode, freebieCode, customerDiscountPct, commissionPct,
     siteOrigin = 'https://petlicensefactory.com',
     dashboardToken,
   } = opts;
-  if (!creatorEmail) return { skipped: true, reason: 'no email' };
 
   const refUrl       = `${siteOrigin}/?ref=${encodeURIComponent(affiliateCode)}`;
   const freebieUrl   = `${siteOrigin}/game.html?promo=${encodeURIComponent(freebieCode)}`;
@@ -536,6 +535,20 @@ Questions? Reply to this email.
 
 — Pet Licence Factory`;
 
+  return {
+    subject,
+    html,
+    text,
+    urls: { affiliate: refUrl, freebie: freebieUrl, dashboard: dashboardUrl },
+  };
+}
+
+// Returns { success, status, error, messageId } so callers can log to
+// affiliate_email_log with the SendGrid message id.
+export async function sendCreatorOnboardingEmail(env, opts) {
+  const { creatorEmail } = opts;
+  if (!creatorEmail) return { skipped: true, reason: 'no email' };
+  const { subject, html, text } = renderCreatorOnboardingEmail(opts);
   return sendEmail(env, { to: creatorEmail, subject, html, text });
 }
 

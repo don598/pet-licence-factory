@@ -31,6 +31,7 @@ import {
   clampRate,
   sendOnboardingAndLog,
 } from '../_shared/affiliate-onboarding.js';
+import { renderCreatorOnboardingEmail } from '../_shared/email.js';
 import { ensureAffiliateContentSchema } from '../_shared/affiliate-content-schema.js';
 
 const CORS_HEADERS = {
@@ -296,7 +297,7 @@ export async function onRequest(context) {
         return json(200, { success: true });
       }
 
-      // ── PREVIEW ONBOARDING (renders HTML, no send) ───────────────────
+      // ── PREVIEW ONBOARDING (renders the actual HTML, no send) ────────
       case 'preview_onboarding': {
         const name                  = (body.name || 'Creator Name').trim();
         const email                 = (body.email || 'creator@example.com').trim();
@@ -304,40 +305,77 @@ export async function onRequest(context) {
         if (!codeShape.ok) return json(400, { error: codeShape.error });
         const commissionRate        = clampRate(body.commissionRate, 0.20);
         const customerDiscountRate  = clampRate(body.customerDiscountRate, 0.15);
+        const siteOrigin            = env.URL || 'https://petlicensefactory.com';
 
-        // Render via the same template helper, but capture HTML by patching
-        // sendEmail. Simpler: import the helper and call it with a noop
-        // sendgrid key — instead, build a small wrapper. We'll just import
-        // the template inline by calling the email function — but that
-        // also tries to fetch SendGrid. Workaround: call with no key set so
-        // it returns { skipped }. The PREVIEW path needs the actual HTML.
-        //
-        // To keep things simple we re-import esc and inline-build a minimal
-        // preview using the same template URLs. The full HTML-render parity
-        // lives in email.js — duplicating the entire template here would
-        // drift. Instead we hand the admin the rendered email by sending
-        // a dry-run through the template with a faked `sendEmail`.
-        //
-        // Pragmatic solution: ship the preview as a server-rendered iframe
-        // src that points at /api/affiliate-admin?previewToken=... — but
-        // CSP would need updating. Simplest: send the same template helper
-        // the same args and return the resulting `html` from the helper's
-        // closure. We'll add a small refactor here by re-exporting.
-        const previewUrl = `${env.URL || 'https://petlicensefactory.com'}/?ref=${encodeURIComponent(codeShape.code)}`;
-        const dashUrl    = `${env.URL || 'https://petlicensefactory.com'}/dashboard.html?token=PREVIEW`;
-        const freebieUrl = `${env.URL || 'https://petlicensefactory.com'}/game.html?promo=${encodeURIComponent(codeShape.code + '-WELCOME-XXXX')}`;
+        // For pending applicants we don't have a freebie code yet — show the
+        // shape they'll receive ("CODE-WELCOME-XXXX") so the admin can
+        // verify the welcome-bonus copy before approving.
+        const freebieCode    = codeShape.code + '-WELCOME-XXXX';
+        const dashboardToken = 'PREVIEW-' + codeShape.code;
 
-        // For preview we just describe the email components and let the UI
-        // open the production template via a "send to me" test send.
+        const rendered = renderCreatorOnboardingEmail({
+          creatorName: name,
+          affiliateCode: codeShape.code,
+          freebieCode,
+          customerDiscountPct: Math.round(customerDiscountRate * 100),
+          commissionPct:       Math.round(commissionRate        * 100),
+          siteOrigin,
+          dashboardToken,
+        });
+
         return json(200, {
           preview: {
-            to:                  email,
-            subject:             `🎉 You're in — your Pet Licence Factory creator kit`,
-            affiliate_code:      codeShape.code,
-            freebie_code:        codeShape.code + '-WELCOME-XXXX',
+            to: email,
+            subject:               rendered.subject,
+            html:                  rendered.html,
+            text:                  rendered.text,
+            affiliate_code:        codeShape.code,
+            freebie_code:          freebieCode,
             customer_discount_pct: Math.round(customerDiscountRate * 100),
-            commission_pct:      Math.round(commissionRate * 100),
-            urls: { affiliate: previewUrl, freebie: freebieUrl, dashboard: dashUrl },
+            commission_pct:        Math.round(commissionRate * 100),
+            urls:                  rendered.urls,
+          },
+        });
+      }
+
+      // ── PREVIEW ONBOARDING for an existing creator row ───────────────
+      // Uses their stored commission/discount rates and (when available)
+      // the real freebie code + dashboard token, so the admin can review
+      // exactly what an approved creator would have received — including
+      // the $10 video-bonus copy.
+      case 'preview_onboarding_for_creator': {
+        const id = parseInt(body.id);
+        if (!id) return json(400, { error: 'Missing id' });
+        const cRes = await db.query('SELECT * FROM affiliate_creators WHERE id = $1', [id]);
+        if (cRes.rows.length === 0) return json(404, { error: 'Creator not found' });
+        const c = cRes.rows[0];
+
+        const siteOrigin = env.URL || 'https://petlicensefactory.com';
+        const freebieCode = c.freebie_code || (c.coupon_code + '-WELCOME-XXXX');
+        const dashboardToken = c.dashboard_token || ('PREVIEW-' + c.coupon_code);
+
+        const rendered = renderCreatorOnboardingEmail({
+          creatorName: c.name,
+          affiliateCode: c.coupon_code,
+          freebieCode,
+          customerDiscountPct: Math.round(Number(c.customer_discount_rate) * 100),
+          commissionPct:       Math.round(Number(c.commission_rate)        * 100),
+          siteOrigin,
+          dashboardToken,
+        });
+
+        return json(200, {
+          preview: {
+            to: c.email,
+            subject:               rendered.subject,
+            html:                  rendered.html,
+            text:                  rendered.text,
+            affiliate_code:        c.coupon_code,
+            freebie_code:          freebieCode,
+            customer_discount_pct: Math.round(Number(c.customer_discount_rate) * 100),
+            commission_pct:        Math.round(Number(c.commission_rate)        * 100),
+            urls:                  rendered.urls,
+            is_real_kit:           !!c.freebie_code,
           },
         });
       }
