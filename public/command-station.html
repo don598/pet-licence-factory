@@ -1847,6 +1847,7 @@ html, body {
             <div class="page-subtitle">Invite creators, track clicks &amp; sales, and pay them out.</div>
           </div>
           <div class="page-actions">
+            <button class="btn-secondary" onclick="affLoad(this)" title="Re-fetch the latest creator list"><span>↻</span> Refresh</button>
             <button class="btn-secondary" onclick="affCopySignupLink()"><span>🔗</span> Signup page</button>
             <button class="btn-secondary" onclick="affOpenTemplates()"><span>📝</span> Templates</button>
             <button class="btn-secondary" onclick="affExportCsv()"><span>⬇</span> Export CSV</button>
@@ -2255,8 +2256,8 @@ async function doLogin() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     loadAll();
-    // If the user's last view was Affiliate, lazy-load it now that auth landed.
-    if (currentView === 'affiliate' && !Aff.loaded) affLoad();
+    // If the user's last view was Affiliate, load it now that auth landed.
+    if (currentView === 'affiliate') affLoad();
   } catch (err) {
     document.getElementById('auth-error').textContent = 'Incorrect password.';
     document.getElementById('pass-input').value = '';
@@ -2334,7 +2335,9 @@ function switchView(name) {
   // Lazy-load affiliate data, but only if the user is actually authenticated.
   // Without this guard, the restoreLastView IIFE below could fire affLoad
   // before login, racing the auth UI and (on 401) triggering location.reload.
-  if (name === 'affiliate' && !Aff.loaded && isTokenValid()) affLoad();
+  // Always re-fetch on switch so submissions made while the page sat open
+  // come into view without a hard reload.
+  if (name === 'affiliate' && isTokenValid()) affLoad();
 }
 (function restoreLastView() {
   try {
