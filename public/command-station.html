@@ -4995,13 +4995,54 @@ function affRender() {
 }
 
 // ── Invite ──
+// Auto-suggest a coupon code from the creator's name. Strips non-alphanumeric,
+// uppercases, clamps to 16 chars. We only update the field if the user hasn't
+// manually edited it yet — once they type their own code, hands off.
+function affSuggestCouponCode(name) {
+  const cleaned = String(name || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '')
+    .slice(0, 16);
+  if (cleaned.length >= 3) return cleaned;
+  // Name too short / empty: fall back to a 6-char random alphanumeric.
+  const alphabet = 'ABCDEFGHJKLMNPQRTUVWXY346789';
+  const buf = new Uint8Array(6);
+  crypto.getRandomValues(buf);
+  let out = '';
+  for (let i = 0; i < 6; i++) out += alphabet[buf[i] % alphabet.length];
+  return out;
+}
+
 function affOpenInvite() {
   const m = document.getElementById('affInviteModal');
   m.classList.add('open');
-  document.getElementById('affInviteForm').reset();
+  const form = document.getElementById('affInviteForm');
+  form.reset();
   document.getElementById('affInviteError').hidden = true;
-  setTimeout(() => m.querySelector('input[name="name"]').focus(), 60);
+
+  // Wire name → coupon-code auto-suggest. The coupon input keeps an
+  // ownership flag (dataset.touched) — once the admin manually types in
+  // it, we stop overwriting. Listeners are bound once at app load via
+  // affWireInviteAutosuggest() below; here we just reset the flag.
+  form.querySelector('input[name="couponCode"]').dataset.touched = '';
+
+  setTimeout(() => form.querySelector('input[name="name"]').focus(), 60);
 }
+
+// Bound once at app load — listeners survive modal open/close cycles.
+function affWireInviteAutosuggest() {
+  const form = document.getElementById('affInviteForm');
+  if (!form || form.dataset.autosuggestWired) return;
+  form.dataset.autosuggestWired = '1';
+  const nameInput   = form.querySelector('input[name="name"]');
+  const couponInput = form.querySelector('input[name="couponCode"]');
+  couponInput.addEventListener('input', () => { couponInput.dataset.touched = '1'; });
+  nameInput.addEventListener('input', () => {
+    if (couponInput.dataset.touched) return;
+    couponInput.value = affSuggestCouponCode(nameInput.value);
+  });
+}
+document.addEventListener('DOMContentLoaded', affWireInviteAutosuggest);
 function affCloseInvite() { document.getElementById('affInviteModal').classList.remove('open'); }
 function affCloseModal(id) { document.getElementById(id).classList.remove('open'); }
 
