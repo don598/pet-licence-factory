@@ -162,6 +162,30 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
   background:var(--accent-soft, rgba(99,102,241,.08));
 }
 
+/* Stripe Connect alert — surfaces requirements (TOS, DOB, SSN, etc.)
+   when onboarding was started but not finished. Lives at the top of the
+   cashout card so the creator notices it before scrolling to the tiers. */
+.connect-alert {
+  border-radius:12px; padding:14px 16px; margin-bottom:14px;
+  border:1px solid rgba(217,119,6,.32); background:rgba(217,119,6,.06);
+  color:#7c2d12; font-size:14px; line-height:1.5;
+}
+.connect-alert.success {
+  border-color:rgba(22,163,74,.32); background:rgba(22,163,74,.06); color:#166534;
+}
+.connect-alert.error {
+  border-color:rgba(220,38,38,.32); background:rgba(220,38,38,.06); color:#991b1b;
+}
+.connect-alert .ca-title { font-weight:700; margin-bottom:4px; }
+.connect-alert ul { margin:8px 0 0; padding-left:18px; }
+.connect-alert li { margin:2px 0; }
+.connect-alert button {
+  margin-top:10px; background:var(--ink, #1a1a1f); color:#fff;
+  border:0; padding:8px 14px; border-radius:8px; font-weight:700;
+  font-size:13px; cursor:pointer;
+}
+.connect-alert button:hover { opacity:.9; }
+
 /* ── Stats grid ── */
 .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
 .stat {
@@ -360,6 +384,7 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
     </div>
 
     <div class="card">
+      <div id="connectAlert" class="connect-alert" hidden></div>
       <div class="card-label">Available to cash out</div>
       <div class="money">
         <div class="money-pending">
@@ -594,9 +619,118 @@ function renderDashboard(d) {
       ? `${fmtUsd(d.stats.commission_earned_cents)} commissions + ${fmtUsd(d.stats.bonus_cents)} bonuses`
       : 'available to cash out';
 
+  renderConnectAlert(d);
   renderCashoutTiers(d);
   renderActivity(d);
   renderPayouts(d);
+}
+
+// ── Stripe Connect requirements banner ──────────────────────────────────────
+// Maps Stripe's requirement codes (e.g. "individual.dob.day") to friendly
+// human descriptions. We only need to cover the requirements Express
+// individual accounts in the US typically surface — anything we don't
+// recognize falls through to a humanized form of the code itself.
+const CONNECT_REQUIREMENT_LABELS = {
+  'tos_acceptance.date':       'Accept Stripe\'s terms of service',
+  'tos_acceptance.ip':         'Accept Stripe\'s terms of service',
+  'individual.dob.day':        'Enter your date of birth',
+  'individual.dob.month':      'Enter your date of birth',
+  'individual.dob.year':       'Enter your date of birth',
+  'individual.ssn_last_4':     'Provide the last 4 digits of your SSN',
+  'individual.id_number':      'Provide your full SSN (additional verification)',
+  'individual.verification.document':  'Upload a photo of your ID',
+  'individual.verification.additional_document': 'Upload an additional ID document',
+  'individual.address.line1':  'Confirm your address',
+  'individual.address.city':   'Confirm your address',
+  'individual.address.state':  'Confirm your address',
+  'individual.address.postal_code': 'Confirm your address',
+  'individual.phone':          'Confirm your phone number',
+  'individual.email':          'Confirm your email',
+  'external_account':          'Add a bank account for deposits',
+  'business_profile.url':      'Provide a website URL',
+  'business_profile.product_description': 'Describe what you sell',
+  'business_profile.mcc':      'Pick a business category',
+};
+
+function humanizeConnectRequirement(code) {
+  if (CONNECT_REQUIREMENT_LABELS[code]) return CONNECT_REQUIREMENT_LABELS[code];
+  // Fallback: strip prefixes, replace . and _ with spaces, sentence-case.
+  return String(code)
+    .replace(/^individual\.|^business_profile\.|^company\.|^tos_acceptance\./, '')
+    .replace(/[._]/g, ' ')
+    .replace(/^\w/, c => c.toUpperCase());
+}
+
+function renderConnectAlert(d) {
+  const el  = $('connectAlert');
+  const req = d.creator.stripe_connect_requirements;
+  const hasAccount = !!d.creator.stripe_connect_account_id;
+  // No Connect account yet → nothing to surface (the regular tier card
+  // handles the initial "Connect →" CTA).
+  if (!hasAccount) { el.hidden = true; return; }
+
+  // Account exists but we've never persisted Stripe's requirements
+  // snapshot (e.g., the account.updated webhook hasn't fired yet, or it
+  // fired before signature verification was working). Kick off a one-shot
+  // background sync to pull current state. Guarded by a global flag so
+  // concurrent renderDashboard calls don't fire multiple syncs.
+  if (!req && !window._plfConnectSyncing) {
+    window._plfConnectSyncing = true;
+    api('/api/creator-connect-onboard', { token: dashboardToken, action: 'status' })
+      .then(() => loadDashboard())
+      .catch(err => console.warn('Background Connect sync failed:', err))
+      .finally(() => { window._plfConnectSyncing = false; });
+    el.hidden = false;
+    el.className = 'connect-alert';
+    el.innerHTML = '<div class="ca-title">⏳ Loading your direct deposit status…</div>';
+    return;
+  }
+  if (!req) { el.hidden = true; return; }
+
+  // Combine past_due + currently_due into "needs your attention right now."
+  // Eventually_due that's NOT also currently_due is informational only and
+  // we skip it to avoid noise — Stripe will escalate to currently_due when
+  // it actually blocks payouts.
+  const blocking = Array.from(new Set([
+    ...(req.past_due || []),
+    ...(req.currently_due || []),
+  ]));
+  const errors  = (req.errors || []).map(e => e.reason || e.code || '');
+
+  // No outstanding asks AND payouts are enabled → success state.
+  if (blocking.length === 0 && errors.length === 0 && d.creator.stripe_connect_payouts_enabled) {
+    el.hidden = false;
+    el.className = 'connect-alert success';
+    el.innerHTML = `<div class="ca-title">✓ Direct deposit is active</div>
+      Stripe verified your account. Cashouts of $25+ will deposit to your bank in 2–3 business days.`;
+    return;
+  }
+  // No outstanding asks but payouts NOT yet enabled → Stripe is still reviewing.
+  if (blocking.length === 0 && errors.length === 0) {
+    el.hidden = false;
+    el.className = 'connect-alert';
+    el.innerHTML = `<div class="ca-title">⏳ Stripe is reviewing your account</div>
+      You've submitted everything we need. Stripe usually finishes verification within a few minutes to a few hours — refresh this page once you get the confirmation email.`;
+    return;
+  }
+
+  // Outstanding requirements — show them with a finish-setup button.
+  const items = [...new Set(blocking.map(humanizeConnectRequirement))]
+    .map(label => `<li>${esc(label)}</li>`).join('');
+  const errorItems = errors.length
+    ? `<div style="margin-top:8px;"><b>Errors Stripe flagged:</b><ul>${errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>`
+    : '';
+
+  el.hidden = false;
+  el.className = 'connect-alert';
+  el.innerHTML = `
+    <div class="ca-title">⚠️ Finish your direct deposit setup</div>
+    Stripe still needs the following before they can deposit funds to your bank:
+    <ul>${items}</ul>
+    ${errorItems}
+    <button type="button" id="connectFinishBtn">Finish setup →</button>
+  `;
+  $('connectFinishBtn').addEventListener('click', () => startConnectOnboarding({ resume: true }));
 }
 
 function renderCashoutTiers(d) {
@@ -771,13 +905,54 @@ function handleCashoutSuccess(res) {
   }
 }
 
-async function startConnectOnboarding() {
+async function startConnectOnboarding(opts) {
+  // Pre-open a blank tab *synchronously* inside the user-gesture window so
+  // popup blockers leave us alone. We'll navigate it once the URL comes back.
+  // If the popup is blocked anyway (mobile Safari, strict blockers), fall
+  // back to same-tab navigation so the creator isn't stranded.
+  const newTab = window.open('about:blank', '_blank');
+  const action = opts?.resume ? 'refresh' : 'start';
   try {
-    const res = await api('/api/creator-connect-onboard', { token: dashboardToken, action: 'start' });
-    if (res.url) window.location.href = res.url;
+    const res = await api('/api/creator-connect-onboard', { token: dashboardToken, action });
+    if (!res.url) throw new Error('Onboarding link missing from server response.');
+    if (newTab && !newTab.closed) {
+      newTab.location.href = res.url;
+      toast('Onboarding opened in a new tab');
+      // Show a status banner in the original tab so the creator knows what
+      // to do next + has a button to re-pull state when they're back.
+      showConnectPendingBanner();
+    } else {
+      // Popup blocked — best-effort same-tab nav.
+      window.location.href = res.url;
+    }
   } catch (err) {
+    if (newTab && !newTab.closed) newTab.close();
     alert(err.message || 'Could not start Stripe onboarding.');
   }
+}
+
+// Banner in the original tab while the creator is finishing onboarding
+// in another tab. Click "Check status" to re-pull the dashboard.
+function showConnectPendingBanner() {
+  const el = $('connectAlert');
+  el.hidden = false;
+  el.className = 'connect-alert';
+  el.innerHTML = `
+    <div class="ca-title">↗ Onboarding opened in a new tab</div>
+    Finish entering your details in the other tab. Once Stripe sends you back, we'll update your status automatically. If you've already finished, tap below to refresh.
+    <button type="button" id="connectCheckStatusBtn">Check status now</button>
+  `;
+  $('connectCheckStatusBtn').addEventListener('click', async () => {
+    const btn = $('connectCheckStatusBtn');
+    btn.disabled = true; btn.textContent = 'Checking...';
+    try {
+      await api('/api/creator-connect-onboard', { token: dashboardToken, action: 'status' });
+      await loadDashboard();
+    } catch (err) {
+      alert(err.message || 'Could not refresh status.');
+      btn.disabled = false; btn.textContent = 'Check status now';
+    }
+  });
 }
 
 function renderActivity(d) {

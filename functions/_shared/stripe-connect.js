@@ -25,8 +25,19 @@ function stripeClient(env) {
 
 // Create an Express account for a creator. Stripe collects identity, bank
 // details, and tax info during the hosted onboarding step (next call).
+//
+// We pre-fill `business_profile.url` with the creator's affiliate landing
+// page on petlicensefactory.com. Stripe REQUIRES a website OR a product
+// description from every connected account for KYC — affiliate creators
+// rarely have their own websites (they sell on TikTok/IG), so without a
+// pre-fill they get stuck asking "what should I put here?". Their affiliate
+// page is a real merchant URL describing the products they promote, which
+// is what Stripe actually wants.
 export async function createExpressAccount(env, creator) {
   const stripe = stripeClient(env);
+  const siteOrigin = env.URL || 'https://petlicensefactory.com';
+  const affiliateUrl = `${siteOrigin}/?ref=${encodeURIComponent(creator.coupon_code)}`;
+
   const account = await stripe.accounts.create({
     type:    'express',
     country: 'US',
@@ -35,6 +46,11 @@ export async function createExpressAccount(env, creator) {
       transfers:    { requested: true },
     },
     business_type: 'individual',
+    business_profile: {
+      url:                  affiliateUrl,
+      product_description:  'Affiliate / creator commission for promoting Pet Licence Factory products (custom printed pet licence card skins).',
+      mcc:                  '5732', // "Electronics Stores" — closest match for printed novelty goods sold via affiliate marketing
+    },
     metadata: {
       plf_creator_id:   String(creator.id),
       plf_coupon_code:  creator.coupon_code,
@@ -91,15 +107,17 @@ export function isAccountReady(account) {
   return Boolean(account.payouts_enabled) && Boolean(account.charges_enabled);
 }
 
-// Verify a Stripe Connect webhook signature. This uses the existing Stripe
-// SDK helper (different secret from the main Stripe webhook — Connect events
-// go to a separate endpoint).
-export function constructConnectEvent(env, rawBody, sigHeader) {
+// Verify a Stripe Connect webhook signature. Uses the ASYNC variant because
+// this runs on Cloudflare Workers, which provide Web Crypto (SubtleCrypto)
+// but not Node's `crypto` module. The synchronous `constructEvent` fails on
+// Workers; only `constructEventAsync` works. The main stripe-webhook.js
+// already uses the async variant — this matches.
+export async function constructConnectEvent(env, rawBody, sigHeader) {
   const stripe = stripeClient(env);
   if (!env.STRIPE_CONNECT_WEBHOOK_SECRET) {
     const err = new Error('STRIPE_CONNECT_WEBHOOK_SECRET is not configured.');
     err.status = 500;
     throw err;
   }
-  return stripe.webhooks.constructEvent(rawBody, sigHeader, env.STRIPE_CONNECT_WEBHOOK_SECRET);
+  return stripe.webhooks.constructEventAsync(rawBody, sigHeader, env.STRIPE_CONNECT_WEBHOOK_SECRET);
 }

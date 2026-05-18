@@ -254,7 +254,12 @@ CREATE INDEX IF NOT EXISTS idx_aff_payouts_external_id
 ALTER TABLE affiliate_creators
   ADD COLUMN IF NOT EXISTS stripe_connect_account_id      TEXT,
   ADD COLUMN IF NOT EXISTS stripe_connect_onboarded_at    TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS stripe_connect_payouts_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+  ADD COLUMN IF NOT EXISTS stripe_connect_payouts_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  -- Snapshot of Stripe's `requirements` block so the dashboard can show the
+  -- creator what's still needed (TOS acceptance, DOB, SSN, etc.) without a
+  -- live Stripe API call on every page load. Refreshed by syncAccountStatus.
+  ADD COLUMN IF NOT EXISTS stripe_connect_requirements    JSONB,
+  ADD COLUMN IF NOT EXISTS stripe_connect_disabled_reason TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_aff_creators_stripe_connect
   ON affiliate_creators (stripe_connect_account_id)

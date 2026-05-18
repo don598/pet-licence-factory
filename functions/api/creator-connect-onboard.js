@@ -62,10 +62,14 @@ export async function onRequest(context) {
   if (!creator) return json(401, { error: 'Invalid token' });
 
   const siteOrigin  = env.URL || 'https://petlicensefactory.com';
-  const refreshUrl  = env.STRIPE_CONNECT_REFRESH_URL ||
-                      `${siteOrigin}/dashboard.html?connect=refresh&token=${encodeURIComponent(token)}`;
-  const returnUrl   = env.STRIPE_CONNECT_RETURN_URL  ||
-                      `${siteOrigin}/dashboard.html?connect=ok&token=${encodeURIComponent(token)}`;
+  // Always append the creator's dashboard token to the return/refresh URLs
+  // so the creator can be authenticated when Stripe redirects them back —
+  // critical when onboarding is opened in a new tab (no sessionStorage).
+  // Env-var overrides set the base URL; the token is appended on top.
+  const baseRefreshUrl = env.STRIPE_CONNECT_REFRESH_URL || `${siteOrigin}/dashboard.html?connect=refresh`;
+  const baseReturnUrl  = env.STRIPE_CONNECT_RETURN_URL  || `${siteOrigin}/dashboard.html?connect=ok`;
+  const refreshUrl     = appendQueryParam(baseRefreshUrl, 'token', token);
+  const returnUrl      = appendQueryParam(baseReturnUrl,  'token', token);
 
   try {
     let accountId = creator.stripe_connect_account_id;
@@ -135,8 +139,20 @@ export async function onRequest(context) {
 
 // Persist Stripe Connect status flags onto affiliate_creators. Used both
 // here (after the creator returns) and in the connect-webhook handler.
+// Also snapshots `requirements` and `disabled_reason` so the dashboard can
+// tell the creator what's still needed without a live Stripe API call.
 export async function syncAccountStatus(db, creatorId, account) {
   const enabled = !!account?.payouts_enabled && !!account?.charges_enabled;
+  const requirements = account?.requirements ? JSON.stringify({
+    currently_due:   account.requirements.currently_due   || [],
+    past_due:        account.requirements.past_due        || [],
+    eventually_due:  account.requirements.eventually_due  || [],
+    errors:          account.requirements.errors          || [],
+    pending_verification: account.requirements.pending_verification || [],
+    current_deadline:     account.requirements.current_deadline     || null,
+  }) : null;
+  const disabledReason = account?.requirements?.disabled_reason || null;
+
   await db.query(
     `UPDATE affiliate_creators
      SET stripe_connect_payouts_enabled = $1,
@@ -144,8 +160,26 @@ export async function syncAccountStatus(db, creatorId, account) {
            CASE WHEN $1 THEN COALESCE(stripe_connect_onboarded_at, NOW()) ELSE stripe_connect_onboarded_at END,
            stripe_connect_onboarded_at
          ),
+         stripe_connect_requirements    = $3::jsonb,
+         stripe_connect_disabled_reason = $4,
          updated_at = NOW()
      WHERE id = $2`,
-    [enabled, creatorId]
+    [enabled, creatorId, requirements, disabledReason]
   );
+}
+
+// Stamp a query string param onto a URL, preserving anything that's already
+// there (including hash fragments). Used for the Stripe return/refresh URLs
+// so we can attach the creator dashboard token without clobbering admin
+// overrides set via env vars.
+function appendQueryParam(url, key, value) {
+  try {
+    const u = new URL(url);
+    u.searchParams.set(key, value);
+    return u.toString();
+  } catch {
+    // Fallback for unparseable strings: best-effort string concat.
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+  }
 }

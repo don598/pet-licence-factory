@@ -182,6 +182,9 @@ async function dashboardPayload(env, db, creator, token) {
       review_video_url:        creator.review_video_r2_key ? `/api/affiliate-video?token=${encodeURIComponent(token)}` : null,
       stripe_connect_payouts_enabled: !!creator.stripe_connect_payouts_enabled,
       stripe_connect_onboarded_at:    creator.stripe_connect_onboarded_at || null,
+      stripe_connect_account_id:      creator.stripe_connect_account_id || null,
+      stripe_connect_requirements:    creator.stripe_connect_requirements || null,
+      stripe_connect_disabled_reason: creator.stripe_connect_disabled_reason || null,
     },
     affiliate_url: `${env.URL || 'https://petlicensefactory.com'}/?ref=${encodeURIComponent(creator.coupon_code)}`,
     stats: {

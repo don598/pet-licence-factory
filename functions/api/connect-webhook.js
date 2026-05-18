@@ -41,7 +41,7 @@ export async function onRequest(context) {
 
   let event;
   try {
-    event = constructConnectEvent(env, rawBody, sig);
+    event = await constructConnectEvent(env, rawBody, sig);
   } catch (err) {
     console.error('Connect webhook signature verification failed:', err);
     return json(400, { error: 'Invalid signature' });
