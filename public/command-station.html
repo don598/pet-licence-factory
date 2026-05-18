@@ -1441,12 +1441,24 @@ html, body {
   font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
   padding: 3px 9px; border-radius: var(--r-pill); border: 1px solid transparent;
 }
-.aff-status.pending_review { color: var(--amber, #d97706); background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.3); }
-.aff-status.invited      { color: var(--muted); background: var(--surface2); border-color: var(--border); }
-.aff-status.activated    { color: var(--amber, #d97706); background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.3); }
-.aff-status.producing    { color: var(--blue);  background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.3); }
-.aff-status.performing   { color: var(--green); background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.3); }
-.aff-status.setup_failed { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); }
+.aff-status.pending_review  { color: var(--amber, #d97706); background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.3); }
+.aff-status.invited         { color: var(--muted); background: var(--surface2); border-color: var(--border); }
+.aff-status.activated       { color: var(--amber, #d97706); background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.3); }
+.aff-status.video_pending   { color: var(--amber, #d97706); background: rgba(217,119,6,.18); border-color: rgba(217,119,6,.4); }
+.aff-status.video_approved  { color: #6d28d9; background: rgba(139,92,246,.14); border-color: rgba(139,92,246,.34); }
+.aff-status.producing       { color: var(--blue);  background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.3); }
+.aff-status.performing      { color: var(--green); background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.3); }
+.aff-status.setup_failed    { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); }
+
+/* Stripe Connect badge — small secondary indicator beside the creator name.
+   .ready = green (account verified), .onboarding = amber (incomplete). */
+.aff-connect-badge {
+  display:inline-flex; align-items:center; gap:3px;
+  font-size:10px; font-weight:700; padding:1px 6px; border-radius:999px;
+  border:1px solid transparent; margin-left:6px; vertical-align:middle;
+}
+.aff-connect-badge.ready      { color: var(--green); background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.30); }
+.aff-connect-badge.onboarding { color: var(--amber, #d97706); background: rgba(217,119,6,.10); border-color: rgba(217,119,6,.30); }
 
 .aff-quickbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 14px; }
 .aff-quickbar .label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-right:4px; }
@@ -2051,6 +2063,7 @@ html, body {
             <span class="label">Quick filters:</span>
             <button class="aff-quickbtn" type="button" data-quick="">All <span class="count" id="affCountAll">0</span></button>
             <button class="aff-quickbtn attention" type="button" data-quick="pending_review">⏳ Pending review <span class="count" id="affCountPending">0</span></button>
+            <button class="aff-quickbtn attention" type="button" data-quick="video_pending">🎬 Videos to review <span class="count" id="affCountVideoPending">0</span></button>
             <button class="aff-quickbtn" type="button" data-quick="invited">Invited <span class="count" id="affCountInvited">0</span></button>
             <button class="aff-quickbtn" type="button" data-quick="producing">Producing <span class="count" id="affCountProducing">0</span></button>
             <button class="aff-quickbtn" type="button" data-quick="setup_failed">⚠ Setup failed <span class="count" id="affCountFailed">0</span></button>
@@ -2062,6 +2075,8 @@ html, body {
               <option value="pending_review">Pending review</option>
               <option value="invited">Invited</option>
               <option value="activated">Activated</option>
+              <option value="video_pending">Video pending</option>
+              <option value="video_approved">Video approved</option>
               <option value="producing">Producing</option>
               <option value="performing">Performing</option>
               <option value="setup_failed">Setup failed</option>
@@ -4910,13 +4925,17 @@ async function affLoad() {
 }
 
 function affUpdateQuickCounts() {
-  const counts = { all: Aff.rows.length, pending_review: 0, invited: 0, producing: 0, setup_failed: 0 };
+  const counts = {
+    all: Aff.rows.length,
+    pending_review: 0, invited: 0, video_pending: 0, producing: 0, setup_failed: 0,
+  };
   for (const r of Aff.rows) {
     if (counts[r.status] != null) counts[r.status]++;
   }
   const set = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
   set('affCountAll', counts.all);
   set('affCountPending', counts.pending_review);
+  set('affCountVideoPending', counts.video_pending);
   set('affCountInvited', counts.invited);
   set('affCountProducing', counts.producing);
   set('affCountFailed', counts.setup_failed);
@@ -4963,10 +4982,17 @@ function affRender() {
     const last      = r.last_activity_at ? new Date(r.last_activity_at).getTime() : 0;
     const stale     = (now - last) > 14 * dayMs;
     const veryFresh = (now - last) < 2  * dayMs;
+    // Connect badge: small pill beside the name showing direct-deposit
+    // readiness. Hidden entirely if the creator never started Connect.
+    const connectBadge = r.connect_state === 'ready'
+      ? '<span class="aff-connect-badge ready" title="Stripe Connect verified — ready for direct deposit">🏦 Connect</span>'
+      : r.connect_state === 'onboarding'
+      ? '<span class="aff-connect-badge onboarding" title="Stripe Connect onboarding incomplete">🏦 Connect ⚠</span>'
+      : '';
     return `<tr class="aff-row ${stale?'aff-stale':''} ${veryFresh?'aff-active':''}" data-id="${r.id}">
-      <td><div class="aff-name">${affEsc(r.name)}</div><div class="aff-email">${affEsc(r.email)}</div></td>
+      <td><div class="aff-name">${affEsc(r.name)}${connectBadge}</div><div class="aff-email">${affEsc(r.email)}</div></td>
       <td class="aff-code-cell">${affEsc(r.coupon_code)}</td>
-      <td><span class="aff-status ${r.status}">${affEsc(r.status.replace('_',' '))}</span></td>
+      <td><span class="aff-status ${r.status}">${affEsc(r.status.replace(/_/g,' '))}</span></td>
       <td class="aff-num">${r.clicks_7d}</td>
       <td class="aff-num">${r.clicks_total}</td>
       <td class="aff-num">${r.orders_count}</td>

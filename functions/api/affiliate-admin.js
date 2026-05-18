@@ -67,6 +67,7 @@ const LIST_SQL = `
     c.freebie_code, c.setup_status, c.setup_error, c.notes, c.created_at,
     c.freebie_redeemed_at, c.tiktok_ad_code, c.review_video_status,
     c.review_video_submitted_at, c.review_video_bonus_cents,
+    c.stripe_connect_account_id, c.stripe_connect_payouts_enabled,
 
     -- Click stats
     COALESCE((SELECT COUNT(*) FROM affiliate_clicks ac WHERE ac.creator_id = c.id),                                0) AS clicks_total,
@@ -729,13 +730,37 @@ function rowToListItem(row) {
   const earned = Number(row.commission_earned_cents) || 0;
   const bonus  = Number(row.bonus_cents)             || 0;
   const paid   = Number(row.commission_paid_cents)   || 0;
-  // Status derivation per the brief.
+  // Status derivation — single column expresses the creator's furthest-along
+  // milestone. Later assignments override earlier ones (ladder runs low→high).
+  //
+  //   invited         → just invited, hasn't done anything
+  //   pending_review  → applied via public signup, waiting on admin approval
+  //   activated       → redeemed the freebie product sample
+  //   video_pending   → uploaded review video, awaiting admin approval
+  //   video_approved  → video approved, $10 bonus credited
+  //   producing       → at least 1 attributed paid order
+  //   performing      → 3+ attributed paid orders
+  //   setup_failed    → Stripe coupon setup errored (override, always wins)
+  //
+  // Connect onboarding state is orthogonal and surfaced as a separate badge
+  // in the list view (connect_state below) rather than collapsed into status.
   let status = 'invited';
   if (row.setup_status === 'pending_review') status = 'pending_review';
-  if (row.freebie_redeemed_at)         status = 'activated';
-  if (Number(row.orders_count) >= 1)   status = 'producing';
-  if (Number(row.orders_count) >= 3)   status = 'performing';
-  if (row.setup_status === 'failed')   status = 'setup_failed';
+  if (row.freebie_redeemed_at)               status = 'activated';
+  if (row.review_video_status === 'pending')  status = 'video_pending';
+  if (row.review_video_status === 'approved') status = 'video_approved';
+  if (Number(row.orders_count) >= 1)         status = 'producing';
+  if (Number(row.orders_count) >= 3)         status = 'performing';
+  if (row.setup_status === 'failed')         status = 'setup_failed';
+
+  // Connect onboarding state — purely informational badge for the row UI.
+  // 'ready'      → finished verification, can receive direct deposits
+  // 'onboarding' → account exists but Stripe is missing info / still verifying
+  // 'none'       → never started Connect
+  let connectState = 'none';
+  if (row.stripe_connect_account_id) {
+    connectState = row.stripe_connect_payouts_enabled ? 'ready' : 'onboarding';
+  }
 
   return {
     id:                       Number(row.id),
@@ -754,6 +779,7 @@ function rowToListItem(row) {
     review_video_submitted_at: row.review_video_submitted_at,
     review_video_bonus_cents: Number(row.review_video_bonus_cents) || 1000,
     status,
+    connect_state:            connectState,
     clicks_total:             Number(row.clicks_total),
     clicks_7d:                Number(row.clicks_7d),
     orders_count:             Number(row.orders_count),
