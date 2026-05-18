@@ -145,15 +145,18 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
   font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:.06em;
   color:var(--muted); margin:18px 0 8px;
 }
-/* Replacement mode (video already exists): make the entire upload UI
-   visually secondary so it doesn't compete with the green "uploaded" card. */
-#uploadSection.is-replacement .upload-section-title { color:var(--muted); }
+/* Replacement mode (video already exists): collapse the whole upload UI
+   down to a single secondary button — clicking it opens the file picker
+   and the selected file auto-uploads. The full file-picker box + heading
+   are only shown for the first upload. */
+#uploadSection.is-replacement .upload-section-title,
 #uploadSection.is-replacement .video-box {
-  border-style:dashed; opacity:.7; padding:14px;
+  display:none;
 }
-#uploadSection.is-replacement .video-box strong { font-size:13px; }
 #uploadSection.is-replacement #uploadVideo {
+  margin-top:8px;
   background:transparent; color:var(--accent); border:1px solid var(--accent);
+  font-size:13px; padding:8px 14px;
 }
 #uploadSection.is-replacement #uploadVideo:hover {
   background:var(--accent-soft, rgba(99,102,241,.08));
@@ -925,6 +928,13 @@ document.addEventListener('click', (e) => {
 
 $('reviewVideo').addEventListener('change', () => {
   const file = $('reviewVideo').files?.[0];
+  // Replacement mode: skip the "preview then click upload" step and just
+  // submit immediately. The user already committed to replacement when
+  // they clicked the button — picking a file confirms intent.
+  if (file && document.getElementById('uploadSection').classList.contains('is-replacement')) {
+    submitVideoUpload();
+    return;
+  }
   $('videoFileName').textContent = file ? file.name : 'Choose a video file';
 });
 
@@ -967,10 +977,26 @@ $('saveAdCode').addEventListener('click', async () => {
   }
 });
 
-$('uploadVideo').addEventListener('click', async () => {
+// The upload button has two jobs:
+//   - first-upload mode: standard submit (file picker is visible, user has
+//     already chosen a file, clicking the button submits it)
+//   - replacement mode: open the native file picker. The change handler
+//     above auto-submits when the user picks a file.
+$('uploadVideo').addEventListener('click', () => {
+  const section = document.getElementById('uploadSection');
+  if (section.classList.contains('is-replacement')) {
+    $('reviewVideo').click();
+    return;
+  }
+  if (!$('reviewVideo').files?.[0]) { alert('Choose a video file first.'); return; }
+  submitVideoUpload();
+});
+
+async function submitVideoUpload() {
   const file = $('reviewVideo').files?.[0];
-  if (!file) { alert('Choose a video file first.'); return; }
+  if (!file) return;
   const btn = $('uploadVideo');
+  const originalText = btn.textContent;
   btn.disabled = true; btn.textContent = 'Uploading...';
   try {
     const fd = new FormData();
@@ -979,16 +1005,20 @@ $('uploadVideo').addEventListener('click', async () => {
     fd.set('video', file);
     const data = await apiForm('/api/affiliate-dashboard', fd);
     // Clear picker FIRST so renderDashboard → renderVideoStatus can set the
-    // right placeholder ("Choose a different file" in replacement mode).
+    // right state-aware placeholder (and the button label).
     $('reviewVideo').value = '';
     renderDashboard(data);
     toast('Video uploaded for review');
   } catch (err) {
     alert(err.message || 'Upload failed.');
   } finally {
-    btn.disabled = false; btn.textContent = 'Upload video for review';
+    btn.disabled = false;
+    // Restore the label that renderVideoStatus would set; if render already
+    // ran (success path), it will have set the right text. On error path,
+    // restore the prior label.
+    if (btn.textContent === 'Uploading...') btn.textContent = originalText;
   }
-});
+}
 
 // ── Cashout: tier picker + amount input + submit ──
 document.addEventListener('click', (e) => {
