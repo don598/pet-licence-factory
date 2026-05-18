@@ -1702,10 +1702,11 @@ html, body {
   letter-spacing: .5px; padding: 2px 7px; border-radius: 999px; margin-left: 6px;
   vertical-align: 1px;
 }
-.aff-pill.delivered  { color: var(--green, #16a34a); background: rgba(22,163,74,.10); }
-.aff-pill.processing { color: var(--amber, #d97706); background: rgba(217,119,6,.10); }
-.aff-pill.requested  { color: #2563eb; background: rgba(37,99,235,.10); }
-.aff-pill.failed     { color: var(--red, #dc2626); background: rgba(220,38,38,.10); }
+.aff-pill.delivered      { color: var(--green, #16a34a); background: rgba(22,163,74,.10); }
+.aff-pill.processing     { color: var(--amber, #d97706); background: rgba(217,119,6,.10); }
+.aff-pill.requested      { color: #2563eb; background: rgba(37,99,235,.10); }
+.aff-pill.pending_manual { color: var(--amber, #d97706); background: rgba(217,119,6,.15); }
+.aff-pill.failed         { color: var(--red, #dc2626); background: rgba(220,38,38,.10); }
 .aff-pill.video_bonus       { color: var(--green, #16a34a); background: rgba(22,163,74,.10); }
 .aff-pill.manual_adjustment { color: #6b7280; background: rgba(107,114,128,.12); }
 .aff-pill.refund_clawback   { color: var(--red, #dc2626); background: rgba(220,38,38,.10); }
@@ -5261,29 +5262,43 @@ function affRenderDrawer(data) {
     : '<div class="aff-empty">No clicks yet.</div>';
 
   const methodLabels = {
-    gift_card_tremendous: '💳 Gift card',
+    gift_card_manual:     '💳 Gift card (manual)',
+    gift_card_tremendous: '💳 Gift card', // legacy: historical Tremendous rows
     store_credit:         '🛍️ Store credit',
     stripe_connect:       '🏦 Direct deposit',
     venmo: 'Venmo', paypal: 'PayPal', zelle: 'Zelle',
     cash: 'Cash', check: 'Check', other: 'Other',
   };
+  const statusLabels = {
+    pending_manual: 'awaiting fulfillment',
+    requested:      'requested',
+    processing:     'processing',
+    delivered:      'delivered',
+    failed:         'failed',
+  };
   const payoutsHtml = data.payouts.length
     ? `<ul class="aff-history-list">${data.payouts.map(p => {
         const label = methodLabels[p.method] || p.method;
-        const pill  = p.external_status ? `<span class="aff-pill ${affEsc(p.external_status)}">${affEsc(p.external_status)}</span>` : '';
+        const statusLabel = statusLabels[p.external_status] || p.external_status;
+        const pill  = p.external_status ? `<span class="aff-pill ${affEsc(p.external_status)}">${affEsc(statusLabel)}</span>` : '';
         const code  = p.redemption_code  ? `<span class="aff-redeem-code">${affEsc(p.redemption_code)}</span>` : '';
         const fail  = p.failure_reason   ? `<br><small style="color:var(--red,#dc2626)">${affEsc(p.failure_reason)}</small>` : '';
         const note  = p.notes && !p.failure_reason ? `<br><small style="color:var(--muted)">${affEsc(p.notes)}</small>` : '';
         const amtCls = p.external_status === 'failed' ? 'aff-amt zero' : '';
         // Only allow undo for manual payouts (no external rail) — external
-        // rows are an audit trail, deleting them desyncs Tremendous/Stripe.
+        // rows are an audit trail, deleting them desyncs Stripe/etc.
         const undoBtn = !p.external_status
           ? `<button class="aff-mini-btn aff-mini-danger" data-delpay="${p.id}">Undo</button>`
+          : '';
+        // Fulfill button shows only on pending manual gift cards.
+        const fulfillBtn = p.external_status === 'pending_manual'
+          ? `<button class="aff-mini-btn" data-fulfillgift="${p.id}" data-amount-cents="${p.amount_cents}" data-recipient="${affEsc(p.recipient_email || '')}">Fulfill</button>`
           : '';
         return `<li>
           <span class="aff-h-when">${affFmtRel(p.paid_at)}</span>
           <span>${affEsc(label)}${pill}${code}${fail}${note}</span>
           <span class="aff-h-amt ${amtCls}">${affFmtUsd(p.amount_cents)}</span>
+          ${fulfillBtn}
           ${undoBtn}
         </li>`;
       }).join('')}</ul>`
@@ -5405,6 +5420,31 @@ function affRenderDrawer(data) {
     if (t.dataset.retry)     { try { await affApi('retry_creator_setup', { id: c.id }); affOpenDrawer(c.id); } catch (err) { alert(err.message); } return; }
     if (t.dataset.delpay)    { if (confirm('Undo this payout?')) { await affApi('delete_payout', { id: Number(t.dataset.delpay) }); affOpenDrawer(c.id); affLoad(); } return; }
     if (t.dataset.delledger) { if (confirm('Undo this manual adjustment?')) { try { await affApi('delete_ledger_entry', { id: Number(t.dataset.delledger) }); affOpenDrawer(c.id); affLoad(); } catch (err) { alert(err.message); } } return; }
+    if (t.dataset.fulfillgift) {
+      const payoutId  = Number(t.dataset.fulfillgift);
+      const amountUsd = (Number(t.dataset.amountCents || 0) / 100).toFixed(2);
+      const recipient = t.dataset.recipient || '(creator email)';
+      const code = prompt(
+        `Fulfill $${amountUsd} gift card → ${recipient}\n\n` +
+        `Paste the redemption code you bought (Amazon claim code, Visa prepaid number, etc.).\n` +
+        `The creator will be emailed this code immediately. This cannot be undone.`,
+        ''
+      );
+      if (code === null) return;
+      const trimmed = code.trim();
+      if (!trimmed) { alert('Code is required.'); return; }
+      const extra = prompt('Optional note for the creator (e.g., "Redeem at amazon.com/gc"). Leave blank to skip.', '');
+      if (extra === null) return; // user cancelled
+      try {
+        await affApi('fulfill_gift_card', { payout_id: payoutId, code: trimmed, notes: extra || null });
+        affFlash(t, 'Sent');
+        affOpenDrawer(c.id);
+        affLoad();
+      } catch (err) {
+        alert(err.message || 'Could not fulfill gift card.');
+      }
+      return;
+    }
     if (t.dataset.act === 'approve') { affApprove(c.id, t); return; }
     if (t.dataset.act === 'approveVideo') {
       try { await affApi('approve_review_video', { id: c.id }); affOpenDrawer(c.id); affLoad(); }

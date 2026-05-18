@@ -205,10 +205,11 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
   display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase;
   letter-spacing:.5px; padding:2px 7px; border-radius:999px; margin-left:6px;
 }
-.payout-row .pill.delivered { color:var(--green); background:var(--green-soft); }
-.payout-row .pill.processing { color:var(--amber); background:rgba(217,119,6,.08); }
-.payout-row .pill.requested  { color:var(--accent); background:var(--accent-soft); }
-.payout-row .pill.failed     { color:var(--red); background:rgba(220,38,38,.08); }
+.payout-row .pill.delivered      { color:var(--green); background:var(--green-soft); }
+.payout-row .pill.processing     { color:var(--amber); background:rgba(217,119,6,.08); }
+.payout-row .pill.requested      { color:var(--accent); background:var(--accent-soft); }
+.payout-row .pill.pending_manual { color:var(--amber); background:rgba(217,119,6,.08); }
+.payout-row .pill.failed         { color:var(--red); background:rgba(220,38,38,.08); }
 
 /* ── Lists ── */
 .row {
@@ -335,13 +336,13 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
       </div>
 
       <div class="tier-list" id="tierList">
-        <button class="tier" type="button" data-method="gift_card_tremendous">
+        <button class="tier" type="button" data-method="gift_card_manual">
           <span class="tier-icon">💳</span>
           <span class="tier-body">
             <span class="tier-title">Gift card</span>
-            <span class="tier-sub">Amazon, Visa, PayPal &amp; more · $10 min · email delivery</span>
+            <span class="tier-sub">Amazon, Visa, PayPal &amp; more · $10 min · code emailed within 1 business day</span>
           </span>
-          <span class="tier-meta ready" id="tierMeta-gift_card_tremendous">Ready</span>
+          <span class="tier-meta ready" id="tierMeta-gift_card_manual">Ready</span>
         </button>
         <button class="tier" type="button" data-method="store_credit">
           <span class="tier-icon">🛍️</span>
@@ -571,7 +572,7 @@ function renderCashoutTiers(d) {
   }
 
   // Per-tier readiness
-  setTierState('gift_card_tremendous',
+  setTierState('gift_card_manual',
     balance >= GIFT_CARD_MIN_CENTS,
     balance >= GIFT_CARD_MIN_CENTS ? 'Ready' : `${fmtUsd(GIFT_CARD_MIN_CENTS)} min`
   );
@@ -623,9 +624,9 @@ function selectMethod(method) {
 
   const balance = d?.stats?.commission_pending_cents || 0;
   const titles = {
-    gift_card_tremendous: '💳 Gift card cashout',
-    store_credit:         '🛍️ PLF store credit',
-    stripe_connect:       '🏦 Direct deposit',
+    gift_card_manual: '💳 Gift card cashout',
+    store_credit:    '🛍️ PLF store credit',
+    stripe_connect:  '🏦 Direct deposit',
   };
   $('cashoutTitle').textContent = titles[method] || 'Cash out';
 
@@ -669,7 +670,7 @@ function updateCashoutSummary() {
   } else if (cents > balance) {
     msg = `Only ${fmtUsd(balance)} available — try a smaller amount.`;
     valid = false;
-  } else if (m === 'gift_card_tremendous' && cents < GIFT_CARD_MIN_CENTS) {
+  } else if (m === 'gift_card_manual' && cents < GIFT_CARD_MIN_CENTS) {
     msg = `Gift card minimum is ${fmtUsd(GIFT_CARD_MIN_CENTS)}.`;
     valid = false;
   } else if (m === 'stripe_connect' && cents < STRIPE_CONNECT_MIN_CENTS) {
@@ -679,8 +680,8 @@ function updateCashoutSummary() {
     const bonus  = Math.round(cents * STORE_CREDIT_BONUS_RATE);
     const redeem = cents + bonus;
     msg = `You'll get a code worth <b>${fmtUsd(redeem)}</b> (${fmtUsd(cents)} cashout + ${fmtUsd(bonus)} bonus). Single-use, expires in 90 days.`;
-  } else if (m === 'gift_card_tremendous') {
-    msg = `We'll email a <b>${fmtUsd(cents)}</b> reward to <b>${esc(lastDashboard?.creator?.email || '')}</b>. You pick the brand at claim time.`;
+  } else if (m === 'gift_card_manual') {
+    msg = `We'll email a <b>${fmtUsd(cents)}</b> gift card code to <b>${esc(lastDashboard?.creator?.email || '')}</b> within 1 business day. You can pick Amazon, Visa Prepaid, Target, and most other major brands at redemption.`;
   } else if (m === 'stripe_connect') {
     msg = `<b>${fmtUsd(cents)}</b> will land in your linked bank account in 2–3 business days.`;
   }
@@ -718,8 +719,8 @@ async function submitCashout() {
 function handleCashoutSuccess(res) {
   if (res.method === 'store_credit' && res.redemption_code) {
     toast(`Code: ${res.redemption_code} — also emailed to you`);
-  } else if (res.method === 'gift_card_tremendous') {
-    toast(`Gift card sent to ${res.recipient_email}`);
+  } else if (res.method === 'gift_card_manual') {
+    toast(`Gift card request received — code arrives within 1 business day`);
   } else if (res.method === 'stripe_connect') {
     toast('Direct deposit on the way (2–3 business days)');
   } else {
@@ -762,16 +763,25 @@ function renderPayouts(d) {
     return;
   }
   const methodLabels = {
-    gift_card_tremendous: '💳 Gift card',
+    gift_card_manual:     '💳 Gift card',
+    gift_card_tremendous: '💳 Gift card', // legacy: historical rows from the Tremendous-backed path
     store_credit:         '🛍️ Store credit',
     stripe_connect:       '🏦 Direct deposit',
     venmo:                'Venmo',  paypal: 'PayPal', zelle: 'Zelle',
     cash:                 'Cash',   check:  'Check',  other:  'Other',
   };
+  const statusLabels = {
+    pending_manual: 'awaiting fulfillment',
+    requested:      'requested',
+    processing:     'processing',
+    delivered:      'delivered',
+    failed:         'failed',
+  };
   p.innerHTML = d.payouts.map(po => {
     const label = methodLabels[po.method] || po.method;
     const status = po.external_status;
-    const pill = status ? `<span class="pill ${esc(status)}">${esc(status)}</span>` : '';
+    const statusLabel = statusLabels[status] || status;
+    const pill = status ? `<span class="pill ${esc(status)}">${esc(statusLabel)}</span>` : '';
     const code = po.redemption_code ? `<br><span style="font-family:monospace;font-size:12px;color:var(--accent);">${esc(po.redemption_code)}</span>` : '';
     return `<div class="row payout-row">
        <span class="when">${fmtRel(po.paid_at)}</span>

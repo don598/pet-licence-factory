@@ -15,6 +15,8 @@
 //   delete_creator          → admin-only hard delete (deactivates Stripe coupons)
 //   record_payout           → write a manual payout row
 //   delete_payout           → undo a payout
+//   fulfill_gift_card       → mark a pending_manual gift card payout delivered
+//                             (records code, emails creator the code)
 //   export_outstanding_csv  → returns CSV of outstanding balances
 // ---------------------------------------------------------------------------
 
@@ -31,7 +33,7 @@ import {
   clampRate,
   sendOnboardingAndLog,
 } from '../_shared/affiliate-onboarding.js';
-import { renderCreatorOnboardingEmail } from '../_shared/email.js';
+import { renderCreatorOnboardingEmail, sendEmail, esc } from '../_shared/email.js';
 import { ensureAffiliateContentSchema } from '../_shared/affiliate-content-schema.js';
 
 const CORS_HEADERS = {
@@ -519,6 +521,76 @@ export async function onRequest(context) {
         return json(200, { success: true });
       }
 
+      // ── MANUAL GIFT CARD FULFILLMENT ─────────────────────────────────
+      // Admin records the redemption code they bought externally (Amazon,
+      // Visa Prepaid, etc.), the row flips to `delivered`, and the creator
+      // gets emailed the code + any instructions. Only valid on rows that
+      // are currently in pending_manual state.
+      case 'fulfill_gift_card': {
+        const payoutId = parseInt(body.payout_id);
+        const code     = (body.code || '').toString().trim();
+        const note     = (body.notes || '').toString().slice(0, 500) || null;
+
+        if (!payoutId) return json(400, { error: 'Missing payout_id' });
+        if (!code)     return json(400, { error: 'Redemption code is required' });
+        if (code.length > 200) return json(400, { error: 'Code is too long (max 200 chars)' });
+
+        // Load the row so we know the recipient + creator. Guard against
+        // double-fulfillment (race or double-click) by requiring the current
+        // status to be `pending_manual`.
+        const cur = await db.query(
+          `SELECT p.*, c.name AS creator_name, c.email AS creator_email
+           FROM affiliate_payouts p
+           JOIN affiliate_creators c ON c.id = p.creator_id
+           WHERE p.id = $1`,
+          [payoutId]
+        );
+        if (cur.rows.length === 0) return json(404, { error: 'Payout not found' });
+        const row = cur.rows[0];
+        if (row.external_status !== 'pending_manual') {
+          return json(400, { error: `Payout is in state '${row.external_status}', cannot fulfill` });
+        }
+
+        const recipientEmail = row.recipient_email || row.creator_email;
+        const amountUsd      = (Number(row.amount_cents) / 100).toFixed(2);
+        const fulfilledNote  = note
+          ? `Delivered manually. Code: ${code}. ${note}`
+          : `Delivered manually. Code: ${code}.`;
+
+        const upd = await db.query(
+          `UPDATE affiliate_payouts
+           SET external_status = 'delivered',
+               redemption_code = $1,
+               notes           = $2
+           WHERE id = $3 AND external_status = 'pending_manual'
+           RETURNING *`,
+          [code, fulfilledNote, payoutId]
+        );
+        if (upd.rows.length === 0) {
+          // Lost the race — somebody fulfilled it between our read and write.
+          return json(409, { error: 'Payout was already fulfilled by another request' });
+        }
+
+        // Email the creator the code (non-fatal — code is also visible in
+        // the creator dashboard payout history).
+        try {
+          await sendEmail(env, {
+            to: recipientEmail,
+            subject: `Your $${amountUsd} Pet Licence Factory gift card`,
+            html: renderGiftCardDeliveryEmail({
+              creatorName: row.creator_name,
+              amountUsd,
+              code,
+              notes: note,
+            }),
+          });
+        } catch (mailErr) {
+          console.error('Gift card delivery email failed (non-fatal):', mailErr);
+        }
+
+        return json(200, { success: true, payout: upd.rows[0] });
+      }
+
       // ── BALANCE LEDGER ────────────────────────────────────────────────
       // Manual credit/debit on a creator's balance. Used to compensate for
       // bugs, comp out-of-band promotion bonuses, or claw back over-credited
@@ -700,4 +772,24 @@ function csvCell(v) {
   if (v === null || v === undefined) return '';
   const s = String(v);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// Manual gift-card delivery email. Sent from fulfill_gift_card after the admin
+// pastes in the code they bought externally.
+function renderGiftCardDeliveryEmail({ creatorName, amountUsd, code, notes }) {
+  const optionalNotes = notes
+    ? `<p style="margin:0 0 16px;color:#444;">${esc(notes)}</p>`
+    : '';
+  return `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,sans-serif;background:#f6f6f8;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e7e7ee;">
+    <h1 style="margin:0 0 8px;font-size:22px;color:#1a1a1f;">Your $${esc(amountUsd)} gift card is here</h1>
+    <p style="margin:0 0 16px;color:#444;">Hi ${esc(creatorName || 'Creator')} — thanks for promoting Pet Licence Factory. Here's your gift card code:</p>
+    <div style="background:#fff8e1;border:2px dashed #f6c343;border-radius:10px;padding:18px;text-align:center;margin:20px 0;">
+      <div style="font-family:monospace;font-size:18px;letter-spacing:1px;font-weight:bold;color:#1a1a1f;word-break:break-all;">${esc(code)}</div>
+      <div style="font-size:13px;color:#777;margin-top:6px;">$${esc(amountUsd)} value</div>
+    </div>
+    ${optionalNotes}
+    <p style="margin:0;color:#888;font-size:13px;">Treat this code like cash — anyone with it can redeem it. If you have trouble redeeming, reply to this email and we'll sort it out.</p>
+  </div>
+</body></html>`;
 }

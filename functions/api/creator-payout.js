@@ -4,11 +4,21 @@
 // Auth: creator dashboard_token (creator-facing, NOT admin JWT)
 //
 // Methods:
-//   gift_card_tremendous — creates a Tremendous reward order
-//   store_credit         — generates a one-time Stripe promo, +10% bonus
+//   gift_card_manual — reserves the balance and queues a fulfillment task for
+//                      the admin. Admin manually buys an Amazon/Visa/etc. gift
+//                      card, then pastes the code in via the admin dashboard,
+//                      which sends the delivery email and flips the payout to
+//                      `delivered`.
+//   store_credit     — generates a one-time Stripe promo, +10% bonus
+//   stripe_connect   — direct deposit (requires onboarded Connect account)
 //
-// Future:
-//   stripe_connect       — direct deposit (requires onboarded Connect account)
+// Why manual: Tremendous denied production API access and Tango Card RaaS
+// requires a separate sales-approved tier we don't have yet. At our launch
+// volume (sub-$200/creator), manual fulfillment costs ~10min per request and
+// avoids the third-party compliance dependency. See commits c580323 (the
+// original Tremendous-backed path) for what to restore if a provider approves
+// us later — most of that handler is gone now but the schema columns
+// (external_id, external_status, recipient_email) are still in use.
 //
 // The flow:
 //   1. Open a transaction; lock the creator row (FOR UPDATE).
@@ -16,15 +26,16 @@
 //   3. Validate the requested amount against balance + per-method minimum.
 //   4. Insert affiliate_payouts row with external_status='requested'.
 //   5. Commit. (Lock released; balance is reserved.)
-//   6. Call the external rail (Tremendous or Stripe) outside the transaction.
-//      On failure, mark the row external_status='failed' (excluded from
-//      "paid" → balance becomes available again).
+//   6. Dispatch to the per-method handler. For gift_card_manual: flip the row
+//      to 'pending_manual' and email the admin so they can fulfill it. For
+//      store_credit and stripe_connect: call Stripe (which is the external
+//      rail). On any failure, mark the row external_status='failed' (excluded
+//      from "paid" → balance becomes available again).
 // ---------------------------------------------------------------------------
 
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { findCreatorByDashboardToken } from '../_shared/affiliate.js';
-import { createRewardOrder, TremendousError } from '../_shared/tremendous.js';
 import { createTransfer, getAccount, isAccountReady } from '../_shared/stripe-connect.js';
 import { syncAccountStatus } from './creator-connect-onboard.js';
 import { sendEmail, esc } from '../_shared/email.js';
@@ -37,7 +48,7 @@ const CORS_HEADERS = {
 };
 
 const PAYOUT_RULES = {
-  gift_card_tremendous: { minCents: 1000 },   // $10 minimum
+  gift_card_manual:     { minCents: 1000 },   // $10 minimum — admin fulfills manually
   store_credit:         { minCents:    0 },   // any amount, +10% bonus when redeemed
   stripe_connect:       { minCents: 2500 },   // $25 minimum (direct deposit)
 };
@@ -88,7 +99,7 @@ export async function onRequest(context) {
   if (!creator) return json(401, { error: 'Invalid token' });
 
   const recipientEmail = rawEmail || creator.email;
-  if (method === 'gift_card_tremendous' && !recipientEmail) {
+  if (method === 'gift_card_manual' && !recipientEmail) {
     return json(400, { error: 'Recipient email required for gift card delivery' });
   }
 
@@ -130,8 +141,9 @@ export async function onRequest(context) {
       }
 
       // Insert payout row reserving the funds. external_id stays NULL until
-      // Tremendous returns a reward order id. external_status='requested'
-      // already counts toward "paid" so the balance is reserved on commit.
+      // the per-method handler fills it in (Stripe transfer id, promo id, or
+      // null for manual gift cards). external_status='requested' already
+      // counts toward "paid" so the balance is reserved on commit.
       const ins = await client.query(
         `INSERT INTO affiliate_payouts
            (creator_id, amount_cents, method, paid_at, notes,
@@ -157,8 +169,8 @@ export async function onRequest(context) {
   // ── Step 5–6: external call after commit ──────────────────────────────
   const siteOrigin = env.URL || 'https://petlicensefactory.com';
   try {
-    if (method === 'gift_card_tremendous') {
-      return await handleGiftCardTremendous({
+    if (method === 'gift_card_manual') {
+      return await handleGiftCardManual({
         env, db, creator, payoutRow, amountCents, recipientEmail,
       });
     }
@@ -184,44 +196,78 @@ export async function onRequest(context) {
 
 // ── Per-method handlers ─────────────────────────────────────────────────────
 
-async function handleGiftCardTremendous({ env, db, creator, payoutRow, amountCents, recipientEmail }) {
-  try {
-    const externalId = `plf-payout-${payoutRow.id}-${Date.now()}`;
-    const order = await createRewardOrder(env, {
-      amountCents,
-      recipientName:  creator.name,
+// Manual gift card flow:
+//   1. Mark the reserved payout row as `pending_manual` so it shows up in the
+//      admin Fulfillment queue. (Balance was already reserved in the txn above
+//      — pending_manual is NOT excluded from the "paid" sum, so the creator's
+//      balance is held until either delivery or failure.)
+//   2. Email the creator a "request received" confirmation.
+//   3. Email the admin a "new request pending" notification. Non-fatal — the
+//      row also appears in the admin dashboard so the admin will see it on
+//      their next visit.
+//   The admin completes fulfillment in command-station: they buy the gift
+//   card externally, then click "Fulfill" on the row, paste the code, and the
+//   `fulfill_gift_card` admin action flips the row to `delivered` and emails
+//   the creator the code.
+async function handleGiftCardManual({ env, db, creator, payoutRow, amountCents, recipientEmail }) {
+  const amountUsd = (amountCents / 100).toFixed(2);
+
+  await db.query(
+    `UPDATE affiliate_payouts
+     SET external_status = 'pending_manual',
+         recipient_email = $1,
+         notes           = $2
+     WHERE id = $3`,
+    [
       recipientEmail,
-      externalId,
-      message: `Thanks for promoting Pet Licence Factory! Your $${(amountCents / 100).toFixed(2)} reward.`,
+      `Manual gift card fulfillment requested. Recipient: ${recipientEmail}. Awaiting admin to purchase + send code.`,
+      payoutRow.id,
+    ]
+  );
+
+  // Creator confirmation (non-fatal).
+  try {
+    await sendEmail(env, {
+      to: recipientEmail,
+      subject: `Your $${amountUsd} gift card request was received`,
+      html: renderGiftCardRequestEmail({
+        creatorName: creator.name,
+        amountUsd,
+        recipientEmail,
+      }),
     });
-
-    const orderId = order?.id || null;
-    // Tremendous orders may transition to EXECUTED immediately or sit in
-    // PENDING_APPROVAL. The webhook handler will reconcile final state.
-    const initialStatus = order?.status === 'EXECUTED' ? 'processing' : 'requested';
-
-    await db.query(
-      `UPDATE affiliate_payouts
-       SET external_id = $1, external_status = $2
-       WHERE id = $3`,
-      [orderId, initialStatus, payoutRow.id]
-    );
-
-    return json(200, {
-      success:        true,
-      payout_id:      payoutRow.id,
-      method:         'gift_card_tremendous',
-      amount_cents:   amountCents,
-      recipient_email: recipientEmail,
-      external_id:    orderId,
-      external_status: initialStatus,
-    });
-  } catch (err) {
-    const reason = err instanceof TremendousError ? err.message : (err?.message || 'Tremendous call failed');
-    await markPayoutFailed(db, payoutRow.id, reason);
-    console.error('Tremendous order failed:', err);
-    return json(502, { error: `Could not send gift card: ${reason}` });
+  } catch (mailErr) {
+    console.error('Gift card request email to creator failed (non-fatal):', mailErr);
   }
+
+  // Admin notification (non-fatal).
+  try {
+    const adminEmail = env.ADMIN_NOTIFICATION_EMAIL
+      || env.SENDGRID_FROM_EMAIL
+      || 'contact@creditcardart.com';
+    await sendEmail(env, {
+      to: adminEmail,
+      subject: `[PLF] New gift card request: ${creator.name} — $${amountUsd}`,
+      html: renderAdminGiftCardNotice({
+        creatorName:  creator.name,
+        creatorEmail: creator.email,
+        amountUsd,
+        recipientEmail,
+        payoutId:     payoutRow.id,
+      }),
+    });
+  } catch (mailErr) {
+    console.error('Admin gift card notification failed (non-fatal):', mailErr);
+  }
+
+  return json(200, {
+    success:         true,
+    payout_id:       payoutRow.id,
+    method:          'gift_card_manual',
+    amount_cents:    amountCents,
+    recipient_email: recipientEmail,
+    external_status: 'pending_manual',
+  });
 }
 
 async function handleStoreCredit({ env, db, creator, payoutRow, amountCents, recipientEmail, siteOrigin }) {
@@ -419,6 +465,37 @@ function generateCreditCode() {
   let suffix = '';
   for (let i = 0; i < 8; i++) suffix += alphabet[buf[i] % alphabet.length];
   return `PLFCR-${suffix}`;
+}
+
+// Sent to the creator the moment they submit a manual-gift-card request, so
+// they know we got it and roughly when to expect the code.
+function renderGiftCardRequestEmail({ creatorName, amountUsd, recipientEmail }) {
+  return `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,sans-serif;background:#f6f6f8;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e7e7ee;">
+    <h1 style="margin:0 0 8px;font-size:22px;color:#1a1a1f;">Gift card request received</h1>
+    <p style="margin:0 0 16px;color:#444;">Hi ${esc(creatorName || 'Creator')} — we got your request for a <b>$${esc(amountUsd)}</b> gift card. We'll email the code to <b>${esc(recipientEmail)}</b> within one business day.</p>
+    <p style="margin:0 0 16px;color:#444;">You'll be able to pick from Amazon, Visa Prepaid, Target, and most other major brands when you redeem the code.</p>
+    <p style="margin:0;color:#888;font-size:13px;">Questions? Just reply to this email.</p>
+  </div>
+</body></html>`;
+}
+
+// Sent to the admin on every new manual-gift-card request so they don't have
+// to poll the dashboard. The body is intentionally short — the dashboard has
+// the rest of the context.
+function renderAdminGiftCardNotice({ creatorName, creatorEmail, amountUsd, recipientEmail, payoutId }) {
+  return `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,sans-serif;background:#f6f6f8;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:24px;border:1px solid #e7e7ee;">
+    <h1 style="margin:0 0 12px;font-size:18px;color:#1a1a1f;">New gift card request</h1>
+    <table style="border-collapse:collapse;font-size:14px;color:#222;">
+      <tr><td style="padding:4px 12px 4px 0;color:#666;">Creator</td><td><b>${esc(creatorName)}</b> &lt;${esc(creatorEmail)}&gt;</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666;">Amount</td><td><b>$${esc(amountUsd)}</b></td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666;">Deliver to</td><td>${esc(recipientEmail)}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#666;">Payout #</td><td>${esc(String(payoutId))}</td></tr>
+    </table>
+    <p style="margin:16px 0 0;color:#444;font-size:13px;">Open the creator's drawer in command-station, scroll to Payout history, and click <b>Fulfill</b> on the pending row to enter the gift card code.</p>
+  </div>
+</body></html>`;
 }
 
 function renderStoreCreditEmail({ creatorName, baseCents, bonusCents, redemptionCents, code, link, expiresAt }) {
