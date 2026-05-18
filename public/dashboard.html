@@ -140,6 +140,25 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
 .saved-indicator.show { opacity:1; }
 .saved-indicator.persistent { opacity:1; color:var(--muted); font-weight:400; }
 
+/* Video upload section — title + container */
+.upload-section-title {
+  font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--muted); margin:18px 0 8px;
+}
+/* Replacement mode (video already exists): make the entire upload UI
+   visually secondary so it doesn't compete with the green "uploaded" card. */
+#uploadSection.is-replacement .upload-section-title { color:var(--muted); }
+#uploadSection.is-replacement .video-box {
+  border-style:dashed; opacity:.7; padding:14px;
+}
+#uploadSection.is-replacement .video-box strong { font-size:13px; }
+#uploadSection.is-replacement #uploadVideo {
+  background:transparent; color:var(--accent); border:1px solid var(--accent);
+}
+#uploadSection.is-replacement #uploadVideo:hover {
+  background:var(--accent-soft, rgba(99,102,241,.08));
+}
+
 /* ── Stats grid ── */
 .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
 .stat {
@@ -310,13 +329,15 @@ body { min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-ins
         <button class="dash-action" id="saveAdCode" type="button">Save ad code</button>
         <span class="saved-indicator" id="adCodeSaved"></span>
       </div>
-      <label class="field-label" for="reviewVideo">Review video upload</label>
-      <label class="video-box" for="reviewVideo">
-        <strong id="videoFileName">Choose a video file</strong>
-        <span>MP4, MOV, or any video file under 100 MB.</span>
-        <input id="reviewVideo" type="file" accept="video/*">
-      </label>
-      <button class="dash-action" id="uploadVideo" type="button">Upload video for review</button>
+      <div id="uploadSection">
+        <div class="upload-section-title" id="uploadSectionTitle">Review video upload</div>
+        <label class="video-box" for="reviewVideo">
+          <strong id="videoFileName">Choose a video file</strong>
+          <span id="videoFileHint">MP4, MOV, or any video file under 100 MB.</span>
+          <input id="reviewVideo" type="file" accept="video/*">
+        </label>
+        <button class="dash-action" id="uploadVideo" type="button">Upload video for review</button>
+      </div>
     </div>
 
     <div class="stats-grid">
@@ -856,6 +877,29 @@ function renderVideoStatus(c) {
     <div>${body}</div>
     ${note}
   `;
+
+  // Switch the upload form between "first upload" and "replacement" modes so
+  // an existing video doesn't look like it still needs to be re-uploaded.
+  const section  = document.getElementById('uploadSection');
+  const title    = document.getElementById('uploadSectionTitle');
+  const btn      = document.getElementById('uploadVideo');
+  const hint     = document.getElementById('videoFileHint');
+  const fileName = document.getElementById('videoFileName');
+  const picker   = document.getElementById('reviewVideo');
+  const hasPickedFile = picker && picker.files && picker.files.length > 0;
+  if (hasVideo) {
+    section.classList.add('is-replacement');
+    title.textContent = 'Need to swap the video?';
+    btn.textContent   = 'Upload replacement video';
+    hint.textContent  = 'Optional — pick a new file to replace the one above. This will reset review status to pending.';
+    if (!hasPickedFile) fileName.textContent = 'Choose a different file';
+  } else {
+    section.classList.remove('is-replacement');
+    title.textContent = 'Review video upload';
+    btn.textContent   = 'Upload video for review';
+    hint.textContent  = 'MP4, MOV, or any video file under 100 MB.';
+    if (!hasPickedFile) fileName.textContent = 'Choose a video file';
+  }
 }
 
 function esc(s) {
@@ -934,9 +978,10 @@ $('uploadVideo').addEventListener('click', async () => {
     fd.set('action', 'upload_video');
     fd.set('video', file);
     const data = await apiForm('/api/affiliate-dashboard', fd);
-    renderDashboard(data);
+    // Clear picker FIRST so renderDashboard → renderVideoStatus can set the
+    // right placeholder ("Choose a different file" in replacement mode).
     $('reviewVideo').value = '';
-    $('videoFileName').textContent = 'Choose a video file';
+    renderDashboard(data);
     toast('Video uploaded for review');
   } catch (err) {
     alert(err.message || 'Upload failed.');
