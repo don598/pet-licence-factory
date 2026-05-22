@@ -83,6 +83,29 @@ CREATE TABLE IF NOT EXISTS admin_tasks (
   created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- 5. TikTok creator-outreach tables.
+--    Auto-created (CREATE TABLE IF NOT EXISTS) by the outreach scripts in
+--    ~/scratch/; documented here so the schema stays complete.
+--    tiktok_outreach_log — de-duplication source of truth: one row per handle
+--      we have messaged, so re-runs never double-contact the same creator.
+CREATE TABLE IF NOT EXISTS tiktok_outreach_log (
+  handle       TEXT         PRIMARY KEY,   -- TikTok @handle
+  messaged_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  language     TEXT,                       -- 'en' | 'es'
+  status       TEXT         NOT NULL DEFAULT 'sent'
+);
+
+--    tiktok_leads — creators who replied with an email but are not yet
+--      onboarded; a manual-onboarding queue worked via the Command Station.
+CREATE TABLE IF NOT EXISTS tiktok_leads (
+  id          BIGSERIAL    PRIMARY KEY,
+  handle      TEXT,
+  email       TEXT,
+  message     TEXT,
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  actioned    BOOLEAN      NOT NULL DEFAULT FALSE
+);
+
 -- ================================================================
 --  Migrations for existing deployments — safe to re-run
 -- ================================================================
@@ -103,5 +126,5 @@ ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS verification_error    TEXT;
 CREATE INDEX IF NOT EXISTS idx_pet_orders_stripe_session_id ON pet_orders (stripe_session_id);
 
 -- ================================================================
---  Done! Tables: pet_orders, admin_tasks
+--  Done! Tables: pet_orders, admin_tasks, tiktok_outreach_log, tiktok_leads
 -- ================================================================
