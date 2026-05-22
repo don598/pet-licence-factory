@@ -2750,7 +2750,13 @@ applyThemeButton();
 function switchView(name) {
   currentView = name;
   document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.view === name);
+    const isActive = el.dataset.view === name;
+    el.classList.toggle('active', isActive);
+    // On the mobile horizontal nav strip, scroll the selected tab fully into
+    // view so it never sits clipped at the screen edge.
+    if (isActive) {
+      try { el.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch {}
+    }
   });
   document.querySelectorAll('.cs-view').forEach(el => {
     el.classList.toggle('active', el.id === 'view-' + name);
