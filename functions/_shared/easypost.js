@@ -24,6 +24,11 @@ function parcelFor(order) {
   const packCount = parseInt(order.pack_count) || 1;
   const hasDecal  = order.add_on === 'car_decal';
   const oz = 1 + (packCount === 2 ? 0.5 : 0) + (hasDecal ? 1.5 : 0);
+  // Priority tier ships in a USPS Priority Mail Flat Rate Envelope — one flat
+  // price to any US zone. Standard tier uses a plain custom parcel.
+  if ((order.shipping_option || '').toLowerCase() === 'priority') {
+    return { predefined_package: 'FlatRateEnvelope', weight: oz };
+  }
   return {
     length: 6.0,
     width:  4.0,
@@ -49,7 +54,7 @@ function toAddressFrom(order) {
 // Map our shipping_option → EasyPost USPS service name used to filter rates.
 // Stamp is never labeled via EasyPost (user hand-stamps; see create-label).
 const SERVICE_FOR_OPTION = {
-  standard: 'First',              // USPS First-Class Package Service
+  standard: 'GroundAdvantage',    // USPS Ground Advantage (replaced First-Class Package Service in 2023)
   priority: 'Priority',           // USPS Priority Mail
 };
 

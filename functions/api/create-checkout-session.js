@@ -16,8 +16,8 @@ const PRICES = {
   decal:     499,   // 8×8" Vinyl Car Decal
   discRate:  0.15,  // 15% discount (mini-game reward)
   stamp:      95,   // Stamp Shipping
-  standard:  399,   // Standard Shipping
-  priority:  799,   // Priority Shipping
+  standard:  699,   // Standard Shipping (USPS Ground Advantage — covers worst-case AK/HI $6.36)
+  priority:  1099,  // Priority Shipping (USPS Priority Flat Rate Envelope — covers continental $9.62; ~$0.13 AK/HI shortfall absorbed)
 };
 
 function json(status, body) {
@@ -143,7 +143,9 @@ export async function onRequest(context) {
       mode: 'payment',
       line_items: lineItems,
       shipping_address_collection: {
-        allowed_countries: ['US', 'CA', 'GB', 'AU', 'NZ'],
+        // US-only: the Stamp shipping tier is USPS domestic mail and cannot
+        // be sent internationally.
+        allowed_countries: ['US'],
       },
       // Either pre-apply a promo, or let the customer type one in. Not both.
       ...(preAppliedPromoId
@@ -159,8 +161,8 @@ export async function onRequest(context) {
                 fixed_amount: { amount: 0, currency: 'usd' },
                 display_name: 'Stamp Shipping (free)',
                 delivery_estimate: {
-                  minimum: { unit: 'week', value: 2 },
-                  maximum: { unit: 'week', value: 4 },
+                  minimum: { unit: 'business_day', value: 3 },
+                  maximum: { unit: 'business_day', value: 7 },
                 },
               },
             },
@@ -172,8 +174,8 @@ export async function onRequest(context) {
                 fixed_amount: { amount: PRICES.stamp, currency: 'usd' },
                 display_name: 'Stamp Shipping',
                 delivery_estimate: {
-                  minimum: { unit: 'week', value: 2 },
-                  maximum: { unit: 'week', value: 4 },
+                  minimum: { unit: 'business_day', value: 3 },
+                  maximum: { unit: 'business_day', value: 7 },
                 },
               },
             },
@@ -183,8 +185,8 @@ export async function onRequest(context) {
                 fixed_amount: { amount: PRICES.standard, currency: 'usd' },
                 display_name: 'Standard Shipping',
                 delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 7 },
-                  maximum: { unit: 'business_day', value: 14 },
+                  minimum: { unit: 'business_day', value: 4 },
+                  maximum: { unit: 'business_day', value: 7 },
                 },
               },
             },
