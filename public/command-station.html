@@ -1831,6 +1831,220 @@ html, body {
 }
 #affTemplateForm { padding: 22px 24px 20px; }
 #affTemplateForm textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; line-height: 1.55; }
+
+/* ════════════════════════════════════════════════════════════════════
+   MOBILE / RESPONSIVE LAYER
+   Additive only — desktop layout above is untouched. Goal: make the
+   dashboard (above all the Orders view) genuinely usable on a phone.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet & below: stop the layout from feeling cramped ──────────── */
+@media (max-width: 1024px) {
+  .analytics-row { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Phone / small tablet (≤ 760px): the main reflow ───────────────── */
+@media (max-width: 760px) {
+  /* App shell becomes a vertical stack: content on top, nav below.   */
+  #app { height: auto; min-height: 100vh; overflow: visible; }
+  .cs-shell { flex-direction: column; overflow: visible; }
+  .cs-content { overflow: visible; }
+  body { -webkit-text-size-adjust: 100%; }
+
+  /* Sidebar → horizontal scrolling nav strip pinned under the header.
+     The 250px fixed-width nav would otherwise eat the whole screen. */
+  .cs-sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+  .sidebar-brand { display: none; }
+  .sidebar-section-label { display: none; }
+  .cs-sidebar .sidebar-nav { flex-direction: row; gap: 4px; }
+  .cs-sidebar .sidebar-nav + .sidebar-section-label { margin-top: 0; }
+  .nav-item {
+    width: auto;
+    flex-shrink: 0;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    border-radius: var(--r-pill);
+    min-height: 40px;
+  }
+  .nav-item .nav-count { margin-left: 6px; }
+  /* Promo card is non-essential on a phone — hide to save vertical space */
+  .sidebar-promo { display: none; }
+
+  /* Top bar: let it wrap, drop the desktop-only chrome.              */
+  .cs-header {
+    height: auto;
+    min-height: 56px;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .cs-search { max-width: none; flex: 1 1 100%; order: 2; }
+  .cs-header-right { order: 1; width: 100%; justify-content: space-between; }
+  .cs-search kbd { display: none; }
+  .cs-user-meta { display: none; }
+  #last-sync, #bg-prerun-status { font-size: 10px; }
+
+  /* Page header: smaller title, tighter padding, actions wrap.       */
+  .page-header { padding: 16px 14px 12px; gap: 10px; }
+  .page-title { font-size: 21px; }
+  .page-subtitle { font-size: 12px; }
+  .page-actions { width: 100%; flex-wrap: wrap; }
+  .page-actions .btn-primary,
+  .page-actions .btn-secondary {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 11px 16px;
+    min-height: 44px;
+  }
+
+  /* Stat cards: single column, compact.                              */
+  .analytics-row { grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 14px 16px; }
+  .stat-card { padding: 14px 16px; }
+  .stat-value { font-size: 24px; }
+  .stat-label { margin-bottom: 8px; }
+  .stat-card .stat-arrow { display: none; }
+
+  /* Main area: drop side padding so the orders panel uses full width */
+  .main-area { padding: 0 12px 16px; overflow: visible; }
+  .orders-panel { overflow: visible; }
+
+  /* Panel toolbar: filter tabs scroll horizontally, search full-width */
+  .panel-toolbar { padding: 12px; gap: 8px; }
+  .filter-tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+  .filter-tab { flex-shrink: 0; padding: 8px 14px; min-height: 38px; }
+  .search-input { width: 100%; margin-left: 0; }
+
+  /* ── Orders table → stacked cards ──────────────────────────────── */
+  /* Each row becomes a self-contained card; cells stack and are
+     labelled via the data-label attribute set in renderTable().     */
+  .orders-table-wrap { overflow-x: hidden; padding: 8px; }
+  .orders-table { font-size: 13px; }
+  .orders-table thead { display: none; }
+  .orders-table, .orders-table tbody { display: block; width: 100%; }
+  .orders-table tr {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    box-shadow: var(--sh-card);
+    margin-bottom: 10px;
+    padding: 6px 14px 12px;
+    position: relative;
+  }
+  .orders-table tr:hover td { background: none; }
+  .orders-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--divider);
+    text-align: right;
+    min-height: 40px;
+  }
+  .orders-table tr td:last-child { border-bottom: none; }
+  /* Field label rendered from data-label */
+  .orders-table td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted);
+    text-align: left;
+  }
+  /* Checkbox cell: pull to the top-right corner of the card */
+  .orders-table td.cb-col {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: auto;
+    padding: 0;
+    border: none;
+    min-height: 0;
+  }
+  .orders-table td.cb-col input[type="checkbox"] { width: 22px; height: 22px; }
+  /* Date cell doubles as the card title — leave room for the checkbox */
+  .orders-table td[data-label="Date"] { padding-right: 36px; }
+  /* Empty / loading / error rows: keep them readable as a single block */
+  .orders-table tr.empty,
+  .orders-table tr.empty td,
+  .orders-table td.loading-row,
+  .orders-table tr td[colspan] {
+    display: block;
+    text-align: center;
+  }
+  .orders-table tr.empty td::before,
+  .orders-table tr td[colspan]::before { content: none; }
+  .orders-table tr.empty { box-shadow: none; }
+
+  /* Bulk action bar: stack the buttons so they're tappable           */
+  .bulk-action-bar { flex-wrap: wrap; }
+  .bulk-action-bar .btn { flex: 1 1 auto; min-height: 40px; }
+
+  /* Stats / Tasks / Affiliate views: trim the 28px side padding      */
+  .stats-view, .tasks-view, .aff-shell { padding-left: 12px; padding-right: 12px; }
+  .stats-kpis { grid-template-columns: 1fr 1fr; }
+  .stats-sections { grid-template-columns: 1fr; }
+  .bar-row { grid-template-columns: 90px 1fr 56px; gap: 8px; font-size: 12px; }
+
+  /* Affiliate creator table stays a table but scrolls inside its
+     wrapper — it must not push the page width out.                  */
+  .aff-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .aff-toolbar { flex-wrap: wrap; }
+  .aff-search { width: 100%; }
+  .aff-select { flex: 1 1 auto; }
+  .aff-quickbar { gap: 6px; }
+  .aff-drawer { right: 0; left: 0; top: 0; bottom: 0; width: 100%; max-width: 100%; border-radius: 0; }
+  .aff-stats { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* Modals: full-width on phones, no wasted side gutters             */
+  .modal-backdrop { padding: 0; align-items: stretch; }
+  .modal-inner {
+    border-radius: 0;
+    max-width: 100%;
+    min-height: 100vh;
+  }
+  .modal-grid { grid-template-columns: 1fr; }
+  .modal-header { padding: 16px; position: sticky; top: 0; z-index: 5; }
+  .modal-body { padding: 16px; }
+  .detail-key { width: 92px; }
+}
+
+/* ── Narrow phones (≤ 420px): final tightening ─────────────────────── */
+@media (max-width: 420px) {
+  .analytics-row { grid-template-columns: 1fr; }
+  .stats-kpis { grid-template-columns: 1fr; }
+  .aff-stats { grid-template-columns: 1fr 1fr; }
+  .page-title { font-size: 19px; }
+  .nav-item span:not(.nav-icon):not(.nav-count) {
+    /* keep labels but allow them to stay compact */
+    font-size: 12px;
+  }
+}
   </style>
 </head>
 <body>
@@ -2861,13 +3075,13 @@ function renderTable() {
   tbody.innerHTML = rows.map(o => `
     <tr>
       <td class="cb-col" onclick="event.stopPropagation()"><input type="checkbox" class="order-cb" data-id="${o.id}" ${selectedOrderIds.has(o.id) ? 'checked' : ''} onclick="toggleOrderSelected(${o.id}, this.checked)"></td>
-      <td onclick="openOrder(${o.id})" title="${o.created_at}">${fmtDate(o.created_at)}</td>
-      <td onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>
-      <td onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}">${esc(o.customer_email || '—')}</td>
-      <td onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
-      <td onclick="openOrder(${o.id})">${renderAffiliateMarker(o)}</td>
-      <td onclick="openOrder(${o.id})"><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
-      <td onclick="openOrder(${o.id})">${o.total || '—'}</td>
+      <td data-label="Date" onclick="openOrder(${o.id})" title="${o.created_at}">${fmtDate(o.created_at)}</td>
+      <td data-label="Pet" onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>
+      <td data-label="Customer" onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}">${esc(o.customer_email || '—')}</td>
+      <td data-label="Shipping" onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
+      <td data-label="Affiliate" onclick="openOrder(${o.id})">${renderAffiliateMarker(o)}</td>
+      <td data-label="Status" onclick="openOrder(${o.id})"><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
+      <td data-label="Amount" onclick="openOrder(${o.id})">${o.total || '—'}</td>
     </tr>
   `).join('');
   updateBulkBar();
