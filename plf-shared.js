@@ -45,7 +45,9 @@ async function submitOrder(orderData) {
 // ═══════════════════════════════════════════════════════════
 // PRICES
 // ═══════════════════════════════════════════════════════════
-const PRICES = { pack1: 13.95, pack2: 19.99, decal: 4.99, disc: 0.15, stamp: 0.95, standard: 3.99, priority: 7.99 };
+// Shipping rates must match PRICES in functions/api/create-checkout-session.js
+// (that file is the source of truth for what Stripe actually charges).
+const PRICES = { pack1: 13.95, pack2: 19.99, decal: 4.99, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
 
 // ═══════════════════════════════════════════════════════════
 // GLOBAL STATE
