@@ -1851,6 +1851,23 @@ html, body {
   .cs-content { overflow: visible; }
   body { -webkit-text-size-adjust: 100%; }
 
+  /* Nested flex items default to `min-width: auto`, which stops them
+     shrinking below their content's min-content width. On a phone the
+     orders table's min-content is wider than the viewport — without this
+     override that width propagates up through every flex parent and forces
+     the whole page to scroll horizontally. Letting these items shrink to
+     their parent's width lets the inner overflow:hidden/auto containers
+     (orders-table-wrap, filter-tabs) actually clip / scroll as intended. */
+  .cs-content, .cs-view, .main-area,
+  .orders-panel, .panel-toolbar,
+  .stats-view, .tasks-view, .aff-shell { min-width: 0; }
+
+  /* Belt-and-braces guard: a stray wide child anywhere in the tree should
+     not make the entire page scroll sideways. `clip` (unlike `hidden`) does
+     not create a new containing block, so sticky positioning on
+     .cs-sidebar still anchors to the viewport. */
+  html, body { overflow-x: clip; }
+
   /* Sidebar → horizontal scrolling nav strip pinned under the header.
      The 250px fixed-width nav would otherwise eat the whole screen. */
   .cs-sidebar {
