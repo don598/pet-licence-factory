@@ -110,8 +110,10 @@ export async function createCreatorCoupons(env, { code, customerDiscountRate, na
     throw new Error(`customer discount must be 1–100% (got ${customerDiscountRate})`);
   }
 
+  // Stripe coupon names are capped at 40 chars, so keep these tight.
+  // Use the creator code (up to 32 chars per validateCodeShape) as the prefix.
   const affiliateCoupon = await stripe.coupons.create({
-    name:         `${c} — affiliate discount`,
+    name:         `${c} affiliate ${pctOff}%`.slice(0, 40),
     percent_off:  pctOff,
     duration:     'forever',
     metadata:     { ...meta, kind: 'affiliate' },
@@ -130,7 +132,9 @@ export async function createCreatorCoupons(env, { code, customerDiscountRate, na
   const expiresAt  = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
 
   const freebieCoupon = await stripe.coupons.create({
-    name:         `${c} — creator welcome (single-use)`,
+    // Tight name (Stripe caps at 40). The creator's code stays in the name
+    // so it's still scannable from the Stripe coupons dashboard.
+    name:         `${c} welcome 100%`.slice(0, 40),
     percent_off:  100,
     duration:     'once',
     redeem_by:    expiresAt,
