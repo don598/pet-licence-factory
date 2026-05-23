@@ -549,7 +549,9 @@ const A = {
   s5bg:       'images/mobile/Station%206%20background%20mobile.png',
   template:   'images/Blank%20Card%20cropped.jpeg',
 };
-const PRICES = { pack1:13.95, pack2:19.99, decal:4.99, disc:0.15, stamp:0.95, standard:3.99, priority:7.99 };
+// Shipping must match PRICES in functions/api/create-checkout-session.js
+// (server is source of truth for what Stripe actually charges).
+const PRICES = { pack1:13.95, pack2:19.99, decal:4.99, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
 
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -1719,14 +1721,57 @@ async function s5Checkout(){
   const disc=discountEarned?(base+dec)*PRICES.disc:0; // 15% off entire cart
   const shipPrice=PRICES[shippingOption]||PRICES.stamp;
   const orderData={...petData,photo:photoDataURL,chipSize,packQty,wantsDecal,shippingOption,basePrice:base,decalAmt:dec,discountEarned,total:parseFloat((base+dec-disc+shipPrice).toFixed(2))};
-  hidePanel(); setNav(null,null);
-  let orderId=null;
-  try{ orderId=await submitOrder(orderData); orderData.orderId=orderId; }
-  catch(err){ console.error('Order save failed:',err); }
-  window.PLF_ORDER={...orderData,orderId};
-  window.parent.postMessage({type:'PLF_CHECKOUT',data:{...orderData,orderId}},'*');
-  typewrite(5,`Payment confirmed! ${petData.petFirstName||'Your pet'} is about to become the most official animal in the neighbourhood. We'll have that out to you soon! 🐰`,()=>{});
-  jingle([{f:660,t:0},{f:880,t:130},{f:1100,t:260},{f:1320,t:390},{f:1760,t:520}]);
+
+  // Disable both Place Order buttons (in-panel and checkout overlay) while
+  // we create the Stripe session so the user can't double-submit.
+  const btns = [$('place-order-btn'), $('co-place-order-btn')].filter(Boolean);
+  const origHTML = btns.map(b => b.innerHTML);
+  btns.forEach(b => { b.disabled = true; b.innerHTML = '<span>PROCESSING…</span>'; });
+
+  // Persist the order to RDS so the webhook can find it on `checkout.session.completed`.
+  let orderId = null;
+  try {
+    orderId = await submitOrder(orderData);
+    orderData.orderId = orderId;
+  } catch (err) {
+    console.error('Order save failed (continuing to Stripe anyway):', err);
+  }
+  window.PLF_ORDER = { ...orderData, orderId };
+
+  // Create the Stripe Checkout session and redirect. This mirrors game.html's
+  // s5Checkout — without this the Place Order button does nothing (was the
+  // mobile checkout bug).
+  try {
+    const affiliateRef = (window.PLFAffiliate && window.PLFAffiliate.getRef && window.PLFAffiliate.getRef()) || '';
+    const promoCode    = (new URLSearchParams(window.location.search).get('promo') || '').trim();
+
+    const resp = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId,
+        packQty,
+        wantsDecal,
+        discountEarned,
+        petData: { petFirstName: petData.petFirstName, petLastName: petData.petLastName },
+        origin:    window.location.origin,
+        cancelUrl: window.location.origin + '/mobile.html',
+        affiliateRef,
+        promoCode,
+      }),
+    });
+    const data = await resp.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'No checkout URL returned');
+    }
+  } catch (err) {
+    console.error('Stripe checkout error:', err);
+    // Re-enable the buttons so the user can retry.
+    btns.forEach((b, i) => { b.disabled = false; b.innerHTML = origHTML[i]; });
+    typewrite(5, 'Oops, couldn\'t connect to checkout. Please try again.', () => {});
+  }
 }
 
 // ═══════════════════════════════════════════════════════════

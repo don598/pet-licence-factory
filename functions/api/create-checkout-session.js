@@ -139,6 +139,27 @@ export async function onRequest(context) {
       }
     }
 
+    // ── Freebie restriction: scope the 100%-off creator welcome code to a
+    // single 1-pack pet licence at regular price. Without this the freebie
+    // would zero out a 2-pack or a decal add-on too, which is not the deal.
+    // Replace the line items with a fresh single-item cart regardless of
+    // what the body asked for. The 100% coupon then zeros the cart and
+    // Stripe always clamps amount_total >= 0, so no stacking can go negative.
+    if (freebieFreeShipping) {
+      lineItems.length = 0;
+      lineItems.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Pet Licence Sticker (1-Pack)',
+            description: 'Creator welcome freebie — custom pet licence sticker',
+          },
+          unit_amount: PRICES.pack1,
+        },
+        quantity: 1,
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
