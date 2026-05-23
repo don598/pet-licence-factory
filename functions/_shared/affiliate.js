@@ -112,19 +112,35 @@ export async function createCreatorCoupons(env, { code, customerDiscountRate, na
 
   // Stripe coupon names are capped at 40 chars, so keep these tight.
   // Use the creator code (up to 32 chars per validateCodeShape) as the prefix.
-  const affiliateCoupon = await stripe.coupons.create({
-    name:         `${c} affiliate ${pctOff}%`.slice(0, 40),
-    percent_off:  pctOff,
-    duration:     'forever',
-    metadata:     { ...meta, kind: 'affiliate' },
+  //
+  // Idempotency: if a previous activation half-succeeded (e.g. created the
+  // affiliate pair but crashed before the freebie pair), the retry would
+  // collide on the affiliate code. Look the existing pair up first and reuse
+  // it when the metadata matches this creator, so retries are safe.
+  let affiliateCoupon, affiliatePromo;
+  const existingAffiliate = await stripe.promotionCodes.list({
+    code: c, limit: 1,
   });
-
-  const affiliatePromo = await stripe.promotionCodes.create({
-    coupon:    affiliateCoupon.id,
-    code:      c,
-    active:    true,
-    metadata:  { ...meta, kind: 'affiliate' },
-  });
+  const reuseAffiliate = existingAffiliate.data.find(p =>
+    p.metadata && p.metadata.source === 'plf_affiliate' && p.metadata.creator_code === c
+  );
+  if (reuseAffiliate) {
+    affiliatePromo  = reuseAffiliate;
+    affiliateCoupon = await stripe.coupons.retrieve(reuseAffiliate.coupon.id || reuseAffiliate.coupon);
+  } else {
+    affiliateCoupon = await stripe.coupons.create({
+      name:         `${c} affiliate ${pctOff}%`.slice(0, 40),
+      percent_off:  pctOff,
+      duration:     'forever',
+      metadata:     { ...meta, kind: 'affiliate' },
+    });
+    affiliatePromo = await stripe.promotionCodes.create({
+      coupon:    affiliateCoupon.id,
+      code:      c,
+      active:    true,
+      metadata:  { ...meta, kind: 'affiliate' },
+    });
+  }
 
   // ── Welcome freebie (100% off, single-use, 30-day expiry, creator-only) ──
   const suffix     = generateShortSuffix(4);
