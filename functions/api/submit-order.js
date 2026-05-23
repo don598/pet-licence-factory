@@ -31,6 +31,30 @@ export async function onRequest(context) {
 
   const db = getDb(env);
 
+  // Opportunistic cleanup: prune abandoned-cart shells that never reached
+  // Stripe checkout. We create the order row before redirecting to Stripe so
+  // we have an order_id to hand to checkout; if the customer never pays, the
+  // row sits as `pending` forever. Stripe Checkout sessions themselves expire
+  // after 24 h, so anything still `pending` with no payment after a few days
+  // is definitively abandoned. Window is generous to leave room for slow
+  // customers returning to finish checkout via a re-issued link.
+  //
+  // Fire-and-forget — never block (or fail) order submission on cleanup.
+  const ABANDONED_PENDING_TTL = "72 hours";
+  try {
+    const r = await db.query(
+      `DELETE FROM pet_orders
+        WHERE status = 'pending'
+          AND stripe_payment_id IS NULL
+          AND created_at < NOW() - INTERVAL '${ABANDONED_PENDING_TTL}'`
+    );
+    if (r.rowCount) {
+      console.log(`submit-order: pruned ${r.rowCount} abandoned-cart shell(s) older than ${ABANDONED_PENDING_TTL}.`);
+    }
+  } catch (cleanupErr) {
+    console.warn('submit-order: abandoned-cart cleanup failed (non-fatal):', cleanupErr);
+  }
+
   let body;
   try {
     body = await request.json();
