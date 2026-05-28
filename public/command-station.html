@@ -2028,9 +2028,52 @@ html, body {
   .stats-sections { grid-template-columns: 1fr; }
   .bar-row { grid-template-columns: 90px 1fr 56px; gap: 8px; font-size: 12px; }
 
-  /* Affiliate creator table stays a table but scrolls inside its
-     wrapper — it must not push the page width out.                  */
-  .aff-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Affiliate creator "table" → card list on mobile.
+     The desktop table has 11 columns — on a phone, scrolling sideways
+     to find the Approve button is awful. Instead, each <tr> becomes a
+     tappable card showing only the essentials: name + email + code
+     + status pill, plus an inline Approve button for pending_review.
+     Tap anywhere on the card → existing drawer slides in fullscreen
+     with every action and the full numeric breakdown. */
+  .aff-table-wrap { overflow-x: hidden; }
+  .aff-table { display: block; border: 0; }
+  .aff-table thead { display: none; }
+  .aff-table tbody { display: block; }
+  .aff-table tr.aff-row {
+    display: block; position: relative;
+    padding: 14px 38px 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .aff-table tr.aff-row td { display: block; padding: 0; border: 0; text-align: left; }
+  /* Subtle chevron at the right to signal "tap for details" */
+  .aff-table tr.aff-row::after {
+    content: '›'; position: absolute; right: 14px; top: 14px;
+    font-size: 22px; line-height: 1; color: var(--muted);
+  }
+  /* Header row: name (cell 1), code (cell 2), status pill (cell 3) */
+  .aff-table tr.aff-row td:nth-child(1) { margin-bottom: 6px; }
+  .aff-table tr.aff-row td:nth-child(2) {
+    display: inline-block; margin-right: 10px; font-size: 12px;
+  }
+  .aff-table tr.aff-row td:nth-child(3) { display: inline-block; }
+  /* Hide the numeric + last-activity columns on mobile — they live
+     in the drawer where they belong. */
+  .aff-table tr.aff-row td:nth-child(n+4):nth-child(-n+10) { display: none; }
+  /* Action cell: stick to the left, make Approve big and tappable.
+     Only Approve survives on mobile cards — Payout / Email still live
+     in the drawer to keep the card uncluttered. */
+  .aff-table tr.aff-row td:nth-child(11) { margin-top: 10px; }
+  .aff-table tr.aff-row td:nth-child(11):empty { display: none; margin: 0; }
+  .aff-table tr.aff-row .aff-row-actions { justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+  .aff-table tr.aff-row .aff-row-mini-btn[data-act="payout"],
+  .aff-table tr.aff-row .aff-row-mini-btn[data-act="resend"] { display: none; }
+  .aff-table tr.aff-row .aff-row-mini-btn[data-act="approve"] {
+    padding: 8px 18px; font-size: 13px; font-weight: 700;
+    background: var(--amber, #d97706); color: #fff; border-color: var(--amber, #d97706);
+  }
+  /* "No results" row keeps its centered styling — it isn't .aff-row */
+  .aff-empty { text-align: center; padding: 48px 14px; }
+
   .aff-toolbar { flex-wrap: wrap; }
   .aff-search { width: 100%; }
   .aff-select { flex: 1 1 auto; }
