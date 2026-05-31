@@ -315,7 +315,9 @@ export async function onRequest(context) {
               addOn:          order.add_on,
               chipSize:       order.chip_size,
               shippingOption: order.shipping_option,
-              total:          order.total,
+              // order.total is the client-submitted full price; a freebie was
+              // actually $0, so don't show "$14.90" on a free creator order.
+              total:          order.affiliate_is_freebie ? 'Free' : order.total,
               shipAddrLine1:  order.ship_addr_line1,
               shipAddrLine2:  order.ship_addr_line2,
               shipCity:       order.ship_city,
