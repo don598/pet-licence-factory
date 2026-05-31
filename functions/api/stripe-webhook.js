@@ -13,7 +13,7 @@ import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { sendOrderConfirmationEmail, sendAddressIssueEmail } from '../_shared/email.js';
 import { verifyAddress } from '../_shared/easypost.js';
-import { findCreatorByCode, normalizeCode } from '../_shared/affiliate.js';
+import { attributeOrder, backfillOrderAttribution } from '../_shared/affiliate.js';
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -247,6 +247,16 @@ export async function onRequest(context) {
     console.error('Failed to flag address_invalid:', err);
   }
 
+  // Back-fill affiliate attribution for display even though the order isn't
+  // paid yet — so the Command Station shows which creator/coupon this stuck
+  // order belongs to. No commission row is written until it's actually
+  // fulfilled (success-page recovery or admin override). Always non-fatal.
+  try {
+    await backfillOrderAttribution(env, db, stripe, session, orderId);
+  } catch (err) {
+    console.error('Affiliate back-fill (address_invalid) failed (non-fatal):', err);
+  }
+
   // Email the customer with a link back to the success page so they can fix
   // the address even if they closed the tab.
   try {
@@ -268,141 +278,10 @@ export async function onRequest(context) {
 
 
 // ── Affiliate attribution ──────────────────────────────────────────────────
-// Called once per checkout.session.completed (after the order is paid).
-//
-// Tries promotion code first (path 2 in the brief), then the cookie ref
-// (path 1). If we find a creator, write the affiliate_orders row with
-// commission rate locked in and back-fill pet_orders.
-async function attributeOrder(env, db, stripe, session, orderId) {
-  // Re-fetch the session with the discount + line item totals expanded so
-  // we can resolve which promotion code was applied. The original webhook
-  // event payload doesn't always include enough detail.
-  let full;
-  try {
-    full = await stripe.checkout.sessions.retrieve(session.id, {
-      expand: ['total_details.breakdown', 'line_items'],
-    });
-  } catch (err) {
-    console.warn('session retrieve failed, falling back to event payload:', err);
-    full = session;
-  }
+// attributeOrder / backfillOrderAttribution now live in _shared/affiliate.js so
+// the success-page recovery (update-address) and the admin override
+// (admin-api force_fulfill) can reuse the exact same logic. Imported above.
 
-  // ── Path 2: promo code on the session ──
-  let creator = null;
-  let attribution = null;
-  let isFreebie = false;
-
-  const discounts = full?.total_details?.breakdown?.discounts || [];
-  const promoIds  = (full?.discounts || []).map(d => d.promotion_code).filter(Boolean);
-
-  // The session's `discounts` array carries the applied promo code id(s).
-  // The breakdown carries the coupon id+amount. Try both.
-  if (promoIds.length) {
-    for (const promoId of promoIds) {
-      try {
-        const pc = await stripe.promotionCodes.retrieve(promoId);
-
-        // Store-credit redemptions: the creator already earned (and cashed
-        // out) commission on whatever produced this balance. The redemption
-        // itself is not a new attributable order — bailing out here also
-        // suppresses path 1 (cookie ref), which would otherwise let a
-        // creator re-commission themselves by spending their own credit.
-        if (pc.coupon?.metadata?.kind === 'store_credit') {
-          return;
-        }
-
-        const code = normalizeCode(pc.code);
-        const c = await findCreatorByCode(db, code);
-        if (c) {
-          creator     = c;
-          attribution = 'coupon';
-          // Welcome freebie code = 100% off. Mark non-commissionable.
-          if (code === c.coupon_code.toUpperCase() + '-WELCOME-' + code.slice(-4) ||
-              (pc.coupon?.percent_off === 100)) {
-            isFreebie = true;
-          }
-          break;
-        }
-      } catch (err) {
-        console.warn('promo retrieve failed:', err);
-      }
-    }
-  }
-
-  // ── Path 1: cookie-supplied affiliate_ref in metadata ──
-  if (!creator) {
-    const ref = normalizeCode(full?.metadata?.affiliate_ref || '');
-    if (ref) {
-      const c = await findCreatorByCode(db, ref);
-      if (c) {
-        creator     = c;
-        attribution = 'cookie';
-      }
-    }
-  }
-
-  if (!creator) return; // unattributed — totally fine
-
-  // ── Compute money fields ────────────────────────────────────────────────
-  // Stripe gives us amount_subtotal (pre-discount), amount_total (post),
-  // total_details.amount_discount.
-  const subtotal     = Number(full?.amount_subtotal) || 0;
-  const total        = Number(full?.amount_total)    || 0;
-  const discountCents = Number(full?.total_details?.amount_discount) || 0;
-  const shippingCents = Number(full?.total_details?.amount_shipping) || 0;
-  // Commissionable gross = post-discount, pre-shipping/tax (≈ subtotal − discount).
-  const grossCents = Math.max(0, subtotal - discountCents);
-
-  // If the freebie wasn't already detected via promo type, infer from total.
-  if (!isFreebie && total === shippingCents && grossCents === 0) {
-    isFreebie = true;
-  }
-
-  const commissionRate  = Number(creator.commission_rate);
-  const commissionCents = isFreebie ? 0 : Math.round(grossCents * commissionRate);
-
-  // Look up pet_orders.id for the FK
-  const po = await db.query('SELECT id FROM pet_orders WHERE order_id = $1 LIMIT 1', [orderId]);
-  const petOrderPK = po.rows[0]?.id || null;
-
-  // Insert (idempotent on order_id_text)
-  await db.query(
-    `INSERT INTO affiliate_orders
-       (creator_id, pet_order_id, order_id_text, stripe_session_id, stripe_payment_intent,
-        attribution_method, is_freebie, gross_cents, discount_cents,
-        commission_rate, commission_cents)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-     ON CONFLICT (order_id_text) DO NOTHING`,
-    [
-      creator.id, petOrderPK, orderId,
-      full?.id || session.id, full?.payment_intent || session.payment_intent || '',
-      attribution, isFreebie, grossCents, discountCents,
-      commissionRate, commissionCents,
-    ]
-  );
-
-  // Back-fill pet_orders for at-a-glance visibility
-  await db.query(
-    `UPDATE pet_orders SET
-       affiliate_creator_id      = $1,
-       affiliate_coupon_code     = $2,
-       affiliate_commission_rate = $3,
-       affiliate_commission_cents = $4,
-       affiliate_is_freebie      = $5
-     WHERE order_id = $6`,
-    [creator.id, creator.coupon_code, commissionRate, commissionCents, isFreebie, orderId]
-  );
-
-  // If this was a freebie redemption, mark it on the creator row.
-  if (isFreebie && !creator.freebie_redeemed_at) {
-    await db.query(
-      `UPDATE affiliate_creators
-       SET freebie_redeemed_at = NOW(), updated_at = NOW()
-       WHERE id = $1 AND freebie_redeemed_at IS NULL`,
-      [creator.id]
-    );
-  }
-}
 
 
 // ── Refund handling ────────────────────────────────────────────────────────

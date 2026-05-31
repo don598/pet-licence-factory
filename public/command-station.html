@@ -1460,6 +1460,18 @@ html, body {
 .aff-connect-badge.ready      { color: var(--green); background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.30); }
 .aff-connect-badge.onboarding { color: var(--amber, #d97706); background: rgba(217,119,6,.10); border-color: rgba(217,119,6,.30); }
 
+/* Sample-order badge — shows whether the creator has gone through checkout.
+   .placed = green (done / freebie redeemed), .started = amber (checkout begun
+   but order stuck/open), .none = grey (never checked out). */
+.aff-sample {
+  display:inline-flex; align-items:center; gap:3px;
+  font-size:10px; font-weight:700; padding:1px 7px; border-radius:999px;
+  border:1px solid transparent; margin-top:5px; white-space:nowrap;
+}
+.aff-sample.placed  { color: var(--green); background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.30); }
+.aff-sample.started { color: var(--amber, #d97706); background: rgba(217,119,6,.10); border-color: rgba(217,119,6,.30); }
+.aff-sample.none    { color: var(--muted); background: var(--surface2); border-color: var(--border); }
+
 .aff-quickbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 14px; }
 .aff-quickbar .label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-right:4px; }
 .aff-quickbtn {
@@ -2539,6 +2551,27 @@ html, body {
           <span id="verify-alert-message">USPS rejected the shipping address. The customer's card has been authorised but not charged — the auth drops in 7 days.</span>
           <span class="va-reason" id="verify-alert-reason"></span>
           <span class="va-meta" id="verify-alert-meta"></span>
+
+          <!-- Admin override: ship the address as entered (USPS false-negatives happen) -->
+          <button class="btn btn-blue" id="va-override-btn" style="display:none;margin-top:10px" onclick="toggleOverride(true)">🚀 Override USPS &amp; ship as entered</button>
+          <div class="va-override" id="va-override" style="display:none;margin-top:10px">
+            <div style="font-size:12px;color:#9e7a34;margin-bottom:8px;line-height:1.45">
+              Ships to the address below (skips the USPS check). Edit if needed, then confirm — this captures the card hold and marks the order <strong>paid</strong>. A $0 freebie just gets marked paid (nothing to charge).
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <input id="ovr-line1" placeholder="Address line 1" style="grid-column:1 / -1">
+              <input id="ovr-line2" placeholder="Address line 2 (optional)" style="grid-column:1 / -1">
+              <input id="ovr-city" placeholder="City">
+              <div style="display:grid;grid-template-columns:70px 1fr;gap:8px">
+                <input id="ovr-state" placeholder="ST" maxlength="2">
+                <input id="ovr-zip" placeholder="ZIP">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button class="btn btn-accent" id="ovr-confirm-btn" onclick="confirmOverride()">✓ Capture &amp; fulfil</button>
+              <button class="btn btn-ghost" onclick="toggleOverride(false)">Cancel</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3302,6 +3335,14 @@ async function openOrder(dbId) {
     const attempts = order.verification_attempts || 0;
     document.getElementById('verify-alert-meta').textContent =
       `Verification attempts: ${attempts} / 5${attempts >= 5 ? ' — locked, payment auth has been voided.' : ''}`;
+
+    // Prefill + show the admin override (ship the address as entered).
+    document.getElementById('ovr-line1').value = order.ship_addr_line1 || '';
+    document.getElementById('ovr-line2').value = order.ship_addr_line2 || '';
+    document.getElementById('ovr-city').value  = order.ship_city  || '';
+    document.getElementById('ovr-state').value = order.ship_state || '';
+    document.getElementById('ovr-zip').value   = order.ship_zip   || '';
+    toggleOverride(false);
   } else if (order.status === 'address_pending_verification') {
     verifyAlert.style.display = 'flex';
     verifyAlert.classList.add('pending');
@@ -3371,6 +3412,49 @@ function closeModal(e) {
   document.getElementById('order-modal').classList.remove('open');
   modalOrder = null;
   openOrderId = null;
+}
+
+// ── Address override (ship as entered, skip USPS) ──────────────────────────
+function toggleOverride(show) {
+  const form = document.getElementById('va-override');
+  const btn  = document.getElementById('va-override-btn');
+  if (!form || !btn) return;
+  form.style.display = show ? 'block' : 'none';
+  btn.style.display  = show ? 'none'  : '';
+}
+
+async function confirmOverride() {
+  if (!openOrderId) return;
+  const address = {
+    line1:   document.getElementById('ovr-line1').value.trim(),
+    line2:   document.getElementById('ovr-line2').value.trim(),
+    city:    document.getElementById('ovr-city').value.trim(),
+    state:   document.getElementById('ovr-state').value.trim().toUpperCase(),
+    zip:     document.getElementById('ovr-zip').value.trim(),
+    country: 'US',
+  };
+  if (!address.line1 || !address.city || !address.state || !address.zip) {
+    showToast('Fill in address line 1, city, state, and ZIP', 'err');
+    return;
+  }
+  if (!confirm('Ship to this address (skipping USPS verification), capture the card hold, and mark the order paid?')) return;
+
+  const btn = document.getElementById('ovr-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = '⌛ Capturing…';
+  try {
+    const res = await adminAPI('force_fulfill', { id: openOrderId, address });
+    showToast(
+      res.captured ? 'Captured & marked paid ✓' : 'Fulfilled ✓ — ' + (res.captureNote || 'no charge'),
+      'ok'
+    );
+    await loadAll();          // refresh the table + analytics
+    await openOrder(openOrderId);  // re-render the modal in its new (paid) state
+  } catch (err) {
+    showToast('Override failed: ' + err.message, 'err');
+    btn.disabled = false;
+    btn.textContent = '✓ Capture & fulfil';
+  }
 }
 
 // ── Save Order Changes ────────────────────────────────────────────────────────
@@ -5273,10 +5357,16 @@ function affRender() {
       : r.connect_state === 'onboarding'
       ? '<span class="aff-connect-badge onboarding" title="Stripe Connect onboarding incomplete">🏦 Connect ⚠</span>'
       : '';
+    // Sample-order badge — has this creator actually gone through checkout?
+    const sampleBadge = r.sample_order === 'placed'
+      ? '<span class="aff-sample placed" title="Has completed a sample order / redeemed their freebie">🛒 Sample placed</span>'
+      : r.sample_order === 'started'
+      ? '<span class="aff-sample started" title="Started checkout but the order is still open (e.g. stuck on an address issue)">🛒 Checkout started</span>'
+      : '<span class="aff-sample none" title="Has not gone through checkout yet">🛒 No sample order</span>';
     return `<tr class="aff-row ${stale?'aff-stale':''} ${veryFresh?'aff-active':''}" data-id="${r.id}">
       <td><div class="aff-name">${affEsc(r.name)}${connectBadge}</div><div class="aff-email">${affEsc(r.email)}</div></td>
       <td class="aff-code-cell">${affEsc(r.coupon_code)}</td>
-      <td><span class="aff-status ${r.status}">${affEsc(r.status.replace(/_/g,' '))}</span></td>
+      <td><span class="aff-status ${r.status}">${affEsc(r.status.replace(/_/g,' '))}</span><br>${sampleBadge}</td>
       <td class="aff-num">${r.clicks_7d}</td>
       <td class="aff-num">${r.clicks_total}</td>
       <td class="aff-num">${r.orders_count}</td>

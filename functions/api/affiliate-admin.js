@@ -78,6 +78,16 @@ const LIST_SQL = `
     COALESCE((SELECT SUM(gross_cents)    FROM affiliate_orders ao WHERE ao.creator_id = c.id AND ao.is_freebie = FALSE), 0) AS gross_cents,
     COALESCE((SELECT SUM(commission_cents) FROM affiliate_orders ao WHERE ao.creator_id = c.id AND ao.is_freebie = FALSE AND ao.commission_zeroed = FALSE), 0) AS commission_earned_cents,
 
+    -- Sample-order signal: has this creator actually gone through checkout
+    -- (typically redeeming their welcome freebie)? Detected via the pet_orders
+    -- attribution back-fill so it counts even freebie / stuck (address_invalid)
+    -- orders. Drives the "sample order placed?" badge in the creator list.
+    COALESCE((SELECT COUNT(*) FROM pet_orders po WHERE po.affiliate_creator_id = c.id), 0) AS sample_orders_total,
+    COALESCE((SELECT COUNT(*) FROM pet_orders po WHERE po.affiliate_creator_id = c.id
+              AND po.status IN ('paid','processed','printed','shipped','complete')), 0) AS sample_orders_done,
+    COALESCE((SELECT COUNT(*) FROM pet_orders po WHERE po.affiliate_creator_id = c.id
+              AND po.status IN ('pending','address_pending_verification','address_invalid')), 0) AS sample_orders_open,
+
     -- Non-commission credits/debits (video bonuses, manual adjustments, clawbacks)
     COALESCE((SELECT SUM(amount_cents) FROM creator_balance_ledger WHERE creator_id = c.id), 0) AS bonus_cents,
 
@@ -762,6 +772,15 @@ function rowToListItem(row) {
     connectState = row.stripe_connect_payouts_enabled ? 'ready' : 'onboarding';
   }
 
+  // Sample-order signal — has the creator actually gone through checkout?
+  //   placed  → a completed order, or the freebie was redeemed
+  //   started → checked out but the order is still open (pending / address_invalid)
+  //   none    → never reached checkout
+  const sampleDone = Number(row.sample_orders_done) || 0;
+  const sampleOpen = Number(row.sample_orders_open) || 0;
+  const sampleOrder = (sampleDone > 0 || row.freebie_redeemed_at) ? 'placed'
+                    : (sampleOpen > 0 ? 'started' : 'none');
+
   return {
     id:                       Number(row.id),
     name:                     row.name,
@@ -780,6 +799,10 @@ function rowToListItem(row) {
     review_video_bonus_cents: Number(row.review_video_bonus_cents) || 1000,
     status,
     connect_state:            connectState,
+    sample_order:             sampleOrder,
+    sample_orders_total:      Number(row.sample_orders_total) || 0,
+    sample_orders_done:       sampleDone,
+    sample_orders_open:       sampleOpen,
     clicks_total:             Number(row.clicks_total),
     clicks_7d:                Number(row.clicks_7d),
     orders_count:             Number(row.orders_count),

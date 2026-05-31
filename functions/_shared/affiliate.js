@@ -229,3 +229,193 @@ export async function findCreatorByEmail(db, email) {
   );
   return res.rows[0] || null;
 }
+
+
+// ── Order attribution ───────────────────────────────────────────────────────
+// Resolve which creator (if any) a Checkout Session belongs to, by inspecting
+// the applied promotion code(s) first, then the cookie-supplied affiliate_ref
+// in metadata. Returns a structured result the callers use to (a) back-fill the
+// pet_orders display columns and (b) commit the commission-bearing
+// affiliate_orders row.
+//
+// Returns:
+//   null                       — no affiliate association
+//   { storeCredit: true }      — store-credit redemption, not a new attributable order
+//   { full, creator, ... }     — resolved attribution + money fields (in cents)
+export async function resolveAttribution(stripe, db, session) {
+  // Re-fetch with discount + line-item totals expanded — the raw webhook event
+  // payload doesn't always carry enough detail to resolve the promo code.
+  let full;
+  try {
+    full = await stripe.checkout.sessions.retrieve(session.id, {
+      expand: ['total_details.breakdown', 'line_items'],
+    });
+  } catch (err) {
+    console.warn('resolveAttribution: session retrieve failed, using payload:', err);
+    full = session;
+  }
+
+  let creator = null;
+  let attribution = null;
+  let isFreebie = false;
+
+  const promoIds = (full?.discounts || []).map(d => d.promotion_code).filter(Boolean);
+
+  // ── Path 2: promo code on the session ──
+  if (promoIds.length) {
+    for (const promoId of promoIds) {
+      try {
+        const pc = await stripe.promotionCodes.retrieve(promoId);
+
+        // Store-credit redemptions: commission was already earned (and cashed
+        // out) on whatever produced the balance. Not a new attributable order.
+        if (pc.coupon?.metadata?.kind === 'store_credit') {
+          return { storeCredit: true };
+        }
+
+        const code = normalizeCode(pc.code);
+        const c = await findCreatorByCode(db, code);
+        if (c) {
+          creator     = c;
+          attribution = 'coupon';
+          // Welcome freebie code = 100% off → non-commissionable.
+          if (code === c.coupon_code.toUpperCase() + '-WELCOME-' + code.slice(-4) ||
+              (pc.coupon?.percent_off === 100)) {
+            isFreebie = true;
+          }
+          break;
+        }
+      } catch (err) {
+        console.warn('resolveAttribution: promo retrieve failed:', err);
+      }
+    }
+  }
+
+  // ── Path 1: cookie-supplied affiliate_ref in metadata ──
+  if (!creator) {
+    const ref = normalizeCode(full?.metadata?.affiliate_ref || '');
+    if (ref) {
+      const c = await findCreatorByCode(db, ref);
+      if (c) { creator = c; attribution = 'cookie'; }
+    }
+  }
+
+  if (!creator) return null;
+
+  // ── Money fields (cents) ──
+  const subtotal      = Number(full?.amount_subtotal) || 0;
+  const total         = Number(full?.amount_total)    || 0;
+  const discountCents = Number(full?.total_details?.amount_discount) || 0;
+  const shippingCents = Number(full?.total_details?.amount_shipping) || 0;
+  // Commissionable gross = post-discount, pre-shipping/tax (≈ subtotal − discount).
+  const grossCents    = Math.max(0, subtotal - discountCents);
+
+  // Infer a freebie from the totals if the promo type didn't already flag it
+  // (e.g. the whole order nets to just shipping, gross is zero).
+  if (!isFreebie && total === shippingCents && grossCents === 0) {
+    isFreebie = true;
+  }
+
+  const commissionRate  = Number(creator.commission_rate);
+  const commissionCents = isFreebie ? 0 : Math.round(grossCents * commissionRate);
+
+  return {
+    full, creator, attribution, isFreebie,
+    subtotal, total, discountCents, shippingCents, grossCents,
+    commissionRate, commissionCents,
+  };
+}
+
+// Back-fill the pet_orders affiliate_* columns for at-a-glance visibility in the
+// Command Station. Safe to call for ANY order state (including unpaid /
+// address_invalid) — it writes display fields only and never inserts a
+// commission-bearing affiliate_orders row or marks a freebie redeemed.
+// Returns the resolved attribution (or null) so callers can reuse it.
+export async function backfillOrderAttribution(env, db, stripe, session, orderId) {
+  const r = await resolveAttribution(stripe, db, session);
+  if (!r || r.storeCredit || !r.creator) return r || null;
+  await db.query(
+    `UPDATE pet_orders SET
+       affiliate_creator_id       = $1,
+       affiliate_coupon_code      = $2,
+       affiliate_commission_rate  = $3,
+       affiliate_commission_cents = $4,
+       affiliate_is_freebie       = $5
+     WHERE order_id = $6`,
+    [r.creator.id, r.creator.coupon_code, r.commissionRate, r.commissionCents, r.isFreebie, orderId]
+  );
+  return r;
+}
+
+// Commit the commission-bearing affiliate_orders row for a PAID / fulfilled
+// order. Idempotent on order_id_text. Also back-fills pet_orders and marks the
+// creator's freebie redeemed. Call ONLY once the order is actually paid
+// (webhook capture, success-page recovery, or admin override) — never for an
+// order that may still fall through.
+export async function attributeOrder(env, db, stripe, session, orderId) {
+  const r = await resolveAttribution(stripe, db, session);
+  if (!r || r.storeCredit || !r.creator) return;
+
+  const { full, creator, attribution, isFreebie,
+          grossCents, discountCents, commissionRate, commissionCents } = r;
+
+  // Look up pet_orders.id for the FK
+  const po = await db.query('SELECT id FROM pet_orders WHERE order_id = $1 LIMIT 1', [orderId]);
+  const petOrderPK = po.rows[0]?.id || null;
+
+  // Insert (idempotent on order_id_text)
+  await db.query(
+    `INSERT INTO affiliate_orders
+       (creator_id, pet_order_id, order_id_text, stripe_session_id, stripe_payment_intent,
+        attribution_method, is_freebie, gross_cents, discount_cents,
+        commission_rate, commission_cents)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     ON CONFLICT (order_id_text) DO NOTHING`,
+    [
+      creator.id, petOrderPK, orderId,
+      full?.id || session.id, full?.payment_intent || session.payment_intent || '',
+      attribution, isFreebie, grossCents, discountCents,
+      commissionRate, commissionCents,
+    ]
+  );
+
+  // Back-fill pet_orders for at-a-glance visibility
+  await db.query(
+    `UPDATE pet_orders SET
+       affiliate_creator_id      = $1,
+       affiliate_coupon_code     = $2,
+       affiliate_commission_rate = $3,
+       affiliate_commission_cents = $4,
+       affiliate_is_freebie      = $5
+     WHERE order_id = $6`,
+    [creator.id, creator.coupon_code, commissionRate, commissionCents, isFreebie, orderId]
+  );
+
+  // If this was a freebie redemption, mark it on the creator row.
+  if (isFreebie && !creator.freebie_redeemed_at) {
+    await db.query(
+      `UPDATE affiliate_creators
+       SET freebie_redeemed_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND freebie_redeemed_at IS NULL`,
+      [creator.id]
+    );
+  }
+}
+
+// Resolve the capturable PaymentIntent id for an order. Prefers the stored
+// stripe_payment_intent, falling back to retrieving the Checkout Session when
+// the webhook never persisted it (older orders, races, or a session whose PI
+// only materialised later). Returns '' when there is genuinely no PaymentIntent
+// — e.g. a 100%-off freebie whose total was $0 (nothing to capture).
+export async function getPaymentIntentId(stripe, order) {
+  if (order?.stripe_payment_intent) return order.stripe_payment_intent;
+  const sessionId = order?.stripe_session_id;
+  if (!sessionId) return '';
+  try {
+    const s = await stripe.checkout.sessions.retrieve(sessionId);
+    return s?.payment_intent || '';
+  } catch (err) {
+    console.warn('getPaymentIntentId: session retrieve failed:', err);
+    return '';
+  }
+}

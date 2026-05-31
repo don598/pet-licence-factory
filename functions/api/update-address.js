@@ -21,6 +21,7 @@ import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { verifyAddress } from '../_shared/easypost.js';
 import { sendOrderConfirmationEmail } from '../_shared/email.js';
+import { attributeOrder, getPaymentIntentId } from '../_shared/affiliate.js';
 
 const MAX_ATTEMPTS = 5;
 
@@ -150,10 +151,11 @@ export async function onRequest(context) {
 
     // If retries are exhausted, void the Stripe auth so the customer is never
     // charged. Auths normally drop in ~7 days but voiding now is cleaner.
-    if (exhausted && order.stripe_payment_intent) {
+    if (exhausted) {
       try {
         const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-        await stripe.paymentIntents.cancel(order.stripe_payment_intent);
+        const piId = await getPaymentIntentId(stripe, { ...order, stripe_session_id: sessionId });
+        if (piId) await stripe.paymentIntents.cancel(piId);
       } catch (err) {
         console.error('Failed to void Stripe auth (non-fatal):', err);
       }
@@ -190,17 +192,28 @@ export async function onRequest(context) {
     return json(500, { error: 'Database error while saving the verified address.' });
   }
 
-  // Capture the held Stripe auth.
-  if (order.stripe_payment_intent) {
-    try {
-      const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-      await stripe.paymentIntents.capture(order.stripe_payment_intent);
-    } catch (err) {
-      const msg = String(err?.message || err);
-      if (!/already.*captured/i.test(msg)) {
-        console.error('Failed to capture Stripe auth after address fix:', err);
-      }
+  // Capture the held Stripe auth. Resolve the PaymentIntent defensively — the
+  // webhook doesn't always persist stripe_payment_intent, so fall back to the
+  // session. A genuinely empty PI means a $0 order (e.g. 100% freebie) with
+  // nothing to capture.
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+  try {
+    const piId = await getPaymentIntentId(stripe, { ...order, stripe_session_id: sessionId });
+    if (piId) await stripe.paymentIntents.capture(piId);
+  } catch (err) {
+    const msg = String(err?.message || err);
+    if (!/already.*captured/i.test(msg)) {
+      console.error('Failed to capture Stripe auth after address fix:', err);
     }
+  }
+
+  // Attribute the (now paid) order to its affiliate creator if a coupon/ref was
+  // used. Without this, a creator whose referral bounced on address and was
+  // then fixed here would never be credited. Always non-fatal.
+  try {
+    await attributeOrder(env, db, stripe, { id: sessionId }, order.order_id);
+  } catch (err) {
+    console.error('Affiliate attribution after address fix failed (non-fatal):', err);
   }
 
   // Send the confirmation email (delayed-but-now-real).

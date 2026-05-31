@@ -5,8 +5,10 @@
 // ---------------------------------------------------------------------------
 
 import { getDb } from '../_shared/db.js';
-import { sendShippingNotificationEmail, sendStampShippedEmail } from '../_shared/email.js';
+import { sendShippingNotificationEmail, sendStampShippedEmail, sendOrderConfirmationEmail } from '../_shared/email.js';
 import { createAndBuyLabel } from '../_shared/easypost.js';
+import { attributeOrder, getPaymentIntentId } from '../_shared/affiliate.js';
+import Stripe from 'stripe';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -36,6 +38,11 @@ function verifyToken(request, env) {
 
 // Whitelist of columns that admin can update on pet_orders
 const ALLOWED_ORDER_UPDATES = ['status', 'tracking_number', 'notes', 'shipping_label_url', 'verification_error'];
+
+// Strip control chars, cap length — used for admin-supplied override addresses.
+function clean(v, max = 200) {
+  return String(v ?? '').replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, max);
+}
 
 // ── Handler ─────────────────────────────────────────────────────────────────
 
@@ -211,6 +218,132 @@ export async function onRequest(context) {
         }
 
         return json(200, { success: true, emailSent });
+      }
+
+      // ── Override USPS + fulfil ─────────────────────────────────────────
+      // Admin escape hatch for an address_invalid order: ship the address the
+      // customer actually entered (USPS false-negatives on real addresses do
+      // happen), optionally lightly corrected. Captures the held auth, marks
+      // the order paid, credits any affiliate, and sends the confirmation email.
+      case 'force_fulfill': {
+        const { id, address } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+
+        const res = await db.query('SELECT * FROM pet_orders WHERE id = $1', [id]);
+        const order = res.rows[0];
+        if (!order) return json(404, { error: 'Order not found' });
+
+        // 1. Optionally overwrite the shipping address with admin-supplied values.
+        if (address && typeof address === 'object') {
+          const a = {
+            line1:   clean(address.line1),
+            line2:   clean(address.line2),
+            city:    clean(address.city),
+            state:   clean(address.state, 2).toUpperCase(),
+            zip:     clean(address.zip, 12),
+            country: clean(address.country, 2).toUpperCase() || 'US',
+          };
+          if (!a.line1 || !a.city || !a.state || !a.zip) {
+            return json(400, { error: 'Address needs at least line1, city, state, and ZIP.' });
+          }
+          await db.query(
+            `UPDATE pet_orders SET
+               ship_addr_line1 = $1, ship_addr_line2 = $2, ship_city = $3,
+               ship_state = $4, ship_zip = $5, ship_country = $6, updated_at = NOW()
+             WHERE id = $7`,
+            [a.line1, a.line2, a.city, a.state, a.zip, a.country, id]
+          );
+          Object.assign(order, {
+            ship_addr_line1: a.line1, ship_addr_line2: a.line2, ship_city: a.city,
+            ship_state: a.state, ship_zip: a.zip, ship_country: a.country,
+          });
+        }
+
+        // 2. Capture the held auth. A $0 order (e.g. 100% freebie) has no PI —
+        //    that's fine, there's simply nothing to charge.
+        const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+        let captured = false;
+        let captureNote = '';
+        const piId = await getPaymentIntentId(stripe, order);
+        if (piId) {
+          try {
+            await stripe.paymentIntents.capture(piId);
+            captured = true;
+          } catch (err) {
+            const msg = String(err?.message || err);
+            if (/already.*captured/i.test(msg)) {
+              captured = true;
+              captureNote = 'already captured';
+            } else if (/canceled|cannot capture|expired|requires_payment_method/i.test(msg)) {
+              return json(409, {
+                error: `Could not capture payment: ${msg}. The card hold may have expired — ask the customer to check out again.`,
+              });
+            } else {
+              throw err;
+            }
+          }
+        } else {
+          captureNote = 'no payment intent (free order — nothing to charge)';
+        }
+
+        // 3. Mark paid + clear the verification error.
+        await db.query(
+          `UPDATE pet_orders SET status = 'paid', verification_error = NULL, updated_at = NOW()
+           WHERE id = $1`,
+          [id]
+        );
+
+        // 4. Credit the affiliate creator if a coupon/ref was used (non-fatal).
+        if (order.stripe_session_id) {
+          try {
+            await attributeOrder(env, db, stripe, { id: order.stripe_session_id }, order.order_id);
+          } catch (err) {
+            console.error('force_fulfill affiliate attribution failed (non-fatal):', err);
+          }
+        }
+
+        // 5. Send the confirmation email (non-fatal).
+        if (order.customer_email) {
+          try {
+            await sendOrderConfirmationEmail(env, {
+              orderId:        order.order_id,
+              customerEmail:  order.customer_email,
+              customerName:   order.customer_name,
+              petFirstName:   order.pet_first_name,
+              petLastName:    order.pet_last_name,
+              packCount:      order.pack_count,
+              addOn:          order.add_on,
+              chipSize:       order.chip_size,
+              shippingOption: order.shipping_option,
+              total:          order.total,
+              shipAddrLine1:  order.ship_addr_line1,
+              shipAddrLine2:  order.ship_addr_line2,
+              shipCity:       order.ship_city,
+              shipState:      order.ship_state,
+              shipZip:        order.ship_zip,
+              shipCountry:    order.ship_country,
+            });
+          } catch (err) {
+            console.error('force_fulfill confirmation email failed (non-fatal):', err);
+          }
+        }
+
+        // Return the refreshed row (joined with creator name) for the UI.
+        const out = await db.query(
+          `SELECT p.id, p.order_id, p.status, p.created_at, p.updated_at, p.pet_first_name, p.pet_last_name,
+                  p.customer_email, p.customer_name, p.shipping_option, p.total, p.pack_count, p.add_on,
+                  p.chip_size, p.tracking_number, p.notes, p.stripe_payment_id,
+                  p.ship_addr_line1, p.ship_addr_line2, p.ship_city, p.ship_state, p.ship_zip, p.ship_country,
+                  p.verification_error, p.verification_attempts,
+                  p.affiliate_creator_id, p.affiliate_coupon_code, p.affiliate_commission_rate,
+                  p.affiliate_commission_cents, p.affiliate_is_freebie,
+                  c.name AS affiliate_creator_name
+           FROM pet_orders p
+           LEFT JOIN affiliate_creators c ON c.id = p.affiliate_creator_id
+           WHERE p.id = $1`,
+          [id]
+        );
+        return json(200, { success: true, captured, captureNote, order: out.rows[0] });
       }
 
       case 'delete_all_orders': {
