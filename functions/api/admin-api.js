@@ -294,9 +294,11 @@ export async function onRequest(context) {
         );
 
         // 4. Credit the affiliate creator if a coupon/ref was used (non-fatal).
+        let isFreebie = !!order.affiliate_is_freebie;
         if (order.stripe_session_id) {
           try {
-            await attributeOrder(env, db, stripe, { id: order.stripe_session_id }, order.order_id);
+            const attr = await attributeOrder(env, db, stripe, { id: order.stripe_session_id }, order.order_id);
+            isFreebie = isFreebie || !!attr?.isFreebie;
           } catch (err) {
             console.error('force_fulfill affiliate attribution failed (non-fatal):', err);
           }
@@ -317,7 +319,7 @@ export async function onRequest(context) {
               shippingOption: order.shipping_option,
               // order.total is the client-submitted full price; a freebie was
               // actually $0, so don't show "$14.90" on a free creator order.
-              total:          order.affiliate_is_freebie ? 'Free' : order.total,
+              total:          isFreebie ? 'Free' : order.total,
               shipAddrLine1:  order.ship_addr_line1,
               shipAddrLine2:  order.ship_addr_line2,
               shipCity:       order.ship_city,

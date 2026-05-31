@@ -400,6 +400,10 @@ export async function attributeOrder(env, db, stripe, session, orderId) {
       [creator.id]
     );
   }
+
+  // Hand the resolved attribution back so callers can tailor follow-ups
+  // (e.g. show "Free" instead of the full price on a freebie confirmation).
+  return r;
 }
 
 // Resolve the capturable PaymentIntent id for an order. Prefers the stored

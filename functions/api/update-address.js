@@ -210,13 +210,16 @@ export async function onRequest(context) {
   // Attribute the (now paid) order to its affiliate creator if a coupon/ref was
   // used. Without this, a creator whose referral bounced on address and was
   // then fixed here would never be credited. Always non-fatal.
+  let isFreebie = false;
   try {
-    await attributeOrder(env, db, stripe, { id: sessionId }, order.order_id);
+    const attr = await attributeOrder(env, db, stripe, { id: sessionId }, order.order_id);
+    isFreebie = !!attr?.isFreebie;
   } catch (err) {
     console.error('Affiliate attribution after address fix failed (non-fatal):', err);
   }
 
-  // Send the confirmation email (delayed-but-now-real).
+  // Send the confirmation email (delayed-but-now-real). Show "Free" for a
+  // 100%-off creator freebie rather than the client-submitted full price.
   try {
     await sendOrderConfirmationEmail(env, {
       orderId:        order.order_id,
@@ -228,7 +231,7 @@ export async function onRequest(context) {
       addOn:          order.add_on,
       chipSize:       order.chip_size,
       shippingOption: order.shipping_option,
-      total:          order.total,
+      total:          isFreebie ? 'Free' : order.total,
       shipAddrLine1:  normalized.street1,
       shipAddrLine2:  normalized.street2,
       shipCity:       normalized.city,

@@ -197,13 +197,17 @@ export async function onRequest(context) {
     // Records a row in affiliate_orders with the commission rate locked in,
     // and back-fills the matching pet_orders columns so admin views can see
     // attribution without joining. Always non-fatal.
+    let isFreebie = false;
     try {
-      await attributeOrder(env, db, stripe, session, orderId);
+      const attr = await attributeOrder(env, db, stripe, session, orderId);
+      isFreebie = !!attr?.isFreebie;
     } catch (err) {
       console.error('Affiliate attribution failed (non-fatal):', err);
     }
 
-    // Confirmation email — same template as before
+    // Confirmation email — same template as before. For a 100%-off creator
+    // freebie, show "Free" instead of orderRow.total (the client-submitted
+    // full price) so the creator never thinks they were charged.
     try {
       await sendOrderConfirmationEmail(env, {
         orderId:        orderRow.order_id,
@@ -215,7 +219,7 @@ export async function onRequest(context) {
         addOn:          orderRow.add_on,
         chipSize:       orderRow.chip_size,
         shippingOption: orderRow.shipping_option,
-        total:          orderRow.total,
+        total:          isFreebie ? 'Free' : orderRow.total,
         shipAddrLine1:  orderRow.ship_addr_line1,
         shipAddrLine2:  orderRow.ship_addr_line2,
         shipCity:       orderRow.ship_city,
