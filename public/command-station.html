@@ -2269,7 +2269,7 @@ html, body {
             <div class="panel-toolbar">
               <div class="filter-tabs" id="filter-tabs">
                 <button class="filter-tab active" data-filter="all"       onclick="setFilter('all')">All</button>
-                <button class="filter-tab"        data-filter="pending"   onclick="setFilter('pending')">Pending</button>
+                <button class="filter-tab"        data-filter="pending"   onclick="setFilter('pending')" title="Abandoned / incomplete checkouts — not counted as orders">Incomplete</button>
                 <button class="filter-tab t-paid" data-filter="paid"      onclick="setFilter('paid')">Paid</button>
                 <button class="filter-tab t-proc" data-filter="processed" onclick="setFilter('processed')">Processed</button>
                 <button class="filter-tab t-ship" data-filter="shipped"   onclick="setFilter('shipped')">Shipped</button>
@@ -2921,6 +2921,12 @@ function parseTotal(t) { return parseFloat((t || '0').replace(/[^0-9.]/g, '')) |
 // count toward revenue or show a dollar amount.
 function orderRevenue(o) { return isAffiliateFreebie(o) ? 0 : parseTotal(o.total); }
 function orderAmountLabel(o) { return isAffiliateFreebie(o) ? 'Free' : (o.total || '—'); }
+// An "incomplete checkout" is an abandoned-cart shell: submit-order writes a
+// `pending` row before redirecting to Stripe, and the webhook moves any
+// COMPLETED checkout out of `pending` (to address_pending_verification / paid /
+// address_invalid). So a row still `pending` never finished checkout — it's not
+// a real order and shouldn't be listed or counted as one.
+function isIncompleteCheckout(o) { return (o.status || '') === 'pending'; }
 
 function updateAnalytics() {
   const now       = Date.now();
@@ -2928,17 +2934,21 @@ function updateAnalytics() {
   const monthMs   = 30 * 24 * 60 * 60 * 1000;
   const paidStats = ['paid', 'processed', 'shipped', 'complete'];
 
-  const revenue     = allOrders.filter(o => paidStats.includes(o.status)).reduce((s, o) => s + orderRevenue(o), 0);
-  const thisWeek    = allOrders.filter(o => new Date(o.created_at).getTime() >= now - weekMs).length;
-  const thisMonth   = allOrders.filter(o => new Date(o.created_at).getTime() >= now - monthMs).length;
+  // Counts reflect REAL orders only — abandoned-cart shells (incomplete
+  // checkouts) are excluded so they never inflate the order numbers.
+  const realOrders  = allOrders.filter(o => !isIncompleteCheckout(o));
+
+  const revenue     = realOrders.filter(o => paidStats.includes(o.status)).reduce((s, o) => s + orderRevenue(o), 0);
+  const thisWeek    = realOrders.filter(o => new Date(o.created_at).getTime() >= now - weekMs).length;
+  const thisMonth   = realOrders.filter(o => new Date(o.created_at).getTime() >= now - monthMs).length;
 
   document.getElementById('stat-revenue').textContent = '$' + revenue.toFixed(2);
   document.getElementById('stat-week').textContent    = thisWeek;
   document.getElementById('stat-month').textContent   = thisMonth;
-  document.getElementById('stat-total').textContent   = allOrders.length;
+  document.getElementById('stat-total').textContent   = realOrders.length;
 
   const navOrders = document.getElementById('nav-orders-count');
-  if (navOrders) navOrders.textContent = allOrders.length;
+  if (navOrders) navOrders.textContent = realOrders.length;
 
   if (currentView === 'stats') renderStats();
 }
@@ -3162,8 +3172,10 @@ function renderTable() {
   const search = (document.getElementById('search-input').value || '').toLowerCase();
   let rows = allOrders.slice();
 
-  // Filter by status
-  if (currentFilter !== 'all') rows = rows.filter(o => o.status === currentFilter);
+  // Filter by status. The "All" view hides abandoned-cart shells (incomplete
+  // checkouts) so they don't read as orders; the "Incomplete" tab shows them.
+  if (currentFilter === 'all')      rows = rows.filter(o => !isIncompleteCheckout(o));
+  else if (currentFilter !== 'all') rows = rows.filter(o => o.status === currentFilter);
 
   // Search
   if (search) rows = rows.filter(o =>
