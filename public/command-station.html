@@ -2900,6 +2900,11 @@ async function loadOrders() {
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 function parseTotal(t) { return parseFloat((t || '0').replace(/[^0-9.]/g, '')) || 0; }
+// Effective revenue for an order. A 100%-off creator freebie actually cost $0,
+// but the row stores the client-submitted full price — so freebies must not
+// count toward revenue or show a dollar amount.
+function orderRevenue(o) { return isAffiliateFreebie(o) ? 0 : parseTotal(o.total); }
+function orderAmountLabel(o) { return isAffiliateFreebie(o) ? 'Free' : (o.total || '—'); }
 
 function updateAnalytics() {
   const now       = Date.now();
@@ -2907,7 +2912,7 @@ function updateAnalytics() {
   const monthMs   = 30 * 24 * 60 * 60 * 1000;
   const paidStats = ['paid', 'processed', 'shipped', 'complete'];
 
-  const revenue     = allOrders.filter(o => paidStats.includes(o.status)).reduce((s, o) => s + parseTotal(o.total), 0);
+  const revenue     = allOrders.filter(o => paidStats.includes(o.status)).reduce((s, o) => s + orderRevenue(o), 0);
   const thisWeek    = allOrders.filter(o => new Date(o.created_at).getTime() >= now - weekMs).length;
   const thisMonth   = allOrders.filter(o => new Date(o.created_at).getTime() >= now - monthMs).length;
 
@@ -2936,10 +2941,10 @@ function renderStats() {
   const paidStatuses = ['paid', 'processed', 'shipped', 'complete'];
   const paid = allOrders.filter(o => paidStatuses.includes(o.status));
 
-  const totalRevenue = paid.reduce((s, o) => s + parseTotal(o.total), 0);
+  const totalRevenue = paid.reduce((s, o) => s + orderRevenue(o), 0);
   const avgOrder     = paid.length ? totalRevenue / paid.length : 0;
   const revLast30    = paid.filter(o => new Date(o.created_at).getTime() >= now - 30 * day)
-                            .reduce((s, o) => s + parseTotal(o.total), 0);
+                            .reduce((s, o) => s + orderRevenue(o), 0);
   const conversion   = allOrders.length ? (paid.length / allOrders.length) * 100 : 0;
 
   // Repeat customers
@@ -3179,7 +3184,7 @@ function renderTable() {
       <td data-label="Shipping" onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
       <td data-label="Affiliate" onclick="openOrder(${o.id})">${renderAffiliateMarker(o)}</td>
       <td data-label="Status" onclick="openOrder(${o.id})"><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
-      <td data-label="Amount" onclick="openOrder(${o.id})">${o.total || '—'}</td>
+      <td data-label="Amount" onclick="openOrder(${o.id})">${orderAmountLabel(o)}</td>
     </tr>
   `).join('');
   updateBulkBar();
@@ -3287,7 +3292,7 @@ async function openOrder(dbId) {
     ['Affiliate Commission', isAffiliateOrder(order)
       ? (isAffiliateFreebie(order) ? 'None - welcome sample' : `${fmtCents(order.affiliate_commission_cents)} (${fmtPct(order.affiliate_commission_rate)})`)
       : '—'],
-    ['Total',       order.total],
+    ['Total',       orderAmountLabel(order)],
     ['Discount',    order.discount_earned ? '15% Applied' : 'None'],
   ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
 
@@ -4087,7 +4092,8 @@ function renderReceiptLabel(o) {
   const shipLabel  = ({ stamp: 'Stamp Shipping', standard: 'Standard Shipping', priority: 'Priority Shipping' })[shipKey] || 'Shipping';
 
   // Derive discount from actual paid total (stored as "$12.81") — avoids needing a new column.
-  const paidCents  = Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
+  // A 100%-off creator freebie actually cost $0, so the receipt shows it as free.
+  const paidCents  = isAffiliateFreebie(o) ? 0 : Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
   const paidSubtotal = Math.max(0, paidCents - shipAmt);
   const discountAmt  = Math.max(0, listSubtotal - paidSubtotal);
 
