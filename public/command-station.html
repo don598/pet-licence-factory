@@ -946,6 +946,14 @@ html, body {
 .editor-canvas-stack canvas:not(:first-child) {
   position: absolute; top: 0; left: 0;
 }
+/* Placement mode: grayed-licence stage with draggable photo */
+.editor-mode-toggle { display: flex; gap: 6px; }
+#placement-stage { display: flex; align-items: center; justify-content: center; }
+#placement-canvas {
+  display: block; max-width: 100%; max-height: 100%;
+  cursor: move; touch-action: none;
+  background: #f4f4f6; box-shadow: 0 0 0 1px var(--border);
+}
 
 .editor-toolbar {
   display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
@@ -2685,6 +2693,10 @@ html, body {
         <div class="modal-title">PHOTO EDITOR</div>
         <div class="modal-sub" id="editor-sub">Restore &amp; remove brush tools</div>
       </div>
+      <div class="editor-mode-toggle">
+        <button class="btn btn-ghost editor-tool-btn active" id="mode-cutout" onclick="setEditorMode('cutout')">✂️ Cutout</button>
+        <button class="btn btn-ghost editor-tool-btn" id="mode-place" onclick="setEditorMode('placement')">📐 Placement</button>
+      </div>
       <button class="modal-close" onclick="closePhotoEditor()">✕</button>
     </div>
 
@@ -2696,7 +2708,7 @@ html, body {
       </div>
     </div>
 
-    <div class="editor-toolbar">
+    <div class="editor-toolbar" id="editor-toolbar-cutout">
       <div class="editor-tool-group">
         <button class="btn btn-ghost editor-tool-btn active" id="tool-restore" onclick="setEditorTool('restore')">🔵 Restore</button>
         <button class="btn btn-ghost editor-tool-btn" id="tool-remove" onclick="setEditorTool('remove')">🔴 Remove</button>
@@ -2717,6 +2729,27 @@ html, body {
       <div class="editor-tool-group" style="margin-left:auto">
         <button class="btn btn-ghost" id="tool-reset" onclick="editorReset()">⟲ Reset</button>
         <button class="btn btn-green" id="tool-apply" onclick="applyPhotoEdit()">✓ Apply</button>
+      </div>
+    </div>
+
+    <!-- Placement & colour toolbar (shown in Placement mode) -->
+    <div class="editor-toolbar" id="editor-toolbar-placement" style="display:none">
+      <div class="editor-tool-group">
+        <label style="font-size:11px;color:var(--muted)">Zoom</label>
+        <input type="range" id="place-scale" class="editor-slider" min="40" max="300" value="100" oninput="onPlacementScale(this.value)">
+        <span id="place-scale-label" style="font-size:11px;color:var(--muted);min-width:38px">100%</span>
+      </div>
+      <div class="editor-tool-group">
+        <label style="font-size:11px;color:var(--muted)">Saturation</label>
+        <input type="range" id="place-sat" class="editor-slider" min="0" max="200" value="100" oninput="onPlacementSaturation(this.value)">
+        <span id="place-sat-label" style="font-size:11px;color:var(--muted);min-width:38px">100%</span>
+      </div>
+      <div class="editor-tool-group">
+        <span style="font-size:10px;color:var(--muted)">Drag the photo to reposition · scroll to zoom</span>
+      </div>
+      <div class="editor-tool-group" style="margin-left:auto">
+        <button class="btn btn-ghost" id="place-reset" onclick="resetPlacement()">⟲ Reset</button>
+        <button class="btn btn-green" id="place-apply" onclick="applyPhotoEdit()">✓ Apply</button>
       </div>
     </div>
 
@@ -3430,6 +3463,7 @@ async function openOrder(dbId) {
   // Reset licence preview and editor state
   _editedPhotoUrl = null;
   _savedMaskImageData = null;
+  _photoTransform = defaultPhotoTransform();
   document.getElementById('licence-preview').innerHTML = '<div class="licence-placeholder">Click "Generate" to render the licence card</div>';
   document.getElementById('dl-btn').style.display = 'none';
   document.getElementById('edit-photo-btn').style.display = 'none';
@@ -3791,22 +3825,27 @@ async function generateLicence() {
         btn.textContent = '⌛ Rendering…';
         const photo = await loadImg(photoSrc);
 
-        // Main photo
+        // Pet-photo placement transform (set in the editor's Placement mode).
+        const T = _photoTransform || defaultPhotoTransform();
+
+        // Main photo — base cover-fit, then the admin's zoom + drag offset.
         ctx.save();
         ctx.beginPath(); ctx.rect(F.photoMain.x, F.photoMain.y, F.photoMain.w, F.photoMain.h); ctx.clip();
-        const scaleM = Math.max(F.photoMain.w / photo.width, F.photoMain.h / photo.height);
+        if ((T.saturation || 1) !== 1) ctx.filter = `saturate(${T.saturation})`;
+        const scaleM = Math.max(F.photoMain.w / photo.width, F.photoMain.h / photo.height) * (T.scale || 1);
         const swM = photo.width * scaleM, shM = photo.height * scaleM;
-        const sxM = F.photoMain.x + (F.photoMain.w - swM) / 2;
-        const syM = F.photoMain.y + (F.photoMain.h - shM) / 2;
+        const sxM = F.photoMain.x + (F.photoMain.w - swM) / 2 + (T.offsetX || 0);
+        const syM = F.photoMain.y + (F.photoMain.h - shM) / 2 + (T.offsetY || 0);
         ctx.drawImage(photo, sxM, syM, swM, shM);
         ctx.restore();
 
-        // Watermark photo (20% opacity, circular clip)
+        // Watermark photo (20% opacity, circular clip) — saturation only, stays centred.
         ctx.save();
         const wm = F.photoWmark;
         const cx = wm.x + wm.w / 2, cy = wm.y + wm.h / 2;
         const rx = wm.w / 2, ry = wm.h / 2;
         ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
+        if ((T.saturation || 1) !== 1) ctx.filter = `saturate(${T.saturation})`;
         ctx.globalAlpha = 0.2;
         const scaleW = Math.max(wm.w / photo.width, wm.h / photo.height);
         const swW = photo.width * scaleW, shW = photo.height * scaleW;
@@ -4239,6 +4278,10 @@ function printSingleOrder() {
 let editorState = null;
 let _editedPhotoUrl = null;    // data URL of editor output, used by generateLicence()
 let _savedMaskImageData = null; // persisted mask so reopening the editor restores your work
+// How the pet photo sits inside the licence photo box. Defaults reproduce the
+// original cover-fit/centered/full-saturation behaviour exactly.
+function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1 }; }
+let _photoTransform = defaultPhotoTransform();
 
 async function openPhotoEditor() {
   if (!modalOrder || !modalOrder.photo_url) {
@@ -4340,11 +4383,33 @@ async function openPhotoEditor() {
     overlayC.addEventListener('pointerup',   editorPointerUp);
     overlayC.addEventListener('pointerleave', editorPointerUp);
 
-    // Reset tool buttons
+    // ── Placement stage (grayed licence + draggable photo), hidden until used ──
+    const placeWrap = document.createElement('div');
+    placeWrap.id = 'placement-stage';
+    placeWrap.style.display = 'none';
+    const placeC = document.createElement('canvas');
+    placeC.id = 'placement-canvas';
+    const pFit = Math.min((areaRect.width * 0.92) / LIC_W, (maxH) / LIC_H, 0.6);
+    placeC.width  = Math.round(LIC_W * pFit);
+    placeC.height = Math.round(LIC_H * pFit);
+    placeWrap.appendChild(placeC);
+    area.appendChild(placeWrap);
+    editorState.placeCanvas = placeC;
+    editorState.placeFit    = pFit;   // licence-px → canvas-px
+    editorState.templateImg = null;
+    editorState.placementSrc = null;
+    placeC.addEventListener('pointerdown', placementPointerDown);
+    placeC.addEventListener('pointermove', placementPointerMove);
+    placeC.addEventListener('pointerup',   placementPointerUp);
+    placeC.addEventListener('pointerleave',placementPointerUp);
+    placeC.addEventListener('wheel', placementWheel, { passive: false });
+
+    // Reset tool buttons + default to Cutout mode
     setEditorTool('restore');
     document.getElementById('brush-size').value = 25;
     document.getElementById('brush-size-label').textContent = '25';
     updateUndoRedoButtons();
+    setEditorMode('cutout');
 
     document.getElementById('editor-sub').textContent = `${pw}×${ph} — Restore & remove brush tools`;
 
@@ -4597,7 +4662,150 @@ async function applyPhotoEdit() {
   closePhotoEditor();
   showToast('Photo updated — refreshing card…', 'ok');
   // Auto-regenerate so the card preview reflects the new photo immediately
+  // (_photoTransform persists globally, so placement + saturation carry over).
   try { await generateLicence(); } catch (e) { console.error('auto-regen failed:', e); }
+}
+
+// ── Placement mode: position / zoom / saturate the photo on the licence ──────
+function setEditorMode(mode) {
+  if (!editorState) return;
+  editorState.mode = mode;
+  const isPlace = mode === 'placement';
+  document.getElementById('mode-cutout').classList.toggle('active', !isPlace);
+  document.getElementById('mode-place').classList.toggle('active', isPlace);
+  const stack = document.getElementById('editor-canvas-stack');
+  const stage = document.getElementById('placement-stage');
+  if (stack) stack.style.display = isPlace ? 'none' : '';
+  if (stage) stage.style.display = isPlace ? 'flex' : 'none';
+  document.getElementById('editor-toolbar-cutout').style.display    = isPlace ? 'none' : 'flex';
+  document.getElementById('editor-toolbar-placement').style.display = isPlace ? 'flex' : 'none';
+  document.getElementById('editor-sub').textContent = isPlace
+    ? 'Drag to reposition · scroll to zoom · adjust saturation'
+    : `${editorState.pw}×${editorState.ph} — Restore & remove brush tools`;
+
+  if (isPlace) {
+    (async () => {
+      if (!editorState.templateImg) {
+        try { editorState.templateImg = await loadImg('/images/Blank Card.png'); }
+        catch (e) { editorState.templateImg = null; }
+      }
+      buildPlacementSrc();      // composite the current cutout (picks up brush edits)
+      syncPlacementControls();
+      renderPlacement();
+    })();
+  }
+}
+
+// Composite original + current mask into a source canvas for the placement view.
+function buildPlacementSrc() {
+  if (!editorState) return;
+  const { originalImg, maskCanvas, pw, ph } = editorState;
+  const comp = document.createElement('canvas');
+  comp.width = pw; comp.height = ph;
+  const cx = comp.getContext('2d');
+  cx.drawImage(originalImg, 0, 0, pw, ph);
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(maskCanvas, 0, 0);
+  editorState.placementSrc = comp;
+}
+
+function renderPlacement() {
+  if (!editorState || !editorState.placeCanvas || !editorState.placementSrc) return;
+  const c = editorState.placeCanvas;
+  const ctx = c.getContext('2d');
+  const s = editorState.placeFit;                 // licence-px → canvas-px
+  const T = _photoTransform || defaultPhotoTransform();
+  const box = { x: F.photoMain.x * s, y: F.photoMain.y * s, w: F.photoMain.w * s, h: F.photoMain.h * s };
+
+  ctx.clearRect(0, 0, c.width, c.height);
+  // Grayed-out licence behind, so placement reads in context.
+  ctx.fillStyle = '#f4f4f6';
+  ctx.fillRect(0, 0, c.width, c.height);
+  if (editorState.templateImg) {
+    ctx.globalAlpha = 0.32;
+    ctx.drawImage(editorState.templateImg, 0, 0, c.width, c.height);
+    ctx.globalAlpha = 1;
+  }
+
+  // The pet photo at full colour, cover-fit + zoom + drag offset, clipped to box.
+  const src = editorState.placementSrc;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip();
+  if ((T.saturation || 1) !== 1) ctx.filter = `saturate(${T.saturation})`;
+  const baseScale = Math.max(F.photoMain.w / editorState.pw, F.photoMain.h / editorState.ph);
+  const drawScale = baseScale * (T.scale || 1) * s;
+  const dwp = editorState.pw * drawScale, dhp = editorState.ph * drawScale;
+  const dx = box.x + (box.w - dwp) / 2 + (T.offsetX || 0) * s;
+  const dy = box.y + (box.h - dhp) / 2 + (T.offsetY || 0) * s;
+  ctx.drawImage(src, dx, dy, dwp, dhp);
+  ctx.restore();
+
+  // Photo-box outline.
+  ctx.strokeStyle = 'rgba(0,120,255,.85)';
+  ctx.setLineDash([6, 4]); ctx.lineWidth = 2;
+  ctx.strokeRect(box.x + 1, box.y + 1, box.w - 2, box.h - 2);
+  ctx.setLineDash([]);
+}
+
+function syncPlacementControls() {
+  const T = _photoTransform || defaultPhotoTransform();
+  const sc = Math.round((T.scale || 1) * 100);
+  const sa = Math.round((T.saturation || 1) * 100);
+  const scEl = document.getElementById('place-scale');
+  const saEl = document.getElementById('place-sat');
+  if (scEl) { scEl.value = sc; document.getElementById('place-scale-label').textContent = sc + '%'; }
+  if (saEl) { saEl.value = sa; document.getElementById('place-sat-label').textContent = sa + '%'; }
+}
+
+function onPlacementScale(v) {
+  _photoTransform.scale = Math.max(0.4, Math.min(3, (+v || 100) / 100));
+  document.getElementById('place-scale-label').textContent = Math.round(_photoTransform.scale * 100) + '%';
+  renderPlacement();
+}
+function onPlacementSaturation(v) {
+  _photoTransform.saturation = Math.max(0, Math.min(2, (+v || 100) / 100));
+  document.getElementById('place-sat-label').textContent = Math.round(_photoTransform.saturation * 100) + '%';
+  renderPlacement();
+}
+
+function placementPointerDown(e) {
+  if (!editorState) return;
+  editorState.placeDrag = true;
+  editorState.placeLastX = e.clientX;
+  editorState.placeLastY = e.clientY;
+  try { editorState.placeCanvas.setPointerCapture(e.pointerId); } catch (_) {}
+}
+function placementPointerMove(e) {
+  if (!editorState || !editorState.placeDrag) return;
+  const c = editorState.placeCanvas;
+  const rect = c.getBoundingClientRect();
+  const cssToCanvas = rect.width ? (c.width / rect.width) : 1;  // CSS px → canvas px
+  // canvas px → licence px is /placeFit
+  const dx = (e.clientX - editorState.placeLastX) * cssToCanvas / editorState.placeFit;
+  const dy = (e.clientY - editorState.placeLastY) * cssToCanvas / editorState.placeFit;
+  _photoTransform.offsetX += dx;
+  _photoTransform.offsetY += dy;
+  editorState.placeLastX = e.clientX;
+  editorState.placeLastY = e.clientY;
+  renderPlacement();
+}
+function placementPointerUp() {
+  if (!editorState) return;
+  editorState.placeDrag = false;
+}
+function placementWheel(e) {
+  if (!editorState) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.06 : 0.94;
+  _photoTransform.scale = Math.max(0.4, Math.min(3, (_photoTransform.scale || 1) * factor));
+  syncPlacementControls();
+  renderPlacement();
+}
+function resetPlacement() {
+  _photoTransform = defaultPhotoTransform();
+  syncPlacementControls();
+  renderPlacement();
+  showToast('Placement reset', 'ok');
 }
 
 // ── SAM (Segment Anything Model) Integration ─────────────────────────────────
