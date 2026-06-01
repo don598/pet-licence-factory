@@ -45,9 +45,12 @@ async function submitOrder(orderData) {
 // ═══════════════════════════════════════════════════════════
 // PRICES
 // ═══════════════════════════════════════════════════════════
-// Shipping rates must match PRICES in functions/api/create-checkout-session.js
-// (that file is the source of truth for what Stripe actually charges).
-const PRICES = { pack1: 13.95, pack2: 19.99, decal: 4.99, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
+// Canonical client prices come from /pricing.js (window.PLF_PRICES_USD), which
+// must stay in sync with functions/_shared/pricing.js (the server source of
+// truth for what Stripe charges). The literal below is a safe fallback if
+// pricing.js hasn't loaded.
+const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
+  || { pack1: 13.95, pack2: 19.99, decal: 4.99, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
 
 // ═══════════════════════════════════════════════════════════
 // GLOBAL STATE

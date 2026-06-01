@@ -822,6 +822,18 @@ html, body {
 }
 .licence-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 
+/* Always-visible order quick-stats above the action buttons */
+.order-quickstats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.order-quickstats:empty { display: none; }
+.oqs-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px; border-radius: var(--r-pill, 999px);
+  border: 1px solid var(--border); background: var(--surface2);
+  font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap;
+}
+.oqs-chip .oqs-k { color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .4px; font-size: 10px; }
+.oqs-chip.oqs-total { background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.30); color: var(--green); }
+
 /* Status section */
 .status-section {
   background: var(--surface2);
@@ -2118,6 +2130,8 @@ html, body {
   }
 }
   </style>
+  <!-- Canonical client pricing (window.PLF_PRICES) — keep in sync with functions/_shared/pricing.js -->
+  <script src="pricing.js"></script>
 </head>
 <body>
 
@@ -2615,6 +2629,8 @@ html, body {
         <div class="licence-canvas-wrap" id="licence-preview">
           <div class="licence-placeholder">Click "Generate" to render the licence card</div>
         </div>
+        <!-- Always-visible order quick-stats (chip size + item breakdown) -->
+        <div class="order-quickstats" id="order-quickstats"></div>
         <div class="licence-actions">
           <button class="btn btn-accent" id="gen-btn" onclick="generateLicence()">⚙ Generate Card</button>
           <button class="btn btn-blue"   id="edit-photo-btn" onclick="openPhotoEditor()" style="display:none">✎ Edit Photo</button>
@@ -3248,6 +3264,28 @@ function esc(str) {
 let modalOrder   = null;
 let licenceCanvas = null;
 
+// Build the always-visible quick-stats strip: chip size, total item count, and
+// a breakdown of each item (licence stickers + any decal add-on).
+function orderQuickStatsHtml(o) {
+  if (!o) return '';
+  const pack = parseInt(o.pack_count) || 1;
+  const items = [{ name: `Licence Sticker (${pack === 2 ? '2-Pack' : '1-Pack'})`, qty: pack }];
+  if (o.add_on === 'car_decal') items.push({ name: '8×8" Car Decal', qty: 1 });
+  const totalItems = items.reduce((s, i) => s + i.qty, 0);
+
+  const chipRaw = (o.chip_size || '').trim();
+  const chipLabel = chipRaw ? chipRaw.charAt(0).toUpperCase() + chipRaw.slice(1) : '—';
+
+  const pill = (k, v, cls = '') =>
+    `<span class="oqs-chip ${cls}"><span class="oqs-k">${k}</span> ${esc(v)}</span>`;
+
+  return [
+    pill('Chip', chipLabel),
+    pill('Items', String(totalItems), 'oqs-total'),
+    ...items.map(i => pill('', `${i.qty}× ${i.name}`)),
+  ].join('');
+}
+
 async function openOrder(dbId) {
   openOrderId = dbId;
   licenceCanvas = null;
@@ -3369,6 +3407,9 @@ async function openOrder(dbId) {
   const cityState = [order.ship_city, order.ship_state].filter(Boolean).join(', ');
   document.getElementById('customer-info-hint').textContent =
     cityState ? `${custSummary} · ${cityState}` : custSummary;
+
+  // Always-visible order quick-stats (chip size + item breakdown)
+  document.getElementById('order-quickstats').innerHTML = orderQuickStatsHtml(order);
 
   // Keep the two info sections collapsed by default on each open
   document.getElementById('pet-info-section').open = false;
@@ -4078,7 +4119,10 @@ function renderReceiptLabel(o) {
   const emp = randomAnimalEmployee();
 
   // ── Price breakdown — must match PRICES in create-checkout-session.js ─────
-  const PRICES = { pack1: 1395, pack2: 1999, decal: 499, stamp: 95, standard: 699, priority: 1099 };
+  // Canonical prices come from /pricing.js (window.PLF_PRICES); literal is a
+  // safe fallback if that script hasn't loaded.
+  const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES)
+    || { pack1: 1395, pack2: 1999, decal: 499, stamp: 95, standard: 699, priority: 1099 };
   const fmt = (cents) => '$' + (cents / 100).toFixed(2);
   const pack       = parseInt(o.pack_count) || 1;
   const packLabel  = pack === 2 ? 'Pet Licence Sticker (2-Pack)' : 'Pet Licence Sticker (1-Pack)';

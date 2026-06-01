@@ -8,17 +8,10 @@
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { readRefCookie, normalizeCode } from '../_shared/affiliate.js';
+import { PRICES } from '../_shared/pricing.js';
 
-// Prices in US cents — must match PRICES in plf-shared.js
-const PRICES = {
-  pack1:    1395,   // 1-Pack Licence Sticker
-  pack2:    1999,   // 2-Pack Licence Stickers
-  decal:     499,   // 8×8" Vinyl Car Decal
-  discRate:  0.15,  // 15% discount (mini-game reward)
-  stamp:      95,   // Stamp Shipping
-  standard:  699,   // Standard Shipping (USPS Ground Advantage — covers worst-case AK/HI $6.36)
-  priority:  1099,  // Priority Shipping (USPS Priority Flat Rate Envelope — covers continental $9.62; ~$0.13 AK/HI shortfall absorbed)
-};
+// PRICES (US cents) is the canonical source of truth — see
+// functions/_shared/pricing.js. The client mirror is public/pricing.js.
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {

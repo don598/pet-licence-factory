@@ -212,6 +212,8 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 #mg-msg{color:#00cc33;font-size:8px;text-align:center;text-shadow:0 0 4px rgba(0,255,65,.4)}
 #mg-org-btn{display:none;font-family:'Press Start 2P',monospace;font-size:8px;padding:10px 16px;background:#002a00;color:#00ff41;border:2px solid #00ff41;cursor:pointer;touch-action:manipulation;box-shadow:0 0 8px rgba(0,255,65,.4);animation:arcade-pulse 1.5s infinite}
 </style>
+  <!-- Canonical client pricing (window.PLF_PRICES_USD) — keep in sync with functions/_shared/pricing.js -->
+  <script src="pricing.js"></script>
 </head>
 <body>
 <!-- Ghost element for chip drag -->
@@ -549,9 +551,11 @@ const A = {
   s5bg:       'images/mobile/Station%206%20background%20mobile.png',
   template:   'images/Blank%20Card%20cropped.jpeg',
 };
-// Shipping must match PRICES in functions/api/create-checkout-session.js
-// (server is source of truth for what Stripe actually charges).
-const PRICES = { pack1:13.95, pack2:19.99, decal:4.99, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
+// Canonical client prices come from /pricing.js (window.PLF_PRICES_USD), kept
+// in sync with functions/_shared/pricing.js (server source of truth). Literal
+// is a safe fallback if pricing.js hasn't loaded.
+const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
+  || { pack1:13.95, pack2:19.99, decal:4.99, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
 
 // ═══════════════════════════════════════════════════════════
 // STATE
