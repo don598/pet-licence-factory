@@ -2735,6 +2735,9 @@ html, body {
     <!-- Placement & colour toolbar (shown in Placement mode) -->
     <div class="editor-toolbar" id="editor-toolbar-placement" style="display:none">
       <div class="editor-tool-group">
+        <button class="btn btn-ghost editor-tool-btn" id="tool-enhance" onclick="toggleAutoEnhance()" title="One-click auto colour, contrast &amp; sharpness — tuned from the pet, not the background">✨ Auto-Enhance</button>
+      </div>
+      <div class="editor-tool-group">
         <label style="font-size:11px;color:var(--muted)">Zoom</label>
         <input type="range" id="place-scale" class="editor-slider" min="40" max="300" value="100" oninput="onPlacementScale(this.value)">
         <span id="place-scale-label" style="font-size:11px;color:var(--muted);min-width:38px">100%</span>
@@ -3464,6 +3467,7 @@ async function openOrder(dbId) {
   _editedPhotoUrl = null;
   _savedMaskImageData = null;
   _photoTransform = defaultPhotoTransform();
+  _photoEnhance = false;
   document.getElementById('licence-preview').innerHTML = '<div class="licence-placeholder">Click "Generate" to render the licence card</div>';
   document.getElementById('dl-btn').style.display = 'none';
   document.getElementById('edit-photo-btn').style.display = 'none';
@@ -4282,6 +4286,8 @@ let _savedMaskImageData = null; // persisted mask so reopening the editor restor
 // original cover-fit/centered/full-saturation behaviour exactly.
 function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1 }; }
 let _photoTransform = defaultPhotoTransform();
+// One-click auto-enhance toggle (auto-levels + white balance + vibrance + unsharp).
+let _photoEnhance = false;
 
 async function openPhotoEditor() {
   if (!modalOrder || !modalOrder.photo_url) {
@@ -4361,7 +4367,8 @@ async function openPhotoEditor() {
 
     // Build state
     editorState = {
-      originalImg, bgRemovedImg, maskCanvas, maskCtx,
+      originalImg, pristineImg: originalImg, enhancedImg: null,
+      bgRemovedImg, maskCanvas, maskCtx,
       pw, ph, dw, dh, displayScale,
       undoStack: [], redoStack: [],
       tool: 'restore', brushSize: 25,
@@ -4410,6 +4417,10 @@ async function openPhotoEditor() {
     document.getElementById('brush-size-label').textContent = '25';
     updateUndoRedoButtons();
     setEditorMode('cutout');
+
+    // Restore a previously-toggled auto-enhance for this order.
+    updateEnhanceButton();
+    if (_photoEnhance) applyEnhance(true);
 
     document.getElementById('editor-sub').textContent = `${pw}×${ph} — Restore & remove brush tools`;
 
@@ -4806,6 +4817,125 @@ function resetPlacement() {
   syncPlacementControls();
   renderPlacement();
   showToast('Placement reset', 'ok');
+}
+
+// ── Auto-enhance (pure canvas) ───────────────────────────────────────────────
+// One-click colour/contrast/sharpness fix. Stats (black/white points + white
+// balance) are computed from the PET pixels only (via the mask) so a bright or
+// dark background doesn't skew the result. Then: per-pixel white-balance →
+// luminance contrast stretch (hue-preserving) → vibrance → mild unsharp mask.
+function autoEnhanceToCanvas(srcImg, maskCanvas, pw, ph) {
+  const c = document.createElement('canvas'); c.width = pw; c.height = ph;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(srcImg, 0, 0, pw, ph);
+  const img = ctx.getImageData(0, 0, pw, ph);
+  const d = img.data;
+
+  // Foreground mask (alpha) — only count the pet for stats.
+  let mdata = null;
+  try { mdata = maskCanvas.getContext('2d').getImageData(0, 0, pw, ph).data; } catch (_) {}
+  const isFg = (p) => !mdata || mdata[p + 3] > 128;
+
+  // 1) Luminance histogram + per-channel means over foreground pixels.
+  const hist = new Float64Array(256);
+  let sr = 0, sg = 0, sb = 0, fgN = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!isFg(i)) continue;
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    hist[(0.299 * r + 0.587 * g + 0.114 * b) | 0]++;
+    sr += r; sg += g; sb += b; fgN++;
+  }
+  if (fgN < 50) return c; // not enough foreground — leave as-is
+
+  // Black/white points: clip 0.5% tails so outliers don't flatten contrast.
+  const clip = fgN * 0.005;
+  let lo = 0, hi = 255, acc = 0;
+  for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > clip) { lo = v; break; } }
+  acc = 0;
+  for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > clip) { hi = v; break; } }
+  if (hi - lo < 16) { lo = 0; hi = 255; }       // near-flat — skip the stretch
+  const lumScale = 255 / (hi - lo);
+
+  // 2) Gentle gray-world white balance, clamped so we never over-correct.
+  const mr = sr / fgN, mg = sg / fgN, mb = sb / fgN;
+  const gray = (mr + mg + mb) / 3, str = 0.6;
+  const gain = (m) => Math.max(0.85, Math.min(1.2, Math.pow(gray / Math.max(1, m), str)));
+  const cwr = gain(mr), cwg = gain(mg), cwb = gain(mb);
+
+  // 3) Apply WB → contrast stretch → vibrance to every pixel.
+  const vib = 0.22;
+  for (let i = 0; i < d.length; i += 4) {
+    let r = (d[i] * cwr - lo) * lumScale;
+    let g = (d[i + 1] * cwg - lo) * lumScale;
+    let b = (d[i + 2] * cwb - lo) * lumScale;
+    r = r < 0 ? 0 : r > 255 ? 255 : r;
+    g = g < 0 ? 0 : g > 255 ? 255 : g;
+    b = b < 0 ? 0 : b > 255 ? 255 : b;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    const amt = vib * (1 - (mx - mn) / 255);     // boost dull pixels more
+    const avg = (r + g + b) / 3;
+    r = avg + (r - avg) * (1 + amt);
+    g = avg + (g - avg) * (1 + amt);
+    b = avg + (b - avg) * (1 + amt);
+    d[i]     = r < 0 ? 0 : r > 255 ? 255 : r;
+    d[i + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+    d[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // 4) Mild unsharp mask: result = base + amount·(base − blurred).
+  try {
+    const blur = document.createElement('canvas'); blur.width = pw; blur.height = ph;
+    const bctx = blur.getContext('2d');
+    bctx.filter = 'blur(1.1px)';
+    bctx.drawImage(c, 0, 0);
+    const base = ctx.getImageData(0, 0, pw, ph);
+    const bd = base.data;
+    const blr = bctx.getImageData(0, 0, pw, ph).data;
+    const amount = 0.5;
+    for (let i = 0; i < bd.length; i += 4) {
+      for (let k = 0; k < 3; k++) {
+        const v = bd[i + k] + amount * (bd[i + k] - blr[i + k]);
+        bd[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+      }
+    }
+    ctx.putImageData(base, 0, 0);
+  } catch (_) { /* sharpening is optional */ }
+
+  return c;
+}
+
+function updateEnhanceButton() {
+  const btn = document.getElementById('tool-enhance');
+  if (btn) btn.classList.toggle('active', !!_photoEnhance);
+}
+
+// Toggle / set the enhance state, swap the working image, and re-render the
+// active view. enhancedImg is computed once from the pristine original.
+function applyEnhance(on) {
+  if (!editorState) return;
+  _photoEnhance = !!on;
+  if (_photoEnhance) {
+    if (!editorState.enhancedImg) {
+      try {
+        editorState.enhancedImg = autoEnhanceToCanvas(
+          editorState.pristineImg, editorState.maskCanvas, editorState.pw, editorState.ph);
+      } catch (e) { console.error('auto-enhance failed:', e); _photoEnhance = false; }
+    }
+    if (_photoEnhance) editorState.originalImg = editorState.enhancedImg;
+  } else {
+    editorState.originalImg = editorState.pristineImg;
+  }
+  updateEnhanceButton();
+  // Re-render whichever view is showing.
+  if (editorState.mode === 'placement') { buildPlacementSrc(); renderPlacement(); }
+  else renderEditorOverlay();
+}
+
+function toggleAutoEnhance() {
+  if (!editorState) return;
+  applyEnhance(!_photoEnhance);
+  showToast(_photoEnhance ? 'Auto-enhance on ✨' : 'Auto-enhance off', 'ok');
 }
 
 // ── SAM (Segment Anything Model) Integration ─────────────────────────────────
