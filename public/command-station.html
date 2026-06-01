@@ -4092,10 +4092,15 @@ function renderReceiptLabel(o) {
   const shipLabel  = ({ stamp: 'Stamp Shipping', standard: 'Standard Shipping', priority: 'Priority Shipping' })[shipKey] || 'Shipping';
 
   // Derive discount from actual paid total (stored as "$12.81") — avoids needing a new column.
-  // A 100%-off creator freebie actually cost $0, so the receipt shows it as free.
-  const paidCents  = isAffiliateFreebie(o) ? 0 : Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
+  // A 100%-off creator freebie is free end-to-end (incl. shipping), so the
+  // receipt must show $0 — not the client-submitted full price.
+  const isFree       = isAffiliateFreebie(o);
+  const paidCents    = isFree ? 0 : Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
   const paidSubtotal = Math.max(0, paidCents - shipAmt);
-  const discountAmt  = Math.max(0, listSubtotal - paidSubtotal);
+  const effShipAmt   = isFree ? 0 : shipAmt;
+  const discountAmt  = isFree ? listSubtotal : Math.max(0, listSubtotal - paidSubtotal);
+  const discountLabel = isFree ? 'Creator freebie (100% off)' : '15% Mini-game discount';
+  const totalCents   = isFree ? 0 : (paidCents || (listSubtotal - discountAmt + shipAmt));
 
   return `
     <div class="label-page portrait label-receipt">
@@ -4111,10 +4116,10 @@ function renderReceiptLabel(o) {
         <div class="lr-line"><span class="lr-line-name">${esc(packLabel)}${o.chip_size ? ` <span class="lr-line-meta">(${esc(o.chip_size)} chip)</span>` : ''}</span><span class="lr-line-amt">${fmt(packAmt)}</span></div>
         ${wantsDecal ? `<div class="lr-line"><span class="lr-line-name">8×8" Vinyl Car Decal</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
         <div class="lr-line lr-sub"><span class="lr-line-name">Subtotal</span><span class="lr-line-amt">${fmt(listSubtotal)}</span></div>
-        ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">15% Mini-game discount</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
-        <div class="lr-line"><span class="lr-line-name">${esc(shipLabel)}</span><span class="lr-line-amt">${fmt(shipAmt)}</span></div>
+        ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">${discountLabel}</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
+        <div class="lr-line"><span class="lr-line-name">${esc(shipLabel)}</span><span class="lr-line-amt">${effShipAmt === 0 ? 'FREE' : fmt(effShipAmt)}</span></div>
       </div>
-      <div class="lr-total">Total: ${fmt(paidCents || (listSubtotal - discountAmt + shipAmt))}</div>
+      <div class="lr-total">Total: ${fmt(totalCents)}</div>
       <div class="lr-signoff">
         <div class="lr-tagline">Handcrafted with care by:</div>
         <div class="lr-paw" style="margin:8px 0;"><img src="${trackImageFor(emp.species, emp.name)}" alt="${esc(emp.species)} paw print"></div>
