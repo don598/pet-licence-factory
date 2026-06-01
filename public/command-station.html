@@ -4078,7 +4078,7 @@ function renderReceiptLabel(o) {
   const emp = randomAnimalEmployee();
 
   // ── Price breakdown — must match PRICES in create-checkout-session.js ─────
-  const PRICES = { pack1: 1395, pack2: 1999, decal: 499, stamp: 95, standard: 399, priority: 799 };
+  const PRICES = { pack1: 1395, pack2: 1999, decal: 499, stamp: 95, standard: 699, priority: 1099 };
   const fmt = (cents) => '$' + (cents / 100).toFixed(2);
   const pack       = parseInt(o.pack_count) || 1;
   const packLabel  = pack === 2 ? 'Pet Licence Sticker (2-Pack)' : 'Pet Licence Sticker (1-Pack)';
