@@ -1730,7 +1730,13 @@ async function s5Checkout() {
   // page can display a personalized preview on return from Stripe.
   try {
     const licCanvas = document.getElementById('licence-canvas');
-    if (licCanvas) {
+    if (licCanvas && licTemplate) {
+      // Snapshot at full resolution (TW×TH = 1322×830) so the success-page
+      // preview stays crisp on retina — the on-screen licence canvas is only
+      // ~280px wide, which upscales blurry. Restored to display size after.
+      const _snapW = licCanvas.width, _snapH = licCanvas.height;
+      licCanvas.width = TW; licCanvas.height = TH;
+      refreshLicPreview();
       const off = document.createElement('canvas');
       off.width  = licCanvas.width;
       off.height = licCanvas.height;
@@ -1758,6 +1764,9 @@ async function s5Checkout() {
         cardDataUrl:  dataUrl,
         ts:           Date.now(),
       }));
+      // Restore the small on-screen preview resolution.
+      licCanvas.width = _snapW; licCanvas.height = _snapH;
+      refreshLicPreview();
     }
   } catch (e) { /* localStorage full or disabled — skip */ }
 
