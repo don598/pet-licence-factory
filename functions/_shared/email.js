@@ -8,6 +8,11 @@ const SENDGRID_ENDPOINT = 'https://api.sendgrid.com/v3/mail/send';
 
 const DEFAULT_FROM_EMAIL = 'contact@creditcardart.com';
 const DEFAULT_FROM_NAME  = 'Pet Licence Factory';
+// Replies route here regardless of the from-address (so we can send from a
+// branded @petlicensefactory.com address while replies still land in the
+// monitored creditcardart inbox). Override per-send via the replyTo arg, or
+// globally via the SENDGRID_REPLY_TO env var.
+const DEFAULT_REPLY_TO   = 'contact@creditcardart.com';
 
 // ── HTML escape (XSS-safe interpolation into templates) ──────────────────────
 export function esc(v) {
@@ -34,11 +39,12 @@ export async function sendEmail(env, { to, subject, html, text, replyTo }) {
 
   const fromEmail = env.SENDGRID_FROM_EMAIL || DEFAULT_FROM_EMAIL;
   const fromName  = env.SENDGRID_FROM_NAME  || DEFAULT_FROM_NAME;
+  const replyEmail = replyTo || env.SENDGRID_REPLY_TO || DEFAULT_REPLY_TO;
 
   const body = {
     personalizations: [{ to: [{ email: to }] }],
     from:     { email: fromEmail, name: fromName },
-    reply_to: { email: replyTo || fromEmail, name: fromName },
+    reply_to: { email: replyEmail, name: fromName },
     subject,
     content: [
       ...(text ? [{ type: 'text/plain', value: text }] : []),
