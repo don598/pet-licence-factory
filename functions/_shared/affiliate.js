@@ -230,6 +230,18 @@ export async function findCreatorByEmail(db, email) {
   return res.rows[0] || null;
 }
 
+// Resolve a creator by the single-use welcome FREEBIE code (e.g.
+// "MYCODE-WELCOME-X7K2"). Distinct from coupon_code, so attribution must check
+// both — otherwise freebie redemptions never attribute to the creator.
+export async function findCreatorByFreebieCode(db, code) {
+  if (!code) return null;
+  const res = await db.query(
+    'SELECT * FROM affiliate_creators WHERE UPPER(freebie_code) = UPPER($1) LIMIT 1',
+    [code]
+  );
+  return res.rows[0] || null;
+}
+
 
 // ── Order attribution ───────────────────────────────────────────────────────
 // Resolve which creator (if any) a Checkout Session belongs to, by inspecting
@@ -274,13 +286,18 @@ export async function resolveAttribution(stripe, db, session) {
         }
 
         const code = normalizeCode(pc.code);
-        const c = await findCreatorByCode(db, code);
+        // Match the regular affiliate code first, then the welcome freebie code
+        // (which is "<coupon_code>-WELCOME-XXXX", a different string).
+        let c = await findCreatorByCode(db, code);
+        let viaFreebie = false;
+        if (!c) { c = await findCreatorByFreebieCode(db, code); viaFreebie = !!c; }
         if (c) {
           creator     = c;
           attribution = 'coupon';
-          // Welcome freebie code = 100% off → non-commissionable.
-          if (code === c.coupon_code.toUpperCase() + '-WELCOME-' + code.slice(-4) ||
-              (pc.coupon?.percent_off === 100)) {
+          // A welcome freebie (matched by freebie_code, or a 100%-off coupon) is
+          // a non-commissionable sample.
+          if (viaFreebie || pc.coupon?.percent_off === 100 ||
+              code === c.coupon_code.toUpperCase() + '-WELCOME-' + code.slice(-4)) {
             isFreebie = true;
           }
           break;
