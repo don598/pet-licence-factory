@@ -7,6 +7,10 @@ compatibility_flags = ["nodejs_compat"]
 # Non-secret env vars (secrets set via dashboard or `wrangler pages secret put`)
 [vars]
 URL = "https://petlicensefactory.com"
+# Branded transactional sender (petlicensefactory.com domain-authenticated in
+# SendGrid 2026-06). From name defaults to "Pet Licence Factory"; replies route
+# to contact@creditcardart.com (see functions/_shared/email.js).
+SENDGRID_FROM_EMAIL = "hello@petlicensefactory.com"
 
 # Hyperdrive binding for AWS RDS PostgreSQL
 [[hyperdrive]]
