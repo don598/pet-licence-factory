@@ -19,7 +19,6 @@
 
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
-import { verifyAddress } from '../_shared/easypost.js';
 import { sendOrderConfirmationEmail } from '../_shared/email.js';
 import { attributeOrder, getPaymentIntentId } from '../_shared/affiliate.js';
 
@@ -114,62 +113,12 @@ export async function onRequest(context) {
     });
   }
 
-  // ── Verify via EasyPost ─────────────────────────────────────────────────
-  let verification;
-  try {
-    verification = await verifyAddress(env, newAddress);
-  } catch (err) {
-    console.error('update-address verifyAddress hard-failed:', err);
-    return json(503, { error: 'Address verification is temporarily unavailable. Please try again in a moment.' });
-  }
-
-  // ── Verification failed ─────────────────────────────────────────────────
-  if (!verification.ok) {
-    const newAttempts = attempts + 1;
-    const exhausted   = newAttempts >= MAX_ATTEMPTS;
-    const reason      = verification.error || 'USPS could not verify this address.';
-
-    try {
-      await db.query(
-        `UPDATE pet_orders SET
-           ship_addr_line1       = $1,
-           ship_addr_line2       = $2,
-           ship_city             = $3,
-           ship_state            = $4,
-           ship_zip              = $5,
-           ship_country          = $6,
-           verification_attempts = $7,
-           verification_error    = $8,
-           updated_at            = NOW()
-         WHERE id = $9`,
-        [newAddress.street1, newAddress.street2, newAddress.city, newAddress.state,
-         newAddress.zip, newAddress.country, newAttempts, reason, order.id]
-      );
-    } catch (err) {
-      console.error('Failed to record verification failure (non-fatal):', err);
-    }
-
-    // If retries are exhausted, void the Stripe auth so the customer is never
-    // charged. Auths normally drop in ~7 days but voiding now is cleaner.
-    if (exhausted) {
-      try {
-        const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-        const piId = await getPaymentIntentId(stripe, { ...order, stripe_session_id: sessionId });
-        if (piId) await stripe.paymentIntents.cancel(piId);
-      } catch (err) {
-        console.error('Failed to void Stripe auth (non-fatal):', err);
-      }
-    }
-
-    return json(400, {
-      error: reason,
-      attemptsRemaining: Math.max(0, MAX_ATTEMPTS - newAttempts),
-      locked: exhausted,
-    });
-  }
-
-  // ── Verification passed — persist, capture, email ────────────────────────
-  const normalized = verification.normalized;
+  // ── No deliverability gate ───────────────────────────────────────────────
+  // Ship exactly the address the customer enters — same as the main checkout
+  // flow. The USPS/EasyPost check that used to be here was the broken gate
+  // that trapped pre-fix orders when a customer re-submitted a valid address,
+  // so we always accept and finalise now.
+  const normalized = { ...newAddress };
 
   try {
     await db.query(
