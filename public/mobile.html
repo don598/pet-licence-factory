@@ -1742,6 +1742,46 @@ async function s5Checkout(){
   }
   window.PLF_ORDER = { ...orderData, orderId };
 
+  // Stash a full-resolution licence snapshot (with the chip composited) so the
+  // success page shows a personalized preview on return from Stripe — same as
+  // game.html. Mobile renders the chip separately, so we composite it here.
+  // Best-effort: wrapped so a failure never blocks checkout.
+  try {
+    if (licCanvas && licTemplate && orderId) {
+      const compositeChip = (ctx, cw, ch) => {
+        if (!chipSize) return Promise.resolve();
+        const chipL = cw * 0.13, chipT = ch * 0.27;
+        const chipW = chipSize === 'mini' ? cw * 0.1168 : cw * 0.1402;
+        const chipH = chipSize === 'mini' ? ch * 0.1426 : ch * 0.2038;
+        return new Promise((res) => {
+          const ci = new Image(); ci.crossOrigin = 'anonymous';
+          ci.onload  = () => { ctx.drawImage(ci, chipL, chipT, chipW, chipH); res(); };
+          ci.onerror = () => res();
+          ci.src = chipSize === 'mini' ? 'images/mini-chip.png' : 'images/classic-chip.png';
+        });
+      };
+      const _w = licCanvas.width, _h = licCanvas.height;
+      licCanvas.width = TW; licCanvas.height = TH;   // full-res render for a crisp preview
+      refreshLicPreview();
+      const off = document.createElement('canvas');
+      off.width = licCanvas.width; off.height = licCanvas.height;
+      const octx = off.getContext('2d');
+      octx.drawImage(licCanvas, 0, 0);
+      await compositeChip(octx, off.width, off.height);
+      localStorage.setItem('plf_last_preview', JSON.stringify({
+        orderId,
+        petFirstName: petData.petFirstName || '',
+        petLastName:  petData.petLastName  || '',
+        cardDataUrl:  off.toDataURL('image/jpeg', 0.85),
+        ts:           Date.now(),
+      }));
+      // Restore the on-screen preview (re-add the chip) in case the user returns.
+      licCanvas.width = _w; licCanvas.height = _h;
+      refreshLicPreview();
+      await compositeChip(licCtx, licCanvas.width, licCanvas.height);
+    }
+  } catch (e) { /* preview stash is best-effort */ }
+
   // Create the Stripe Checkout session and redirect. This mirrors game.html's
   // s5Checkout — without this the Place Order button does nothing (was the
   // mobile checkout bug).
