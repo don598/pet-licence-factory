@@ -68,7 +68,7 @@
     /* ── State router ─────────────────────────────────────────────────── */
     .state { display: none; }
     body[data-state="verifying"]    .state-verifying    { display: block; }
-    body[data-state="confirmed"]    .state-confirmed    { display: block; }
+    body[data-state="confirmed"]    .state-confirmed    { display: flex; flex-direction: column; gap: clamp(16px, 2.5vh, 28px); }
     body[data-state="address-fix"]  .state-address-fix  { display: block; }
     body[data-state="locked"]       .state-locked       { display: block; }
 
