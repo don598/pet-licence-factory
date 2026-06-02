@@ -892,9 +892,9 @@ h1 {
       </form>
 
       <div class="result" id="result">
-        <div class="result-status">Application received</div>
-        <h2>We’ll review your profile.</h2>
-        <p id="resultCopy">Most approvals are completed within 24 hours. Check your email for your 100% off sample coupon, affiliate link, and dashboard access if approved.</p>
+        <div class="result-status">Application submitted ✓</div>
+        <h2>Thanks — now keep an eye on your inbox.</h2>
+        <p id="resultCopy">Approvals usually happen within 24 hours. We’ll email you your 100% off sample coupon, affiliate link, and dashboard access. Already got that email? You’re approved — just open it and follow the link (check spam &amp; Promotions if you don’t see it).</p>
       </div>
     </section>
   </section>
@@ -1041,8 +1041,8 @@ async function apiSignup(body) {
 function renderResult(data) {
   const email = data?.creator?.email;
   $('resultCopy').textContent = email
-    ? `Most approvals are completed within 24 hours. Check ${email} for your 100% off sample coupon, affiliate link, and dashboard access if approved.`
-    : 'Most approvals are completed within 24 hours. Check your email for your 100% off sample coupon, affiliate link, and dashboard access if approved.';
+    ? `Approvals usually happen within 24 hours. We’ll email ${email} your 100% off sample coupon, affiliate link, and dashboard access. Already got that email? You’re approved — just open it and follow the link (check spam & Promotions if you don’t see it).`
+    : 'Approvals usually happen within 24 hours. We’ll email you your 100% off sample coupon, affiliate link, and dashboard access. Already got that email? You’re approved — just open it and follow the link (check spam & Promotions if you don’t see it).';
   panel.classList.add('done');
   window.scrollTo({ top: 0, behavior: 'smooth' });
   fireConfetti();
