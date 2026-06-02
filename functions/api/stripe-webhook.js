@@ -1,19 +1,16 @@
 // ── Pet Licence Factory — Stripe Webhook (Cloudflare Pages Function) ────────
 // POST /api/stripe-webhook
 // Handles: checkout.session.completed
-//   1. Stripe Checkout uses capture_method: 'manual' — the card is auth'd, not charged
-//   2. We verify the shipping address with USPS (via EasyPost)
-//   3. If verified → capture the PaymentIntent and send confirmation email
-//   4. If not verified → mark order address_invalid (auth left untouched so the
-//      customer can fix the address on the success page within 5 attempts; we
-//      void the auth from /api/update-address once retries are exhausted)
+//   Stripe Checkout uses automatic capture, so the card is charged on checkout.
+//   We record the order as paid, attribute any affiliate, ship the address
+//   Stripe collected, and send the confirmation email. There is NO USPS/
+//   deliverability gate — we ship exactly what the customer entered.
 // ---------------------------------------------------------------------------
 
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
-import { sendOrderConfirmationEmail, sendAddressIssueEmail } from '../_shared/email.js';
-import { verifyAddress } from '../_shared/easypost.js';
-import { attributeOrder, backfillOrderAttribution } from '../_shared/affiliate.js';
+import { sendOrderConfirmationEmail } from '../_shared/email.js';
+import { attributeOrder } from '../_shared/affiliate.js';
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -94,12 +91,12 @@ export async function onRequest(context) {
     orderId, shipAmt, shippingOption, hasAddr: !!addr?.line1, email, paymentIntentId,
   });
 
-  // ── 1. Persist what Stripe gave us (status pending verification) ─────────
+  // ── 1. Persist what Stripe gave us and mark the order paid ───────────────
   let orderRow;
   try {
     const result = await db.query(
       `UPDATE pet_orders SET
-         status                = 'address_pending_verification',
+         status                = 'paid',
          stripe_payment_id     = $1,
          stripe_payment_intent = $2,
          customer_email        = $3,
@@ -142,142 +139,76 @@ export async function onRequest(context) {
     return json(200, { received: true });
   }
 
-  // ── 2. Verify the shipping address via EasyPost ──────────────────────────
-  let verification;
-  try {
-    verification = await verifyAddress(env, {
-      street1: orderRow.ship_addr_line1,
-      street2: orderRow.ship_addr_line2,
-      city:    orderRow.ship_city,
-      state:   orderRow.ship_state,
-      zip:     orderRow.ship_zip,
-      country: orderRow.ship_country,
-    });
-  } catch (err) {
-    // Hard EasyPost failure (network, auth, etc.) — leave order as
-    // address_pending_verification. Stripe will retry the webhook on 5xx.
-    console.error('Address verification hard-failed:', err);
-    return new Response('Address verification temporarily unavailable', { status: 503 });
-  }
-
-  if (verification.ok) {
-    // ── 3a. Capture the auth and finalise the order ────────────────────────
-    if (paymentIntentId) {
-      try {
-        await stripe.paymentIntents.capture(paymentIntentId);
-      } catch (err) {
-        // If the auth was already captured (rare race) Stripe returns 400.
-        // Anything else is an unexpected failure — log loudly but still
-        // mark the order paid so we don't double-handle.
-        const msg = String(err?.message || err);
-        if (!/already.*captured/i.test(msg)) {
-          console.error('paymentIntents.capture failed:', err);
-        }
+  // ── 2. Finalise the order ────────────────────────────────────────────────
+  // No deliverability gate: Stripe collected (and lightly validated) the
+  // shipping address, and we ship exactly what the customer entered. Checkout
+  // now uses automatic capture, so the payment is already captured by the time
+  // this webhook fires — we just record the order as paid.
+  //
+  // The capture call below is a belt-and-braces no-op: it only does anything
+  // for an in-flight manual-capture order created before this change. For
+  // automatic-capture (or $0 freebie) PaymentIntents it errors harmlessly.
+  if (paymentIntentId) {
+    try {
+      await stripe.paymentIntents.capture(paymentIntentId);
+    } catch (err) {
+      const msg = String(err?.message || err);
+      if (!/already.*captured|status of succeeded|automatic/i.test(msg)) {
+        console.error('paymentIntents.capture (non-fatal):', err);
       }
     }
-
-    try {
-      await db.query(
-        `UPDATE pet_orders SET
-           status             = 'paid',
-           verification_error = NULL,
-           updated_at         = NOW()
-         WHERE order_id = $1`,
-        [orderId]
-      );
-    } catch (err) {
-      console.error('Failed to flip order to paid (non-fatal):', err);
-    }
-
-    // ── Affiliate attribution ─────────────────────────────────────────────
-    // Resolves the creator from (in order):
-    //   1. an applied promotion code on the session
-    //   2. session.metadata.affiliate_ref (set from the cookie at checkout)
-    //
-    // Records a row in affiliate_orders with the commission rate locked in,
-    // and back-fills the matching pet_orders columns so admin views can see
-    // attribution without joining. Always non-fatal.
-    let isFreebie = false;
-    try {
-      const attr = await attributeOrder(env, db, stripe, session, orderId);
-      isFreebie = !!attr?.isFreebie;
-    } catch (err) {
-      console.error('Affiliate attribution failed (non-fatal):', err);
-    }
-
-    // Confirmation email — same template as before. For a 100%-off creator
-    // freebie, show "Free" instead of orderRow.total (the client-submitted
-    // full price) so the creator never thinks they were charged.
-    try {
-      await sendOrderConfirmationEmail(env, {
-        orderId:        orderRow.order_id,
-        customerEmail:  orderRow.customer_email,
-        customerName:   orderRow.customer_name,
-        petFirstName:   orderRow.pet_first_name,
-        petLastName:    orderRow.pet_last_name,
-        packCount:      orderRow.pack_count,
-        addOn:          orderRow.add_on,
-        chipSize:       orderRow.chip_size,
-        shippingOption: orderRow.shipping_option,
-        total:          isFreebie ? 'Free' : orderRow.total,
-        shipAddrLine1:  orderRow.ship_addr_line1,
-        shipAddrLine2:  orderRow.ship_addr_line2,
-        shipCity:       orderRow.ship_city,
-        shipState:      orderRow.ship_state,
-        shipZip:        orderRow.ship_zip,
-        shipCountry:    orderRow.ship_country,
-      });
-    } catch (emailErr) {
-      console.error('Confirmation email failed (non-fatal):', emailErr);
-    }
-
-    return json(200, { received: true, status: 'paid' });
   }
 
-  // ── 3b. Verification failed — mark address_invalid, leave auth open ─────
-  // The auth is held for ~7 days. The customer can fix the address on the
-  // success page (within 5 attempts) which will trigger the capture. If they
-  // give up, the auth expires naturally and no charge is ever made.
   try {
     await db.query(
       `UPDATE pet_orders SET
-         status             = 'address_invalid',
-         verification_error = $1,
+         status             = 'paid',
+         verification_error = NULL,
          updated_at         = NOW()
-       WHERE order_id = $2`,
-      [verification.error || 'Address could not be verified.', orderId]
+       WHERE order_id = $1`,
+      [orderId]
     );
   } catch (err) {
-    console.error('Failed to flag address_invalid:', err);
+    console.error('Failed to flip order to paid (non-fatal):', err);
   }
 
-  // Back-fill affiliate attribution for display even though the order isn't
-  // paid yet — so the Command Station shows which creator/coupon this stuck
-  // order belongs to. No commission row is written until it's actually
-  // fulfilled (success-page recovery or admin override). Always non-fatal.
+  // ── Affiliate attribution (non-fatal) ──
+  // Resolves the creator from an applied promo code or the cookie ref, records
+  // the commission row, and back-fills pet_orders for admin visibility.
+  let isFreebie = false;
   try {
-    await backfillOrderAttribution(env, db, stripe, session, orderId);
+    const attr = await attributeOrder(env, db, stripe, session, orderId);
+    isFreebie = !!attr?.isFreebie;
   } catch (err) {
-    console.error('Affiliate back-fill (address_invalid) failed (non-fatal):', err);
+    console.error('Affiliate attribution failed (non-fatal):', err);
   }
 
-  // Email the customer with a link back to the success page so they can fix
-  // the address even if they closed the tab.
+  // ── Confirmation email (non-fatal) ──
+  // For a 100%-off creator freebie, show "Free" rather than the client total.
   try {
-    await sendAddressIssueEmail(env, {
-      orderId:       orderRow.order_id,
-      customerEmail: orderRow.customer_email,
-      petFirstName:  orderRow.pet_first_name,
-      petLastName:   orderRow.pet_last_name,
-      sessionId:     session.id,
-      reason:        verification.error || 'USPS could not verify the address.',
-      siteOrigin:    env.URL || 'https://petlicensefactory.com',
+    await sendOrderConfirmationEmail(env, {
+      orderId:        orderRow.order_id,
+      customerEmail:  orderRow.customer_email,
+      customerName:   orderRow.customer_name,
+      petFirstName:   orderRow.pet_first_name,
+      petLastName:    orderRow.pet_last_name,
+      packCount:      orderRow.pack_count,
+      addOn:          orderRow.add_on,
+      chipSize:       orderRow.chip_size,
+      shippingOption: orderRow.shipping_option,
+      total:          isFreebie ? 'Free' : orderRow.total,
+      shipAddrLine1:  orderRow.ship_addr_line1,
+      shipAddrLine2:  orderRow.ship_addr_line2,
+      shipCity:       orderRow.ship_city,
+      shipState:      orderRow.ship_state,
+      shipZip:        orderRow.ship_zip,
+      shipCountry:    orderRow.ship_country,
     });
   } catch (emailErr) {
-    console.error('Address-issue email failed (non-fatal):', emailErr);
+    console.error('Confirmation email failed (non-fatal):', emailErr);
   }
 
-  return json(200, { received: true, status: 'address_invalid' });
+  return json(200, { received: true, status: 'paid' });
 }
 
 

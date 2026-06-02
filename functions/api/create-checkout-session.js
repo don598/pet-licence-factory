@@ -217,11 +217,10 @@ export async function onRequest(context) {
             },
           ],
       customer_creation: 'always',
-      // Auth-only: we capture the funds in the webhook only after USPS
-      // verifies the shipping address. If verification fails, the auth is
-      // voided and the customer is never charged.
+      // Charge immediately on checkout. Stripe collects + lightly validates the
+      // shipping address; we ship what the customer entered (no USPS gate).
       payment_intent_data: {
-        capture_method: 'manual',
+        capture_method: 'automatic',
       },
       metadata: {
         order_id:        orderId,
