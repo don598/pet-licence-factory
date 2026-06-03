@@ -2791,6 +2791,9 @@ html, body {
     <div class="editor-toolbar" id="editor-toolbar-placement" style="display:none">
       <div class="editor-tool-group">
         <button class="btn btn-ghost editor-tool-btn" id="tool-enhance" onclick="toggleAutoEnhance()" title="One-click auto colour, contrast &amp; sharpness — tuned from the pet, not the background">✨ Auto-Enhance</button>
+        <label style="font-size:11px;color:var(--muted)" title="Strength of the auto-enhance">Amount</label>
+        <input type="range" id="enhance-amount" class="editor-slider" min="0" max="200" value="0" oninput="onEnhanceStrength(this.value)" title="Auto-enhance strength (0 = off, 100% = full)">
+        <span id="enhance-amount-label" style="font-size:11px;color:var(--muted);min-width:38px">0%</span>
       </div>
       <div class="editor-tool-group">
         <label style="font-size:11px;color:var(--muted)">Zoom</label>
@@ -3528,6 +3531,7 @@ async function openOrder(dbId) {
   _savedMaskImageData = null;
   _photoTransform = defaultPhotoTransform();
   _photoEnhance = false;
+  _photoEnhanceAmount = 1;
   document.getElementById('licence-preview').innerHTML = '<div class="licence-placeholder">Click "Generate" to render the licence card</div>';
   document.getElementById('dl-btn').style.display = 'none';
   document.getElementById('edit-photo-btn').style.display = 'none';
@@ -4349,8 +4353,11 @@ let _savedMaskImageData = null; // persisted mask so reopening the editor restor
 // original cover-fit/centered/full-saturation behaviour exactly.
 function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1, rotation: 0 }; }
 let _photoTransform = defaultPhotoTransform();
-// One-click auto-enhance toggle (auto-levels + white balance + vibrance + unsharp).
+// Auto-enhance (auto-levels + white balance + vibrance + unsharp). _photoEnhance
+// is the on/off state; _photoEnhanceAmount is the strength (0..2, 1 = full effect)
+// the result is blended toward at that strength.
 let _photoEnhance = false;
+let _photoEnhanceAmount = 1;
 
 async function openPhotoEditor() {
   if (!modalOrder || !modalOrder.photo_url) {
@@ -4490,8 +4497,10 @@ async function openPhotoEditor() {
     updateUndoRedoButtons();
     setEditorMode('cutout');
 
-    // Restore a previously-toggled auto-enhance for this order.
+    // Restore a previously-set auto-enhance strength for this order.
+    editorState.enhanceAmount = _photoEnhance ? (_photoEnhanceAmount || 1) : 0;
     updateEnhanceButton();
+    syncEnhanceControls();
     if (_photoEnhance) applyEnhance(true);
 
     document.getElementById('editor-sub').textContent = `${pw}×${ph} — Restore & remove brush tools`;
@@ -5039,32 +5048,74 @@ function updateEnhanceButton() {
   if (btn) btn.classList.toggle('active', !!_photoEnhance);
 }
 
-// Toggle / set the enhance state, swap the working image, and re-render the
-// active view. enhancedImg is computed once from the pristine original.
-function applyEnhance(on) {
-  if (!editorState) return;
-  _photoEnhance = !!on;
-  if (_photoEnhance) {
-    if (!editorState.enhancedImg) {
-      try {
-        editorState.enhancedImg = autoEnhanceToCanvas(
-          editorState.pristineImg, editorState.maskCanvas, editorState.pw, editorState.ph);
-      } catch (e) { console.error('auto-enhance failed:', e); _photoEnhance = false; }
-    }
-    if (_photoEnhance) editorState.originalImg = editorState.enhancedImg;
-  } else {
-    editorState.originalImg = editorState.pristineImg;
+// Keep the Amount slider + label in sync with the current strength.
+function syncEnhanceControls() {
+  const pct = Math.round((editorState ? (editorState.enhanceAmount || 0) : 0) * 100);
+  const sl = document.getElementById('enhance-amount');
+  const lbl = document.getElementById('enhance-amount-label');
+  if (sl) sl.value = pct;
+  if (lbl) lbl.textContent = pct + '%';
+}
+
+// Compute the FULL auto-enhanced image once (cached on editorState).
+function ensureEnhancedImg() {
+  if (!editorState) return null;
+  if (!editorState.enhancedImg) {
+    try {
+      editorState.enhancedImg = autoEnhanceToCanvas(
+        editorState.pristineImg, editorState.maskCanvas, editorState.pw, editorState.ph);
+    } catch (e) { console.error('auto-enhance failed:', e); editorState.enhancedImg = null; }
   }
+  return editorState.enhancedImg;
+}
+
+// Blend pristine → fully-enhanced by `amount` (0 = original, 1 = full, >1 = stronger).
+function buildEnhancedBlend(amount) {
+  const { pristineImg, pw, ph } = editorState;
+  const out = document.createElement('canvas'); out.width = pw; out.height = ph;
+  const octx = out.getContext('2d');
+  octx.drawImage(pristineImg, 0, 0, pw, ph);
+  const enh = ensureEnhancedImg();
+  if (!enh || amount <= 0) return out;
+  const base = octx.getImageData(0, 0, pw, ph);
+  const bd = base.data;
+  const ed = enh.getContext('2d').getImageData(0, 0, pw, ph).data;
+  for (let i = 0; i < bd.length; i += 4) {
+    for (let k = 0; k < 3; k++) {
+      const v = bd[i + k] + amount * (ed[i + k] - bd[i + k]);
+      bd[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+    }
+  }
+  octx.putImageData(base, 0, 0);
+  return out;
+}
+
+// Set the enhance strength (0..2) and re-render. 0 turns it off.
+function setEnhanceAmount(amount) {
+  if (!editorState) return;
+  amount = Math.max(0, Math.min(2, +amount || 0));
+  editorState.enhanceAmount = amount;
+  _photoEnhance = amount > 0;
+  if (amount > 0) _photoEnhanceAmount = amount;   // remember last non-zero for the toggle
+  editorState.originalImg = amount > 0 ? buildEnhancedBlend(amount) : editorState.pristineImg;
   updateEnhanceButton();
+  syncEnhanceControls();
   // Re-render whichever view is showing.
   if (editorState.mode === 'placement') { buildPlacementSrc(); renderPlacement(); }
   else renderEditorOverlay();
 }
 
+// Toggle / set on-off, restoring the last non-zero strength when turning on.
+function applyEnhance(on) {
+  setEnhanceAmount(on ? (_photoEnhanceAmount || 1) : 0);
+}
+
+function onEnhanceStrength(v) { setEnhanceAmount((+v || 0) / 100); }
+
 function toggleAutoEnhance() {
   if (!editorState) return;
   applyEnhance(!_photoEnhance);
-  showToast(_photoEnhance ? 'Auto-enhance on ✨' : 'Auto-enhance off', 'ok');
+  showToast(_photoEnhance ? `Auto-enhance ${Math.round(editorState.enhanceAmount * 100)}% ✨` : 'Auto-enhance off', 'ok');
 }
 
 // ── SAM (Segment Anything Model) Integration ─────────────────────────────────
