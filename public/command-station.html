@@ -962,16 +962,14 @@ html, body {
 }
 
 .editor-canvas-area {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  overflow: hidden; position: relative; min-height: 0; padding: 26px;
-  background: radial-gradient(circle at 50% 38%, #2b2b30, #161618 72%);
+  flex: 1; display: flex; overflow: auto; position: relative; min-height: 0; padding: 26px;
+  /* subtle dot grid over a soft radial backdrop (stays put while the artwork scrolls) */
+  background:
+    radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px) 0 0 / 20px 20px,
+    radial-gradient(circle at 50% 38%, #2b2b30, #161618 72%);
 }
-/* subtle dot grid behind the artwork */
-.editor-canvas-area::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
+/* centre the artwork, but keep it scrollable (pannable) once zoomed past the viewport */
+.editor-canvas-area > * { margin: auto; flex: 0 0 auto; }
 .editor-canvas-stack {
   position: relative; display: inline-block; cursor: crosshair;
   border-radius: 10px; overflow: hidden;
@@ -2770,6 +2768,12 @@ html, body {
         <span id="brush-size-label" style="font-size:11px;color:var(--muted);min-width:28px">25</span>
       </div>
       <div class="editor-tool-group">
+        <label style="font-size:11px;color:var(--muted)">Zoom</label>
+        <input type="range" id="editor-zoom" class="editor-slider" min="50" max="600" value="100" oninput="onEditorZoom(this.value)" title="Zoom the canvas — scroll to zoom, drag the scrollbars (or two-finger scroll) to pan">
+        <span id="editor-zoom-label" style="font-size:11px;color:var(--muted);min-width:38px">100%</span>
+        <button class="btn btn-ghost" id="editor-zoom-fit" onclick="setEditorZoom(1)" title="Fit to screen">⤢ Fit</button>
+      </div>
+      <div class="editor-tool-group">
         <button class="btn btn-ghost editor-tool-btn" id="tool-sam" onclick="setEditorTool('sam')">✦ SAM Select</button>
         <span id="sam-status" style="font-size:10px;color:var(--muted)"></span>
       </div>
@@ -4394,10 +4398,10 @@ async function openPhotoEditor() {
       maskCtx.putImageData(maskImgData, 0, 0);
     }
 
-    // Calculate display scale to fit in editor area
-    const areaRect = document.getElementById('photo-editor-modal').querySelector('.photo-editor-inner').getBoundingClientRect();
-    const maxW = areaRect.width * 0.92, maxH = areaRect.height - 140; // leave room for header + toolbar
-    const displayScale = Math.min(1, maxW / pw, maxH / ph);
+    // Fit the photo to the editor area. NOTE: no 1× cap — small (e.g. 90×90)
+    // photos scale UP to fill the viewport so they're actually editable.
+    const fitScale = editorFitScale(pw, ph);
+    const displayScale = fitScale;          // zoom starts at 1× (= fit)
     const dw = Math.round(pw * displayScale), dh = Math.round(ph * displayScale);
 
     // Restore canvas stack in DOM
@@ -4428,7 +4432,7 @@ async function openPhotoEditor() {
     editorState = {
       originalImg, pristineImg: originalImg, enhancedImg: null,
       bgRemovedImg, maskCanvas, maskCtx,
-      pw, ph, dw, dh, displayScale,
+      pw, ph, dw, dh, displayScale, fitScale, zoom: 1,
       undoStack: [], redoStack: [],
       tool: 'restore', brushSize: 25,
       painting: false, lastX: 0, lastY: 0,
@@ -4448,6 +4452,12 @@ async function openPhotoEditor() {
     overlayC.addEventListener('pointermove', editorPointerMove);
     overlayC.addEventListener('pointerup',   editorPointerUp);
     overlayC.addEventListener('pointerleave', editorPointerUp);
+
+    // Scroll-to-zoom over the cutout canvas (bound once on the persistent area el).
+    if (!area._wheelBound) {
+      area.addEventListener('wheel', editorWheelZoom, { passive: false });
+      area._wheelBound = true;
+    }
 
     // ── Placement stage (grayed licence + draggable photo), hidden until used ──
     const placeWrap = document.createElement('div');
@@ -4474,6 +4484,8 @@ async function openPhotoEditor() {
     setEditorTool('restore');
     document.getElementById('brush-size').value = 25;
     document.getElementById('brush-size-label').textContent = '25';
+    document.getElementById('editor-zoom').value = 100;
+    document.getElementById('editor-zoom-label').textContent = '100%';
     updateUndoRedoButtons();
     setEditorMode('cutout');
 
@@ -4497,15 +4509,61 @@ function closePhotoEditor() {
   editorState = null;
 }
 
+// ── Editor zoom / fit ────────────────────────────────────────────────────────
+// Scale that makes the photo fill the canvas area. NO 1× cap, so a tiny
+// (e.g. 90×90) photo scales UP to fill the viewport instead of sitting at 1:1.
+function editorFitScale(pw, ph) {
+  const area = document.getElementById('editor-canvas-area');
+  const r = area.getBoundingClientRect();
+  const pad = 52; // 26px padding each side
+  const maxW = Math.max(80, r.width - pad);
+  const maxH = Math.max(80, r.height - pad);
+  return Math.max(0.02, Math.min(maxW / pw, maxH / ph));
+}
+
+// Re-size the stacked canvases to the current fit×zoom and repaint. Brush
+// coordinates/cursor all derive from displayScale, so they stay correct.
+function applyEditorScale() {
+  if (!editorState) return;
+  const ds = Math.max(0.02, editorState.fitScale * editorState.zoom);
+  editorState.displayScale = ds;
+  const dw = Math.round(editorState.pw * ds), dh = Math.round(editorState.ph * ds);
+  editorState.dw = dw; editorState.dh = dh;
+  ['editor-checker', 'editor-photo', 'editor-overlay'].forEach(id => {
+    const c = document.getElementById(id); if (c) { c.width = dw; c.height = dh; }
+  });
+  drawCheckerboard(document.getElementById('editor-checker'));
+  renderEditorOverlay();
+}
+
+// 1× zoom == fit-to-screen; slider/scroll multiply that.
+function setEditorZoom(z) {
+  if (!editorState) return;
+  editorState.zoom = Math.max(0.5, Math.min(6, z));
+  const pct = Math.round(editorState.zoom * 100);
+  const sl = document.getElementById('editor-zoom'); if (sl) sl.value = pct;
+  const lbl = document.getElementById('editor-zoom-label'); if (lbl) lbl.textContent = pct + '%';
+  applyEditorScale();
+}
+function onEditorZoom(v) { setEditorZoom((+v || 100) / 100); }
+
+function editorWheelZoom(e) {
+  if (!editorState || editorState.mode === 'placement') return; // placement has its own wheel-zoom
+  e.preventDefault();
+  setEditorZoom(editorState.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12));
+}
+
 function drawCheckerboard(canvas) {
   const ctx = canvas.getContext('2d');
   const tile = 10;
-  for (let y = 0; y < canvas.height; y += tile) {
-    for (let x = 0; x < canvas.width; x += tile) {
-      ctx.fillStyle = ((x / tile + y / tile) & 1) ? '#333' : '#444';
-      ctx.fillRect(x, y, tile, tile);
-    }
-  }
+  // Build a 2-tile pattern once and fill — O(1) regardless of zoom/canvas size.
+  const p = document.createElement('canvas');
+  p.width = p.height = tile * 2;
+  const pc = p.getContext('2d');
+  pc.fillStyle = '#444'; pc.fillRect(0, 0, tile * 2, tile * 2);
+  pc.fillStyle = '#333'; pc.fillRect(tile, 0, tile, tile); pc.fillRect(0, tile, tile, tile);
+  ctx.fillStyle = ctx.createPattern(p, 'repeat');
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
 function renderEditorOverlay() {
