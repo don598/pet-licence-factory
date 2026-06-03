@@ -1,12 +1,13 @@
 // ── Pet Licence Factory — SendGrid Email Helpers (Cloudflare) ────────────────
 // Uses SendGrid v3 REST API via fetch. No Node SDK needed — works on the
-// Workers runtime. Sender (`contact@creditcardart.com`) is a verified
-// single-sender identity on the shared SendGrid account.
+// Workers runtime. Sends from `hello@petlicensefactory.com`, which is
+// domain-authenticated (DKIM/SPF) in SendGrid for best inbox placement.
+// Production overrides this via the SENDGRID_FROM_EMAIL env var.
 // ---------------------------------------------------------------------------
 
 const SENDGRID_ENDPOINT = 'https://api.sendgrid.com/v3/mail/send';
 
-const DEFAULT_FROM_EMAIL = 'contact@creditcardart.com';
+const DEFAULT_FROM_EMAIL = 'hello@petlicensefactory.com';
 const DEFAULT_FROM_NAME  = 'Pet Licence Factory';
 // Replies route here regardless of the from-address (so we can send from a
 // branded @petlicensefactory.com address while replies still land in the
