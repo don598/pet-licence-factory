@@ -952,7 +952,7 @@ html, body {
   border: 1px solid transparent !important;
   background: transparent !important;
   color: var(--muted) !important;
-  padding: 8px 16px; box-shadow: none;
+  padding: 10px 20px; font-size: 13px; box-shadow: none;
 }
 .editor-mode-toggle .btn:hover { color: var(--text-soft) !important; }
 .editor-mode-toggle .btn.active {
@@ -1000,8 +1000,9 @@ html, body {
   padding-left: 14px; border-left: 1px solid var(--border);
 }
 .editor-tool-group:first-child { border-left: none; padding-left: 0; }
-.editor-tool-group label { font-size: 11px; color: var(--muted); font-weight: 600; }
-.editor-toolbar .btn { padding: 9px 14px; font-size: 12px; }
+.editor-tool-group label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.editor-tool-group span { font-size: 12.5px !important; }
+.editor-toolbar .btn { padding: 11px 18px; font-size: 13.5px; }
 .editor-tool-btn.active {
   color: var(--accent) !important;
   border-color: var(--accent) !important;
@@ -1009,18 +1010,18 @@ html, body {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .editor-slider {
-  width: 108px; height: 5px; -webkit-appearance: none; appearance: none;
+  width: 132px; height: 6px; -webkit-appearance: none; appearance: none;
   background: var(--surface3); border-radius: 999px; outline: none; cursor: pointer;
 }
 .editor-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 16px; height: 16px;
+  -webkit-appearance: none; width: 19px; height: 19px;
   background: var(--accent); border: 2px solid var(--surface);
   border-radius: 50%; cursor: pointer;
   box-shadow: 0 1px 4px rgba(0,0,0,.28); transition: transform .12s;
 }
 .editor-slider::-webkit-slider-thumb:hover { transform: scale(1.18); }
 .editor-slider::-moz-range-thumb {
-  width: 16px; height: 16px; background: var(--accent);
+  width: 19px; height: 19px; background: var(--accent);
   border: 2px solid var(--surface); border-radius: 50%; cursor: pointer;
 }
 
@@ -2773,9 +2774,6 @@ html, body {
         <span id="sam-status" style="font-size:10px;color:var(--muted)"></span>
       </div>
       <div class="editor-tool-group">
-        <button class="btn btn-ghost" id="tool-rotate" onclick="rotateEditor90()" title="Rotate the photo 90° clockwise">⟳ Rotate</button>
-      </div>
-      <div class="editor-tool-group">
         <button class="btn btn-ghost" id="tool-undo" onclick="editorUndo()" disabled>↩ Undo</button>
         <button class="btn btn-ghost" id="tool-redo" onclick="editorRedo()" disabled>↪ Redo</button>
       </div>
@@ -2799,6 +2797,11 @@ html, body {
         <label style="font-size:11px;color:var(--muted)">Saturation</label>
         <input type="range" id="place-sat" class="editor-slider" min="0" max="200" value="100" oninput="onPlacementSaturation(this.value)">
         <span id="place-sat-label" style="font-size:11px;color:var(--muted);min-width:38px">100%</span>
+      </div>
+      <div class="editor-tool-group">
+        <label style="font-size:11px;color:var(--muted)">Rotation</label>
+        <input type="range" id="place-rot" class="editor-slider" min="-180" max="180" value="0" oninput="onPlacementRotation(this.value)">
+        <span id="place-rot-label" style="font-size:11px;color:var(--muted);min-width:38px">0°</span>
       </div>
       <div class="editor-tool-group">
         <span style="font-size:10px;color:var(--muted)">Drag the photo to reposition · scroll to zoom</span>
@@ -3891,9 +3894,12 @@ async function generateLicence() {
         if ((T.saturation || 1) !== 1) ctx.filter = `saturate(${T.saturation})`;
         const scaleM = Math.max(F.photoMain.w / photo.width, F.photoMain.h / photo.height) * (T.scale || 1);
         const swM = photo.width * scaleM, shM = photo.height * scaleM;
-        const sxM = F.photoMain.x + (F.photoMain.w - swM) / 2 + (T.offsetX || 0);
-        const syM = F.photoMain.y + (F.photoMain.h - shM) / 2 + (T.offsetY || 0);
-        ctx.drawImage(photo, sxM, syM, swM, shM);
+        // Centre of the placed photo (box centre + drag offset); rotate about it.
+        const pcxM = F.photoMain.x + F.photoMain.w / 2 + (T.offsetX || 0);
+        const pcyM = F.photoMain.y + F.photoMain.h / 2 + (T.offsetY || 0);
+        ctx.translate(pcxM, pcyM);
+        if (T.rotation) ctx.rotate(T.rotation * Math.PI / 180);
+        ctx.drawImage(photo, -swM / 2, -shM / 2, swM, shM);
         ctx.restore();
 
         // Watermark photo (20% opacity, circular clip) — saturation only, stays centred.
@@ -4337,7 +4343,7 @@ let _editedPhotoUrl = null;    // data URL of editor output, used by generateLic
 let _savedMaskImageData = null; // persisted mask so reopening the editor restores your work
 // How the pet photo sits inside the licence photo box. Defaults reproduce the
 // original cover-fit/centered/full-saturation behaviour exactly.
-function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1 }; }
+function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1, rotation: 0 }; }
 let _photoTransform = defaultPhotoTransform();
 // One-click auto-enhance toggle (auto-levels + white balance + vibrance + unsharp).
 let _photoEnhance = false;
@@ -4710,81 +4716,6 @@ function editorReset() {
   showToast('Reset to auto BG removal', 'ok');
 }
 
-// Rotate the whole working photo (source + mask) 90° clockwise. Swaps the
-// pixel dimensions, rebuilds the display canvases, and invalidates anything
-// keyed to the old orientation (SAM embedding, enhanced cache, saved mask).
-function rotateEditor90() {
-  if (!editorState) return;
-  const oldPw = editorState.pw, oldPh = editorState.ph;
-  const newPw = oldPh, newPh = oldPw;
-
-  // Rotate any drawable (Image or Canvas) 90° clockwise into a fresh canvas.
-  const rot = (src) => {
-    const c = document.createElement('canvas');
-    c.width = newPw; c.height = newPh;
-    const cx = c.getContext('2d');
-    cx.imageSmoothingQuality = 'high';
-    cx.translate(newPw, 0);
-    cx.rotate(Math.PI / 2);
-    cx.drawImage(src, 0, 0, oldPw, oldPh);
-    return c;
-  };
-
-  // Rotate the sources + the alpha mask.
-  editorState.pristineImg  = rot(editorState.pristineImg);
-  editorState.bgRemovedImg = rot(editorState.bgRemovedImg);
-  editorState.enhancedImg  = null; // recompute lazily from the rotated pristine
-  const newMask = rot(editorState.maskCanvas);
-  editorState.maskCanvas = newMask;
-  editorState.maskCtx    = newMask.getContext('2d');
-
-  // Point originalImg at the right working source (enhanced or pristine).
-  if (_photoEnhance) {
-    try {
-      editorState.enhancedImg = autoEnhanceToCanvas(
-        editorState.pristineImg, editorState.maskCanvas, newPw, newPh);
-      editorState.originalImg = editorState.enhancedImg;
-    } catch (e) { editorState.originalImg = editorState.pristineImg; }
-  } else {
-    editorState.originalImg = editorState.pristineImg;
-  }
-
-  // Swap dims + recompute display scale to refit the editor area.
-  editorState.pw = newPw; editorState.ph = newPh;
-  const areaRect = document.getElementById('photo-editor-modal').querySelector('.photo-editor-inner').getBoundingClientRect();
-  const maxW = areaRect.width * 0.92, maxH = areaRect.height - 140;
-  const displayScale = Math.min(1, maxW / newPw, maxH / newPh);
-  const dw = Math.round(newPw * displayScale), dh = Math.round(newPh * displayScale);
-  editorState.dw = dw; editorState.dh = dh; editorState.displayScale = displayScale;
-
-  // Resize the stacked display canvases + redraw the checkerboard.
-  ['editor-checker', 'editor-photo', 'editor-overlay'].forEach(id => {
-    const c = document.getElementById(id);
-    if (c) { c.width = dw; c.height = dh; }
-  });
-  drawCheckerboard(document.getElementById('editor-checker'));
-
-  // Invalidate orientation-keyed state.
-  editorState.samEmbedding = null;
-  editorState.samPendingMask = null;
-  editorState.samImgScale = null;
-  editorState.samPadding = null;
-  const bar = document.querySelector('.sam-confirm-bar');
-  if (bar) bar.remove();
-
-  // Reset undo/redo around the rotation, and drop the persisted mask (dims changed).
-  editorState.undoStack = [editorState.maskCtx.getImageData(0, 0, newPw, newPh)];
-  editorState.redoStack = [];
-  _savedMaskImageData = null;
-  updateUndoRedoButtons();
-
-  document.getElementById('editor-sub').textContent = `${newPw}×${newPh} — Restore & remove brush tools`;
-
-  // Re-render whichever view is active.
-  if (editorState.mode === 'placement') { buildPlacementSrc(); renderPlacement(); }
-  else renderEditorOverlay();
-}
-
 async function applyPhotoEdit() {
   if (!editorState) return;
   const { originalImg, maskCanvas, maskCtx, pw, ph } = editorState;
@@ -4874,9 +4805,12 @@ function renderPlacement() {
   const baseScale = Math.max(F.photoMain.w / editorState.pw, F.photoMain.h / editorState.ph);
   const drawScale = baseScale * (T.scale || 1) * s;
   const dwp = editorState.pw * drawScale, dhp = editorState.ph * drawScale;
-  const dx = box.x + (box.w - dwp) / 2 + (T.offsetX || 0) * s;
-  const dy = box.y + (box.h - dhp) / 2 + (T.offsetY || 0) * s;
-  ctx.drawImage(src, dx, dy, dwp, dhp);
+  // Centre of the placed photo (box centre + drag offset); rotate about it.
+  const pcx = box.x + box.w / 2 + (T.offsetX || 0) * s;
+  const pcy = box.y + box.h / 2 + (T.offsetY || 0) * s;
+  ctx.translate(pcx, pcy);
+  if (T.rotation) ctx.rotate(T.rotation * Math.PI / 180);
+  ctx.drawImage(src, -dwp / 2, -dhp / 2, dwp, dhp);
   ctx.restore();
 
   // Photo-box outline.
@@ -4890,10 +4824,13 @@ function syncPlacementControls() {
   const T = _photoTransform || defaultPhotoTransform();
   const sc = Math.round((T.scale || 1) * 100);
   const sa = Math.round((T.saturation || 1) * 100);
+  const ro = Math.round(T.rotation || 0);
   const scEl = document.getElementById('place-scale');
   const saEl = document.getElementById('place-sat');
+  const roEl = document.getElementById('place-rot');
   if (scEl) { scEl.value = sc; document.getElementById('place-scale-label').textContent = sc + '%'; }
   if (saEl) { saEl.value = sa; document.getElementById('place-sat-label').textContent = sa + '%'; }
+  if (roEl) { roEl.value = ro; document.getElementById('place-rot-label').textContent = ro + '°'; }
 }
 
 function onPlacementScale(v) {
@@ -4904,6 +4841,11 @@ function onPlacementScale(v) {
 function onPlacementSaturation(v) {
   _photoTransform.saturation = Math.max(0, Math.min(2, (+v || 100) / 100));
   document.getElementById('place-sat-label').textContent = Math.round(_photoTransform.saturation * 100) + '%';
+  renderPlacement();
+}
+function onPlacementRotation(v) {
+  _photoTransform.rotation = Math.max(-180, Math.min(180, +v || 0));
+  document.getElementById('place-rot-label').textContent = Math.round(_photoTransform.rotation) + '°';
   renderPlacement();
 }
 
