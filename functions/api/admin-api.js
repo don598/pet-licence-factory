@@ -117,6 +117,7 @@ export async function onRequest(context) {
                   p.verification_error, p.verification_attempts,
                   p.affiliate_creator_id, p.affiliate_coupon_code, p.affiliate_commission_rate,
                   p.affiliate_commission_cents, p.affiliate_is_freebie,
+                  p.email_status, p.email_status_at, p.email_opens, p.email_bounce_reason, p.email_last_type,
                   c.name AS affiliate_creator_name
            FROM pet_orders p
            LEFT JOIN affiliate_creators c ON c.id = p.affiliate_creator_id

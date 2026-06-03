@@ -1523,6 +1523,18 @@ html, body {
 .aff-status.performing      { color: var(--green); background: rgba(34,197,94,.12);  border-color: rgba(34,197,94,.3); }
 .aff-status.setup_failed    { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); }
 
+/* Email delivery pill — shown beside the customer email in the orders table.
+   Driven by the SendGrid Event Webhook (delivered/opened/bounced). */
+.email-pill {
+  display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  font-size: 10px; font-weight: 600; line-height: 1.5; white-space: nowrap;
+  border: 1px solid var(--border); vertical-align: middle; cursor: help;
+}
+.email-pill.email-ok   { color: var(--green); background: rgba(34,197,94,.10);  border-color: rgba(34,197,94,.30); }
+.email-pill.email-sent { color: var(--muted); background: var(--surface2);       border-color: var(--border); }
+.email-pill.email-warn { color: var(--amber, #d97706); background: rgba(217,119,6,.10); border-color: rgba(217,119,6,.30); }
+.email-pill.email-bad  { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.34); }
+
 /* Stripe Connect badge — small secondary indicator beside the creator name.
    .ready = green (account verified), .onboarding = amber (incomplete). */
 .aff-connect-badge {
@@ -3311,7 +3323,7 @@ function renderTable() {
       <td class="cb-col" onclick="event.stopPropagation()"><input type="checkbox" class="order-cb" data-id="${o.id}" ${selectedOrderIds.has(o.id) ? 'checked' : ''} onclick="toggleOrderSelected(${o.id}, this.checked)"></td>
       <td data-label="Date" onclick="openOrder(${o.id})" title="${o.created_at}">${fmtDate(o.created_at)}</td>
       <td data-label="Pet" onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>
-      <td data-label="Customer" onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}">${esc(o.customer_email || '—')}</td>
+      <td data-label="Customer" onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}">${esc(o.customer_email || '—')}${renderEmailMarker(o)}</td>
       <td data-label="Shipping" onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
       <td data-label="Affiliate" onclick="openOrder(${o.id})">${renderAffiliateMarker(o)}</td>
       <td data-label="Status" onclick="openOrder(${o.id})"><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
@@ -3319,6 +3331,25 @@ function renderTable() {
     </tr>
   `).join('');
   updateBulkBar();
+}
+
+// Email delivery marker beside the customer email — fed by the SendGrid Event
+// Webhook (email_status / email_opens / email_bounce_reason on the order).
+function renderEmailMarker(o) {
+  const s = o.email_status;
+  if (!s) return '';
+  const opens = o.email_opens || 0;
+  let cls = 'email-sent', icon = '✉', label = s;
+  if (s === 'delivered')               { cls = 'email-ok';   label = 'Delivered'; }
+  else if (s === 'open' || s === 'click') { cls = 'email-ok'; label = opens > 1 ? `Opened ×${opens}` : 'Opened'; }
+  else if (s === 'processed')          { cls = 'email-sent'; label = 'Sent'; }
+  else if (s === 'deferred')           { cls = 'email-warn'; label = 'Deferring'; }
+  else if (s === 'bounce' || s === 'dropped') { cls = 'email-bad'; icon = '⚠'; label = 'Bounced'; }
+  else if (s === 'spamreport')         { cls = 'email-bad';  icon = '⚠'; label = 'Spam'; }
+  const when   = o.email_status_at ? ' · ' + fmtDate(o.email_status_at) : '';
+  const reason = o.email_bounce_reason ? ' — ' + o.email_bounce_reason : '';
+  const title  = `Email: ${s}${when}${reason}`;
+  return `<span class="email-pill ${cls}" title="${esc(title)}" onclick="event.stopPropagation()">${icon} ${esc(label)}</span>`;
 }
 
 function fmtDate(ts) {
