@@ -1202,6 +1202,10 @@ html, body {
 
 /* ── Print CSS — hide everything except label pages ───────────────── */
 @media print {
+  /* Default page size — this is what Chrome reads to auto-select 4×6 media in
+     the print dialog. Without it (named pages only), Chrome falls back to Letter.
+     The envelope is the same 4×6 stock, just rotated to landscape. */
+  @page { size: 4in 6in; margin: 0; }
   @page portrait-page  { size: 4in 6in; margin: 0; }
   @page landscape-page { size: 6in 4in; margin: 0; }
   .label-page.portrait  { page: portrait-page; }
