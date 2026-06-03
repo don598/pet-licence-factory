@@ -2763,8 +2763,8 @@ html, body {
         <button class="btn btn-ghost editor-tool-btn" id="tool-remove" onclick="setEditorTool('remove')">🔴 Remove</button>
       </div>
       <div class="editor-tool-group">
-        <label style="font-size:11px;color:var(--muted)">Size</label>
-        <input type="range" id="brush-size" class="editor-slider" min="3" max="120" value="25" oninput="editorState&&(editorState.brushSize=+this.value);document.getElementById('brush-size-label').textContent=this.value">
+        <label style="font-size:11px;color:var(--muted)" title="Size of the Restore / Remove brush">Brush</label>
+        <input type="range" id="brush-size" class="editor-slider" min="3" max="200" value="25" oninput="editorState&&(editorState.brushSize=+this.value);document.getElementById('brush-size-label').textContent=this.value" title="Size of the Restore / Remove brush">
         <span id="brush-size-label" style="font-size:11px;color:var(--muted);min-width:28px">25</span>
       </div>
       <div class="editor-tool-group">
@@ -4465,7 +4465,8 @@ async function openPhotoEditor() {
     placeWrap.style.display = 'none';
     const placeC = document.createElement('canvas');
     placeC.id = 'placement-canvas';
-    const pFit = Math.min((areaRect.width * 0.92) / LIC_W, (maxH) / LIC_H, 0.6);
+    const _placeAreaRect = area.getBoundingClientRect();
+    const pFit = Math.min((_placeAreaRect.width - 52) / LIC_W, (_placeAreaRect.height - 52) / LIC_H, 0.6);
     placeC.width  = Math.round(LIC_W * pFit);
     placeC.height = Math.round(LIC_H * pFit);
     placeWrap.appendChild(placeC);
