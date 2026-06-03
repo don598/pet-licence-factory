@@ -913,10 +913,40 @@ function s2Back() {
   setTimeout(() => fadeTransition(() => startStation1()), 150);
 }
 
+// Re-render the cropped square at the photo's *native* resolution instead of
+// the tiny on-screen canvas size — capturing straight off cropCanvas baked the
+// uploaded photo down to ~160px and shipped a grainy thumbnail. We cap the
+// output so the JPEG stays under the server's 750KB data-URL limit, and step
+// the quality down only if a particular crop is still too large.
+function captureHiResPhoto() {
+  const dispSz = cropCanvas.width;                       // on-screen square (px)
+  const native = Math.round(dispSz / cropScale);         // source px the square covers
+  const target = Math.max(dispSz, Math.min(1200, native));
+  const off = document.createElement('canvas');
+  off.width = off.height = target;
+  const octx = off.getContext('2d');
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
+  octx.fillStyle = '#000d00';
+  octx.fillRect(0, 0, target, target);
+  const k = target / dispSz;                             // on-screen px → target px
+  octx.save();
+  octx.translate(cropOffX * k, cropOffY * k);
+  octx.scale(cropScale * k, cropScale * k);
+  octx.drawImage(cropImg, 0, 0);
+  octx.restore();
+  const LIMIT = 720 * 1024;                              // stay safely under the 750KB server cap
+  let q = 0.92, url = off.toDataURL('image/jpeg', q);
+  while (url.length > LIMIT && q > 0.5) {
+    q -= 0.1;
+    url = off.toDataURL('image/jpeg', q);
+  }
+  return url;
+}
+
 function s2ApprovePic() {
   if (!cropImg) return;
-  photoDataURL = cropCanvas.toDataURL('image/jpeg', 0.92);
-  if (photoDataURL.length > 500 * 1024) photoDataURL = cropCanvas.toDataURL('image/jpeg', 0.6);
+  photoDataURL = captureHiResPhoto();
   jingle([{f:660,t:0},{f:880,t:130},{f:1100,t:260}]);
   $('s2-form').classList.remove('visible');
   setNav(null, null);

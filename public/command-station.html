@@ -913,69 +913,115 @@ html, body {
 /* ── Photo Editor Modal ─────────────────────────────────────────── */
 .photo-editor-backdrop {
   display: none; position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,.92); align-items: center; justify-content: center;
-  flex-direction: column;
+  background: rgba(8,12,10,.55);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  backdrop-filter: blur(12px) saturate(120%);
+  align-items: center; justify-content: center;
+  flex-direction: column; padding: 22px;
 }
-.photo-editor-backdrop.open { display: flex; }
+.photo-editor-backdrop.open { display: flex; animation: pe-fade .22s ease; }
+@keyframes pe-fade { from { opacity: 0 } to { opacity: 1 } }
 .photo-editor-inner {
   display: flex; flex-direction: column;
-  width: 95vw; max-width: 1100px; height: 92vh;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  width: 100%; max-width: 1180px; height: 92vh;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
   overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.05) inset;
+  animation: pe-pop .26s cubic-bezier(.2,.7,.3,1);
 }
+@keyframes pe-pop { from { transform: translateY(12px) scale(.985); opacity: .4 } to { transform: none; opacity: 1 } }
+
 .photo-editor-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 18px; border-bottom: 1px solid var(--border);
-  background: var(--surface2);
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface), var(--surface2));
 }
-.photo-editor-header .modal-title { font-size: 13px; }
-.photo-editor-header .modal-sub   { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.photo-editor-header > div:first-child { min-width: 0; }
+.photo-editor-header .modal-title { font-size: 15px; letter-spacing: .01em; }
+.photo-editor-header .modal-sub   { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+/* Segmented mode toggle (Cutout / Placement) */
+.editor-mode-toggle {
+  display: flex; gap: 3px; margin-left: auto;
+  padding: 4px; background: var(--surface3);
+  border: 1px solid var(--border); border-radius: var(--r-pill);
+}
+.editor-mode-toggle .btn {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--muted) !important;
+  padding: 8px 16px; box-shadow: none;
+}
+.editor-mode-toggle .btn:hover { color: var(--text-soft) !important; }
+.editor-mode-toggle .btn.active {
+  background: var(--surface) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.14);
+}
 
 .editor-canvas-area {
   flex: 1; display: flex; align-items: center; justify-content: center;
-  overflow: hidden; background: #1a1a1a; position: relative;
-  min-height: 0;
+  overflow: hidden; position: relative; min-height: 0; padding: 26px;
+  background: radial-gradient(circle at 50% 38%, #2b2b30, #161618 72%);
+}
+/* subtle dot grid behind the artwork */
+.editor-canvas-area::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 .editor-canvas-stack {
   position: relative; display: inline-block; cursor: crosshair;
-  box-shadow: 0 0 0 1px var(--border);
+  border-radius: 10px; overflow: hidden;
+  box-shadow: 0 14px 44px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08);
 }
-.editor-canvas-stack canvas {
-  display: block;
-}
-.editor-canvas-stack canvas:not(:first-child) {
-  position: absolute; top: 0; left: 0;
-}
+.editor-canvas-stack canvas { display: block; }
+.editor-canvas-stack canvas:not(:first-child) { position: absolute; top: 0; left: 0; }
+
 /* Placement mode: grayed-licence stage with draggable photo */
-.editor-mode-toggle { display: flex; gap: 6px; }
-#placement-stage { display: flex; align-items: center; justify-content: center; }
+#placement-stage { display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
 #placement-canvas {
   display: block; max-width: 100%; max-height: 100%;
   cursor: move; touch-action: none;
-  background: #f4f4f6; box-shadow: 0 0 0 1px var(--border);
+  background: #f4f4f6; border-radius: 8px;
+  box-shadow: 0 14px 44px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08);
 }
 
 .editor-toolbar {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
-  padding: 10px 16px; border-top: 1px solid var(--border);
-  background: var(--surface2); min-height: 48px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
+  padding: 13px 18px; border-top: 1px solid var(--border);
+  background: linear-gradient(0deg, var(--surface), var(--surface2));
+  min-height: 58px;
 }
 .editor-tool-group {
-  display: flex; align-items: center; gap: 6px;
-  padding-left: 10px; border-left: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  padding-left: 14px; border-left: 1px solid var(--border);
 }
 .editor-tool-group:first-child { border-left: none; padding-left: 0; }
+.editor-tool-group label { font-size: 11px; color: var(--muted); font-weight: 600; }
+.editor-toolbar .btn { padding: 9px 14px; font-size: 12px; }
 .editor-tool-btn.active {
-  color: var(--accent) !important; border-color: var(--accent) !important;
-  background: rgba(255,204,0,.1) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+  background: var(--accent-soft) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .editor-slider {
-  width: 80px; height: 4px; -webkit-appearance: none; appearance: none;
-  background: var(--surface3); border-radius: 2px; outline: none;
+  width: 108px; height: 5px; -webkit-appearance: none; appearance: none;
+  background: var(--surface3); border-radius: 999px; outline: none; cursor: pointer;
 }
 .editor-slider::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 14px; height: 14px;
-  background: var(--accent); border-radius: 50%; cursor: pointer;
+  -webkit-appearance: none; width: 16px; height: 16px;
+  background: var(--accent); border: 2px solid var(--surface);
+  border-radius: 50%; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,.28); transition: transform .12s;
+}
+.editor-slider::-webkit-slider-thumb:hover { transform: scale(1.18); }
+.editor-slider::-moz-range-thumb {
+  width: 16px; height: 16px; background: var(--accent);
+  border: 2px solid var(--surface); border-radius: 50%; cursor: pointer;
 }
 
 /* ── Orders Table Selection ──────────────────────────────────────── */
@@ -1173,10 +1219,14 @@ html, body {
 
 /* SAM mask preview overlay */
 .sam-confirm-bar {
-  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 8px; padding: 8px 14px;
-  background: rgba(10,10,10,.85); border: 1px solid var(--border);
-  border-radius: 8px; z-index: 10;
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; padding: 10px 12px;
+  background: rgba(18,20,19,.92);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--r-pill); z-index: 10;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  animation: pe-pop .2s cubic-bezier(.2,.7,.3,1);
 }
 
 /* ── Sidebar Nav & Dashboard Shell ───────────────────────────────── */
@@ -2723,12 +2773,15 @@ html, body {
         <span id="sam-status" style="font-size:10px;color:var(--muted)"></span>
       </div>
       <div class="editor-tool-group">
+        <button class="btn btn-ghost" id="tool-rotate" onclick="rotateEditor90()" title="Rotate the photo 90° clockwise">⟳ Rotate</button>
+      </div>
+      <div class="editor-tool-group">
         <button class="btn btn-ghost" id="tool-undo" onclick="editorUndo()" disabled>↩ Undo</button>
         <button class="btn btn-ghost" id="tool-redo" onclick="editorRedo()" disabled>↪ Redo</button>
       </div>
       <div class="editor-tool-group" style="margin-left:auto">
         <button class="btn btn-ghost" id="tool-reset" onclick="editorReset()">⟲ Reset</button>
-        <button class="btn btn-green" id="tool-apply" onclick="applyPhotoEdit()">✓ Apply</button>
+        <button class="btn btn-accent" id="tool-apply" onclick="applyPhotoEdit()">✓ Apply</button>
       </div>
     </div>
 
@@ -2752,7 +2805,7 @@ html, body {
       </div>
       <div class="editor-tool-group" style="margin-left:auto">
         <button class="btn btn-ghost" id="place-reset" onclick="resetPlacement()">⟲ Reset</button>
-        <button class="btn btn-green" id="place-apply" onclick="applyPhotoEdit()">✓ Apply</button>
+        <button class="btn btn-accent" id="place-apply" onclick="applyPhotoEdit()">✓ Apply</button>
       </div>
     </div>
 
@@ -4655,6 +4708,81 @@ function editorReset() {
   _savedMaskImageData = null;
   renderEditorOverlay();
   showToast('Reset to auto BG removal', 'ok');
+}
+
+// Rotate the whole working photo (source + mask) 90° clockwise. Swaps the
+// pixel dimensions, rebuilds the display canvases, and invalidates anything
+// keyed to the old orientation (SAM embedding, enhanced cache, saved mask).
+function rotateEditor90() {
+  if (!editorState) return;
+  const oldPw = editorState.pw, oldPh = editorState.ph;
+  const newPw = oldPh, newPh = oldPw;
+
+  // Rotate any drawable (Image or Canvas) 90° clockwise into a fresh canvas.
+  const rot = (src) => {
+    const c = document.createElement('canvas');
+    c.width = newPw; c.height = newPh;
+    const cx = c.getContext('2d');
+    cx.imageSmoothingQuality = 'high';
+    cx.translate(newPw, 0);
+    cx.rotate(Math.PI / 2);
+    cx.drawImage(src, 0, 0, oldPw, oldPh);
+    return c;
+  };
+
+  // Rotate the sources + the alpha mask.
+  editorState.pristineImg  = rot(editorState.pristineImg);
+  editorState.bgRemovedImg = rot(editorState.bgRemovedImg);
+  editorState.enhancedImg  = null; // recompute lazily from the rotated pristine
+  const newMask = rot(editorState.maskCanvas);
+  editorState.maskCanvas = newMask;
+  editorState.maskCtx    = newMask.getContext('2d');
+
+  // Point originalImg at the right working source (enhanced or pristine).
+  if (_photoEnhance) {
+    try {
+      editorState.enhancedImg = autoEnhanceToCanvas(
+        editorState.pristineImg, editorState.maskCanvas, newPw, newPh);
+      editorState.originalImg = editorState.enhancedImg;
+    } catch (e) { editorState.originalImg = editorState.pristineImg; }
+  } else {
+    editorState.originalImg = editorState.pristineImg;
+  }
+
+  // Swap dims + recompute display scale to refit the editor area.
+  editorState.pw = newPw; editorState.ph = newPh;
+  const areaRect = document.getElementById('photo-editor-modal').querySelector('.photo-editor-inner').getBoundingClientRect();
+  const maxW = areaRect.width * 0.92, maxH = areaRect.height - 140;
+  const displayScale = Math.min(1, maxW / newPw, maxH / newPh);
+  const dw = Math.round(newPw * displayScale), dh = Math.round(newPh * displayScale);
+  editorState.dw = dw; editorState.dh = dh; editorState.displayScale = displayScale;
+
+  // Resize the stacked display canvases + redraw the checkerboard.
+  ['editor-checker', 'editor-photo', 'editor-overlay'].forEach(id => {
+    const c = document.getElementById(id);
+    if (c) { c.width = dw; c.height = dh; }
+  });
+  drawCheckerboard(document.getElementById('editor-checker'));
+
+  // Invalidate orientation-keyed state.
+  editorState.samEmbedding = null;
+  editorState.samPendingMask = null;
+  editorState.samImgScale = null;
+  editorState.samPadding = null;
+  const bar = document.querySelector('.sam-confirm-bar');
+  if (bar) bar.remove();
+
+  // Reset undo/redo around the rotation, and drop the persisted mask (dims changed).
+  editorState.undoStack = [editorState.maskCtx.getImageData(0, 0, newPw, newPh)];
+  editorState.redoStack = [];
+  _savedMaskImageData = null;
+  updateUndoRedoButtons();
+
+  document.getElementById('editor-sub').textContent = `${newPw}×${newPh} — Restore & remove brush tools`;
+
+  // Re-render whichever view is active.
+  if (editorState.mode === 'placement') { buildPlacementSrc(); renderPlacement(); }
+  else renderEditorOverlay();
 }
 
 async function applyPhotoEdit() {

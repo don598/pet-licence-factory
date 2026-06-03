@@ -919,10 +919,35 @@ function startStation2(){
   runDialogue(2,lines,()=>{ showPanel('ps2'); setNav(null,()=>s2Back()); },()=>fadeTransition(()=>startStation1()));
 }
 function s2Back(){ sfxClick(); hidePanel(); setNav(null,null); setTimeout(()=>fadeTransition(()=>startStation1()),150); }
+// Re-render the cropped square at the photo's *native* resolution rather than
+// the small on-screen canvas — grabbing straight off cropCanvas baked the photo
+// down to a grainy thumbnail AND stamped the dashed guide ellipse into it. This
+// draws from cropImg (no overlay) and caps output under the 750KB server limit.
+function captureHiResPhoto(){
+  const dispSz=cropCanvas.width;                      // on-screen square (px)
+  const native=Math.round(dispSz/cropScale);          // source px the square covers
+  const target=Math.max(dispSz,Math.min(1200,native));
+  const off=document.createElement('canvas');
+  off.width=off.height=target;
+  const octx=off.getContext('2d');
+  octx.imageSmoothingEnabled=true;
+  octx.imageSmoothingQuality='high';
+  octx.fillStyle='#000d00';
+  octx.fillRect(0,0,target,target);
+  const k=target/dispSz;                              // on-screen px → target px
+  octx.save();
+  octx.translate(cropOffX*k,cropOffY*k);
+  octx.scale(cropScale*k,cropScale*k);
+  octx.drawImage(cropImg,0,0);
+  octx.restore();
+  const LIMIT=720*1024;                               // stay safely under the 750KB server cap
+  let q=0.92,url=off.toDataURL('image/jpeg',q);
+  while(url.length>LIMIT&&q>0.5){ q-=0.1; url=off.toDataURL('image/jpeg',q); }
+  return url;
+}
 function s2ApprovePic(){
   if(!cropImg)return;
-  photoDataURL=cropCanvas.toDataURL('image/jpeg',.92);
-  if(photoDataURL.length>500*1024) photoDataURL=cropCanvas.toDataURL('image/jpeg',.6);
+  photoDataURL=captureHiResPhoto();
   jingle([{f:660,t:0},{f:880,t:130},{f:1100,t:260}]);
   hidePanel(); setNav(null,null);
   const s2Post = stationVisits[2] <= 1
