@@ -26,7 +26,7 @@ export function esc(v) {
 }
 
 // ── Low-level send ───────────────────────────────────────────────────────────
-export async function sendEmail(env, { to, subject, html, text, replyTo }) {
+export async function sendEmail(env, { to, subject, html, text, replyTo, customArgs }) {
   const apiKey = env.SENDGRID_API_KEY;
   if (!apiKey) {
     console.warn('[SendGrid] No SENDGRID_API_KEY set — skipping email to', to);
@@ -41,8 +41,18 @@ export async function sendEmail(env, { to, subject, html, text, replyTo }) {
   const fromName  = env.SENDGRID_FROM_NAME  || DEFAULT_FROM_NAME;
   const replyEmail = replyTo || env.SENDGRID_REPLY_TO || DEFAULT_REPLY_TO;
 
+  // custom_args are echoed back verbatim on every Event Webhook event, so we
+  // tag each send with the order_id (+ email_type) to join events to orders.
+  // SendGrid requires all custom_args values to be strings.
+  const cleanArgs = {};
+  for (const [k, v] of Object.entries(customArgs || {})) {
+    if (v !== undefined && v !== null && v !== '') cleanArgs[k] = String(v);
+  }
+  const personalization = { to: [{ email: to }] };
+  if (Object.keys(cleanArgs).length) personalization.custom_args = cleanArgs;
+
   const body = {
-    personalizations: [{ to: [{ email: to }] }],
+    personalizations: [personalization],
     from:     { email: fromEmail, name: fromName },
     reply_to: { email: replyEmail, name: fromName },
     subject,
@@ -196,7 +206,7 @@ Questions? Just reply to this email.
 
 — Pet Licence Factory`;
 
-  return sendEmail(env, { to: customerEmail, subject, html, text });
+  return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'confirmation' } });
 }
 
 // ── Stamp-mail shipped (called when admin flips a stamp order to 'printed') ──
@@ -252,7 +262,7 @@ If yours hasn't shown up after 21 days, just reply to this email and we'll send 
 
 — Pet Licence Factory`;
 
-  return sendEmail(env, { to: customerEmail, subject, html, text });
+  return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'stamp_shipped' } });
 }
 
 // ── Address-issue email (called from webhook when USPS verification fails) ──
@@ -329,7 +339,7 @@ If you don't fix the address within 7 days, the card hold drops automatically an
 
 — Pet Licence Factory`;
 
-  return sendEmail(env, { to: customerEmail, subject, html, text });
+  return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'address_issue' } });
 }
 
 // ── Shipping notification (called when admin sets tracking number) ──────────
@@ -383,7 +393,7 @@ Track it: ${trackUrl}
 
 — Pet Licence Factory`;
 
-  return sendEmail(env, { to: customerEmail, subject, html, text });
+  return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'shipping' } });
 }
 
 // ── Creator onboarding (affiliate program) ──────────────────────────────────
