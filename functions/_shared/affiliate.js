@@ -182,6 +182,56 @@ export async function createCreatorCoupons(env, { code, customerDiscountRate, na
 }
 
 
+// ── Standalone comp / gift code ──────────────────────────────────────────────
+// A 100%-off, single-use, 30-day code that behaves EXACTLY like a creator
+// welcome freebie at checkout (free 1-pack + free stamp shipping) because it
+// carries the same kind:'freebie' / source:'plf_affiliate' coupon metadata the
+// create-checkout-session detection looks for. There is no creator row, so
+// attributeOrder skips it and no commission is ever recorded. Minted on demand
+// from the Command Station — e.g. gifting the product to a friend.
+export async function createCompCoupon(env, { label } = {}) {
+  const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+  const cleanLabel = (label || '').toString().slice(0, 80);
+  const expiresAt  = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
+  const meta = {
+    source: 'plf_affiliate',          // matches the checkout freebie detection
+    kind:   'freebie',
+    comp:   'true',                   // marks it as a gift, not a real creator
+    label:  cleanLabel,
+    creator_name: cleanLabel || 'Gift code',
+  };
+
+  // Pick a code that isn't already taken (random 5-char suffix; collisions are
+  // astronomically rare, but check first so we never orphan a coupon).
+  let code = null;
+  for (let attempt = 0; attempt < 6 && !code; attempt++) {
+    const candidate = `GIFT-${generateShortSuffix(5)}`;
+    const taken = await stripe.promotionCodes.list({ code: candidate, limit: 1 });
+    if (!taken.data.length) code = candidate;
+  }
+  if (!code) throw new Error('Could not generate a unique code — please try again.');
+
+  const coupon = await stripe.coupons.create({
+    name:            `gift 100% ${code}`.slice(0, 40),
+    percent_off:     100,
+    duration:        'once',
+    redeem_by:       expiresAt,
+    max_redemptions: 1,
+    metadata:        meta,
+  });
+  const promo = await stripe.promotionCodes.create({
+    coupon:          coupon.id,
+    code,
+    active:          true,
+    max_redemptions: 1,
+    expires_at:      expiresAt,
+    metadata:        meta,
+  });
+
+  return { code, couponId: coupon.id, promoId: promo.id, expiresAt };
+}
+
+
 // ── Cookie helpers ─────────────────────────────────────────────────────────
 
 export const REF_COOKIE = 'plf_aff';

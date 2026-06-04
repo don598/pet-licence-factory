@@ -7,7 +7,7 @@
 import { getDb } from '../_shared/db.js';
 import { sendShippingNotificationEmail, sendStampShippedEmail, sendOrderConfirmationEmail } from '../_shared/email.js';
 import { createAndBuyLabel } from '../_shared/easypost.js';
-import { attributeOrder, getPaymentIntentId } from '../_shared/affiliate.js';
+import { attributeOrder, getPaymentIntentId, createCompCoupon } from '../_shared/affiliate.js';
 import Stripe from 'stripe';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -455,6 +455,20 @@ export async function onRequest(context) {
         if (!id) return json(400, { error: 'Missing id' });
         await db.query('DELETE FROM admin_tasks WHERE id = $1', [id]);
         return json(200, { success: true });
+      }
+
+      // ── Mint 100%-off gift codes (single-use, 30-day expiry) ─────────────
+      // Same redemption behaviour as a creator welcome freebie. No creator row,
+      // so no commission is recorded when redeemed.
+      case 'create_comp_code': {
+        const label = (body.label || '').toString().slice(0, 80);
+        const count = Math.min(Math.max(parseInt(body.count) || 1, 1), 10);
+        const codes = [];
+        for (let i = 0; i < count; i++) {
+          const res = await createCompCoupon(env, { label });
+          codes.push({ code: res.code, expiresAt: res.expiresAt });
+        }
+        return json(200, { codes });
       }
 
       default:
