@@ -182,6 +182,9 @@ export async function onRequest(context) {
   } catch (err) {
     console.error('Affiliate attribution failed (non-fatal):', err);
   }
+  // Any $0 order (creator freebie OR a standalone gift code with no creator)
+  // should read "Free" on the confirmation, not the client-submitted price.
+  if (session.amount_total === 0) isFreebie = true;
 
   // ── Confirmation email (non-fatal) ──
   // For a 100%-off creator freebie, show "Free" rather than the client total.

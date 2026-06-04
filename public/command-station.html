@@ -2348,6 +2348,7 @@ html, body {
                 <button class="filter-tab t-ship" data-filter="shipped"   onclick="setFilter('shipped')">Shipped</button>
                 <button class="filter-tab t-done" data-filter="complete"  onclick="setFilter('complete')">Complete</button>
               </div>
+              <button class="btn btn-ghost" style="margin-left:auto" onclick="openGiftModal()" title="Create a 100%-off, single-use gift code">🎁 Gift code</button>
             </div>
             <div class="bulk-action-bar" id="bulk-action-bar">
               <span class="bulk-count" id="bulk-count">0 selected</span>
@@ -2618,6 +2619,34 @@ html, body {
 </div>
 
 <!-- ── Order Detail Modal ──────────────────────────────── -->
+<div class="modal-backdrop aff-modal" id="giftModal" onclick="if(event.target===this)closeGiftModal()">
+  <div class="modal-inner aff-modal-inner" style="max-width:460px;">
+    <div class="modal-header">
+      <h2 class="modal-title">🎁 Create gift code</h2>
+      <button class="modal-close" onclick="closeGiftModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-sub" style="margin:0;">100% off · single use · expires in 30 days. Works exactly like a creator welcome code — free sticker <em>and</em> free shipping. Share the code; the recipient enters it at checkout.</p>
+      <label class="aff-stack">Label <span style="color:var(--muted)">(optional — for your records)</span><input id="giftLabel" maxlength="80" placeholder="e.g. Sarah's gift" autocomplete="off" /></label>
+      <label class="aff-stack">How many
+        <select id="giftCount">
+          <option value="1">1 code</option>
+          <option value="2">2 codes</option>
+          <option value="3">3 codes</option>
+          <option value="4">4 codes</option>
+          <option value="5">5 codes</option>
+        </select>
+      </label>
+      <div class="aff-form-actions">
+        <button type="button" class="btn-secondary aff-btn-tert" onclick="closeGiftModal()">Cancel</button>
+        <button type="button" class="btn-primary" id="giftCreateBtn" onclick="createGiftCodes()">Create</button>
+      </div>
+      <div class="aff-form-error" id="giftError" hidden></div>
+      <div id="giftResults" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="order-modal" onclick="closeModal(event)">
   <div class="modal-inner" onclick="event.stopPropagation()">
 
@@ -2892,6 +2921,51 @@ async function adminAPI(action, params = {}) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'API error');
   return data;
+}
+
+// ── Gift codes (100% off, single-use, 30-day) ───────────────────────────────
+function openGiftModal() {
+  document.getElementById('giftLabel').value = '';
+  document.getElementById('giftCount').value = '1';
+  document.getElementById('giftResults').innerHTML = '';
+  const err = document.getElementById('giftError'); err.hidden = true; err.textContent = '';
+  document.getElementById('giftModal').classList.add('open');
+  setTimeout(() => document.getElementById('giftLabel').focus(), 50);
+}
+function closeGiftModal() { document.getElementById('giftModal').classList.remove('open'); }
+
+async function createGiftCodes() {
+  const btn = document.getElementById('giftCreateBtn');
+  const err = document.getElementById('giftError');
+  const results = document.getElementById('giftResults');
+  const label = document.getElementById('giftLabel').value.trim();
+  const count = parseInt(document.getElementById('giftCount').value) || 1;
+  err.hidden = true; err.textContent = '';
+  btn.disabled = true; btn.textContent = 'Creating…';
+  try {
+    const { codes } = await adminAPI('create_comp_code', { label, count });
+    results.innerHTML = (codes || []).map(c => {
+      const exp = new Date(c.expiresAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      return `<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
+        <code style="font-size:15px;font-weight:700;letter-spacing:.5px;flex:1;">${esc(c.code)}</code>
+        <span style="font-size:11px;color:var(--muted)">expires ${esc(exp)}</span>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="copyGiftCode('${esc(c.code)}', this)">Copy</button>
+      </div>`;
+    }).join('');
+    btn.textContent = 'Create more';
+  } catch (e) {
+    err.textContent = e.message || 'Could not create code(s).';
+    err.hidden = false;
+    btn.textContent = 'Create';
+  } finally {
+    btn.disabled = false;
+  }
+}
+function copyGiftCode(code, el) {
+  navigator.clipboard.writeText(code).then(() => {
+    const prev = el.textContent; el.textContent = 'Copied!';
+    setTimeout(() => { el.textContent = prev; }, 1200);
+  });
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
