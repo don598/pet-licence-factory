@@ -179,6 +179,17 @@ export async function sendOrderConfirmationEmail(env, order) {
           </ol>`}
         </td></tr>
 
+        <!-- Show off your pet (UGC / Instagram feature) -->
+        <tr><td style="padding:0 32px 24px;">
+          <div style="background:#f0f5ff;border:1px dashed #0088cc;border-radius:6px;padding:18px 20px;text-align:center;">
+            <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:8px;">📸 Show off ${esc(petFull)}!</div>
+            <p style="margin:0 0 12px;font-size:13px;color:#334477;line-height:1.6;">
+              When ${esc(petFull)}'s licence arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
+            </p>
+            <a href="https://www.instagram.com/petlicensefactory/" style="display:inline-block;padding:12px 22px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">DM us @petlicensefactory →</a>
+          </div>
+        </td></tr>
+
         <!-- Footer -->
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Just reply to this email — we read every message.<br>
@@ -202,6 +213,8 @@ Shipping: ${shipLabel}
 Total:    ${total || '—'}
 
 ${addrParts ? `Shipping to:\n${customerName ? customerName + '\n' : ''}${[shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry].filter(Boolean).join('\n')}\n\n` : ''}Next up: we'll print ${petFull}'s licence, package it with care, and ship it your way. You'll get a tracking email once it's out the door.
+
+📸 Show off ${petFull}! When the licence arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
 
 Questions? Just reply to this email.
 
@@ -244,6 +257,18 @@ export async function sendStampShippedEmail(env, order) {
             <strong style="color:#0099cc;">📬 No tracking number</strong> — stamp mail doesn't come with tracking. Most orders arrive in <strong>3–5 business days</strong>. If yours hasn't shown up after <strong>21 days</strong>, just reply to this email and we'll send a free replacement.
           </div>
         </td></tr>
+
+        <!-- Show off your pet (UGC / Instagram feature) -->
+        <tr><td style="padding:0 32px 24px;">
+          <div style="background:#f0f5ff;border:1px dashed #0088cc;border-radius:6px;padding:18px 20px;text-align:center;">
+            <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:8px;">📸 Show off ${esc(petFull)}!</div>
+            <p style="margin:0 0 12px;font-size:13px;color:#334477;line-height:1.6;">
+              When ${esc(petFull)}'s licence arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
+            </p>
+            <a href="https://www.instagram.com/petlicensefactory/" style="display:inline-block;padding:12px 22px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">DM us @petlicensefactory →</a>
+          </div>
+        </td></tr>
+
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Reply to this email any time.<br>
           <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
@@ -260,6 +285,8 @@ Order: ${orderId || '—'}
 
 Stamp mail doesn't include a tracking number. Most orders arrive in 3–5 business days.
 If yours hasn't shown up after 21 days, just reply to this email and we'll send a free replacement.
+
+📸 Show off ${petFull}! When the licence arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
 
 — Pet Licence Factory`;
 
@@ -376,6 +403,18 @@ export async function sendShippingNotificationEmail(env, order) {
           </div>
           <a href="${esc(trackUrl)}" style="display:inline-block;margin-top:12px;padding:14px 28px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:14px;letter-spacing:1px;">Track Package →</a>
         </td></tr>
+
+        <!-- Show off your pet (UGC / Instagram feature) -->
+        <tr><td style="padding:0 32px 24px;">
+          <div style="background:#f0f5ff;border:1px dashed #0088cc;border-radius:6px;padding:18px 20px;text-align:center;">
+            <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:8px;">📸 Show off ${esc(petFull)}!</div>
+            <p style="margin:0 0 12px;font-size:13px;color:#334477;line-height:1.6;">
+              When ${esc(petFull)}'s licence arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
+            </p>
+            <a href="https://www.instagram.com/petlicensefactory/" style="display:inline-block;padding:12px 22px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">DM us @petlicensefactory →</a>
+          </div>
+        </td></tr>
+
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Reply to this email any time.<br>
           <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
@@ -391,6 +430,8 @@ export async function sendShippingNotificationEmail(env, order) {
 Tracking: ${trackingNumber}
 Order:    ${orderId || '—'}
 Track it: ${trackUrl}
+
+📸 Show off ${petFull}! When the licence arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
 
 — Pet Licence Factory`;
 
