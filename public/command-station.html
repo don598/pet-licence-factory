@@ -3768,16 +3768,28 @@ function dcComposeDieCut() {
   const borderPx = Math.round(dcState.borderPct / 100 * dcState.baseDim);
   const smoothPx = Math.round(dcState.smoothPct / 100 * dcState.baseDim);
   let sil = _silhouetteOf(cut);
-  sil = _smoothSilhouette(sil, smoothPx);
-  const grown = _dilateSilhouette(sil, borderPx);
+  sil = _smoothSilhouette(sil, smoothPx);          // smoothed subject silhouette
+  const grown = _dilateSilhouette(sil, borderPx);  // outer sticker (cut-line) shape
   const W = cut.width, H = cut.height;
+
+  // Clip the subject to that SAME smoothed silhouette. Otherwise stray hairs /
+  // whiskers (which smoothing drops from the silhouette) still get drawn on top
+  // and poke past the border. Clipping keeps the visible subject edge and the
+  // border outline concentric, so nothing extends beyond the cut line.
+  const subj = document.createElement('canvas'); subj.width = W; subj.height = H;
+  const sx = subj.getContext('2d');
+  sx.drawImage(cut, 0, 0);
+  sx.globalCompositeOperation = 'destination-in';
+  sx.drawImage(sil, 0, 0);
+  sx.globalCompositeOperation = 'source-over';
+
   const out = document.createElement('canvas'); out.width = W; out.height = H;
   const ox = out.getContext('2d');
   ox.drawImage(grown, 0, 0);
   ox.globalCompositeOperation = 'source-in';
   ox.fillStyle = '#ffffff'; ox.fillRect(0, 0, W, H);
   ox.globalCompositeOperation = 'source-over';
-  ox.drawImage(cut, 0, 0);
+  ox.drawImage(subj, 0, 0);                          // clipped subject on the white backing
   return out;
 }
 
