@@ -1232,6 +1232,31 @@ html, body {
   animation: pe-pop .2s cubic-bezier(.2,.7,.3,1);
 }
 
+/* ── Die-Cut sticker preview modal ──────────────────────────────── */
+.diecut-backdrop {
+  position: fixed; inset: 0; z-index: 2000; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(8,10,12,.66); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.diecut-backdrop.open { display: flex; animation: pe-fade .2s ease; }
+.diecut-inner {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  width: min(680px, 94vw); max-height: 92vh; overflow: auto;
+  box-shadow: 0 24px 70px rgba(0,0,0,.5);
+}
+.diecut-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.diecut-stage {
+  display: flex; align-items: center; justify-content: center; padding: 18px; min-height: 300px;
+  /* mid-grey checker so the WHITE sticker border is clearly visible */
+  background-color: #9aa3af;
+  background-image:
+    linear-gradient(45deg, rgba(0,0,0,.10) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.10) 75%),
+    linear-gradient(45deg, rgba(0,0,0,.10) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.10) 75%);
+  background-size: 22px 22px; background-position: 0 0, 11px 11px;
+}
+.diecut-stage canvas { max-width: 100%; max-height: 56vh; filter: drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+.diecut-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 18px; border-top: 1px solid var(--border); }
+
 /* ── Sidebar Nav & Dashboard Shell ───────────────────────────────── */
 .cs-shell { display: flex; flex: 1; overflow: hidden; }
 
@@ -2736,6 +2761,7 @@ html, body {
         <div class="licence-actions">
           <button class="btn btn-accent" id="gen-btn" onclick="generateLicence()">⚙ Generate Card</button>
           <button class="btn btn-blue"   id="edit-photo-btn" onclick="openPhotoEditor()" style="display:none">✎ Edit Photo</button>
+          <button class="btn btn-blue"   id="gen-diecut-btn" onclick="generateDieCut()" style="display:none" title="Make a die-cut sticker (white border) from this pet — uses your refined cutout if you've edited it, otherwise auto-removes the background">🎯 Die-Cut</button>
           <button class="btn btn-blue"   id="dl-btn"  onclick="downloadLicence()" style="display:none">⬇ Download PNG</button>
           <button class="btn btn-ghost"  onclick="printSingleOrder()">🖨 Print Docs</button>
         </div>
@@ -2839,6 +2865,7 @@ html, body {
         <button class="btn btn-ghost" id="tool-redo" onclick="editorRedo()" disabled>↪ Redo</button>
       </div>
       <div class="editor-tool-group" style="margin-left:auto">
+        <button class="btn btn-ghost" id="tool-diecut" onclick="sendEditorToDieCut()" title="Send this refined cutout straight to the die-cut generator">🎯 Die-Cut</button>
         <button class="btn btn-ghost" id="tool-reset" onclick="editorReset()">⟲ Reset</button>
         <button class="btn btn-accent" id="tool-apply" onclick="applyPhotoEdit()">✓ Apply</button>
       </div>
@@ -2874,6 +2901,7 @@ html, body {
         <span style="font-size:10px;color:var(--muted)">Drag the photo to reposition · scroll to zoom</span>
       </div>
       <div class="editor-tool-group" style="margin-left:auto">
+        <button class="btn btn-ghost" id="place-diecut" onclick="sendEditorToDieCut()" title="Send this refined cutout straight to the die-cut generator">🎯 Die-Cut</button>
         <button class="btn btn-ghost" id="place-reset" onclick="resetPlacement()">⟲ Reset</button>
         <button class="btn btn-accent" id="place-apply" onclick="applyPhotoEdit()">✓ Apply</button>
       </div>
@@ -2886,6 +2914,27 @@ html, body {
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ── Die-Cut Sticker Modal ─────────────────────────────────── -->
+<div class="diecut-backdrop" id="diecut-modal" onclick="if(event.target===this)closeDieCut()">
+  <div class="diecut-inner">
+    <div class="diecut-head">
+      <div>
+        <div class="modal-title">DIE-CUT STICKER</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:3px">White sticker border around the cutout · download the print-ready PNG</div>
+      </div>
+      <button class="modal-close" onclick="closeDieCut()">✕</button>
+    </div>
+    <div class="diecut-stage"><div id="diecut-preview"></div></div>
+    <div class="diecut-controls">
+      <label style="font-size:12px;color:var(--muted)">Border</label>
+      <input type="range" id="diecut-border" class="editor-slider" min="0" max="8" step="0.25" value="2.5" oninput="onDieCutBorder(this.value)" style="flex:1;min-width:160px" title="White border thickness, as a % of the sticker's longest side">
+      <span id="diecut-border-label" style="font-size:12px;color:var(--muted);min-width:42px">2.5%</span>
+      <button class="btn btn-accent" onclick="downloadDieCut()">⬇ Download PNG</button>
+      <button class="btn btn-ghost" onclick="closeDieCut()">Close</button>
+    </div>
   </div>
 </div>
 
@@ -3514,6 +3563,8 @@ function updatePhotoSourceUI() {
   const o = modalOrder;
   row.style.display = (o && o.photo_url) ? 'flex' : 'none';
   if (badge) badge.style.display = (o && o.active_photo_url) ? 'inline-flex' : 'none';
+  const dc = document.getElementById('gen-diecut-btn');
+  if (dc) dc.style.display = (o && effectivePhoto(o)) ? 'inline-flex' : 'none';
 }
 
 // Download a photo data URL as a file. which: 'original' (default) | 'current'.
@@ -3604,6 +3655,170 @@ async function revertOrderPhoto() {
   updatePhotoSourceUI();
   showToast('Reverted to original photo ✓', 'ok');
   try { await generateLicence(); } catch (_) {}
+}
+
+// ── Die-cut sticker generator ────────────────────────────────────────────────
+// Takes a pet CUTOUT (subject on transparent alpha) and lays a uniform white
+// "kiss-cut" border around it. Two entry points:
+//   • generateDieCut()    — from the order modal: uses the refined cutout
+//     (_editedPhotoUrl) if the editor was applied, else auto-removes the bg.
+//   • sendEditorToDieCut()— from inside the editor: uses the live refined mask
+//     so brush / SAM / crop work flows straight in.
+let _dieCutSource = null;   // the cutout canvas (subject on alpha)
+let _dieCutCanvas = null;   // the latest generated die-cut (full-res, for download)
+let _dieCutBorderPct = 2.5; // border width as % of the cutout's longest side
+let _dieCutTimer = null;
+
+function _imgToCanvas(img) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return c;
+}
+
+// Grow a white silhouette outward by ~borderPx (solid + crisp). Ping-pong
+// dilation: each step stamps the silhouette in 16 directions at a small radius
+// and unions it, so even thin features (whiskers, ear tips) fill solidly.
+function _dilateSilhouette(sil, borderPx) {
+  if (borderPx <= 0) return sil;
+  const W = sil.width, H = sil.height;
+  const K = Math.max(1, Math.min(24, Math.ceil(borderPx / 3)));
+  const r = borderPx / K, dirs = 16;
+  let src = sil;
+  for (let s = 0; s < K; s++) {
+    const dst = document.createElement('canvas'); dst.width = W; dst.height = H;
+    const d = dst.getContext('2d');
+    d.drawImage(src, 0, 0);
+    for (let i = 0; i < dirs; i++) {
+      const a = (i / dirs) * Math.PI * 2;
+      d.drawImage(src, Math.cos(a) * r, Math.sin(a) * r);
+    }
+    src = dst;
+  }
+  return src;
+}
+
+// Build the die-cut: white backing in the dilated silhouette, subject on top.
+// Padded so the border has room beyond the original photo bounds.
+function buildDieCut(cutout, borderPx) {
+  const pad = Math.ceil(borderPx) + 2;
+  const w = cutout.width, h = cutout.height;
+  const W = w + pad * 2, H = h + pad * 2;
+
+  // Padded subject.
+  const subj = document.createElement('canvas'); subj.width = W; subj.height = H;
+  subj.getContext('2d').drawImage(cutout, pad, pad);
+
+  // Crisp binary white silhouette (threshold alpha so the border edge is solid).
+  const sil = document.createElement('canvas'); sil.width = W; sil.height = H;
+  const sc = sil.getContext('2d');
+  sc.drawImage(subj, 0, 0);
+  const id = sc.getImageData(0, 0, W, H), dd = id.data;
+  for (let i = 0; i < dd.length; i += 4) {
+    const on = dd[i + 3] > 128;
+    dd[i] = dd[i + 1] = dd[i + 2] = 255;
+    dd[i + 3] = on ? 255 : 0;
+  }
+  sc.putImageData(id, 0, 0);
+
+  const grown = _dilateSilhouette(sil, borderPx);
+
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
+  const ox = out.getContext('2d');
+  ox.drawImage(grown, 0, 0);
+  ox.globalCompositeOperation = 'source-in';        // keep grown shape, paint it white
+  ox.fillStyle = '#ffffff'; ox.fillRect(0, 0, W, H);
+  ox.globalCompositeOperation = 'source-over';
+  ox.drawImage(subj, 0, 0);                          // subject on the white backing
+  return out;
+}
+
+function renderDieCut() {
+  if (!_dieCutSource) return;
+  const borderPx = Math.round(_dieCutBorderPct / 100 * Math.max(_dieCutSource.width, _dieCutSource.height));
+  _dieCutCanvas = buildDieCut(_dieCutSource, borderPx);
+  const host = document.getElementById('diecut-preview');
+  host.innerHTML = '';
+  const pv = document.createElement('canvas');
+  const maxW = 560, maxH = Math.round(window.innerHeight * 0.5);
+  const s = Math.min(maxW / _dieCutCanvas.width, maxH / _dieCutCanvas.height, 1);
+  pv.width  = Math.max(1, Math.round(_dieCutCanvas.width  * s));
+  pv.height = Math.max(1, Math.round(_dieCutCanvas.height * s));
+  pv.getContext('2d').drawImage(_dieCutCanvas, 0, 0, pv.width, pv.height);
+  host.appendChild(pv);
+}
+
+function onDieCutBorder(v) {
+  _dieCutBorderPct = Math.max(0, Math.min(8, +v || 0));
+  document.getElementById('diecut-border-label').textContent = _dieCutBorderPct + '%';
+  clearTimeout(_dieCutTimer);
+  _dieCutTimer = setTimeout(renderDieCut, 110);      // debounce the dilation work
+}
+
+function openDieCutWithCutout(cutout) {
+  if (!cutout || !cutout.width) { showToast('No cutout to build from', 'err'); return; }
+  _dieCutSource = cutout;
+  const sl = document.getElementById('diecut-border');
+  if (sl) { sl.value = _dieCutBorderPct; document.getElementById('diecut-border-label').textContent = _dieCutBorderPct + '%'; }
+  document.getElementById('diecut-modal').classList.add('open');
+  renderDieCut();
+}
+
+function closeDieCut() { document.getElementById('diecut-modal').classList.remove('open'); }
+
+function downloadDieCut() {
+  if (!_dieCutCanvas) return;
+  const name = ((modalOrder && modalOrder.order_id) || 'order') + '-diecut.png';
+  _dieCutCanvas.toBlob((b) => {
+    if (!b) return;
+    const url = URL.createObjectURL(b);
+    const a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }, 'image/png');
+}
+
+// Order modal: one click → die-cut. Uses the refined cutout if the editor was
+// applied, otherwise auto-removes the background first (like the card flow).
+async function generateDieCut() {
+  const o = modalOrder; if (!o) return;
+  const btn = document.getElementById('gen-diecut-btn');
+  const prev = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⌛ Building…'; }
+  try {
+    let cutout;
+    if (_editedPhotoUrl) {
+      cutout = _imgToCanvas(await loadImg(_editedPhotoUrl));
+    } else {
+      const eff = effectivePhoto(o);
+      if (!eff) { showToast('No photo on file', 'err'); return; }
+      showToast('Removing background…', 'ok');
+      let url;
+      try { url = await removePhotoBackground(eff); }
+      catch (e) { showToast('Background removal failed: ' + (e.message || e), 'err', true); return; }
+      cutout = _imgToCanvas(await loadImg(url));
+    }
+    openDieCutWithCutout(cutout);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = prev; }
+  }
+}
+
+// Inside the editor: take the live refined cutout (brush / SAM / crop) and send
+// it straight to the generator. Also persists it as the applied cutout so the
+// card preview stays consistent with what you sent.
+function sendEditorToDieCut() {
+  if (!editorState) return;
+  const { originalImg, maskCanvas, maskCtx, pw, ph } = editorState;
+  const comp = document.createElement('canvas'); comp.width = pw; comp.height = ph;
+  const cx = comp.getContext('2d');
+  cx.drawImage(originalImg, 0, 0, pw, ph);
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(maskCanvas, 0, 0);
+  _editedPhotoUrl = comp.toDataURL('image/png');
+  _savedMaskImageData = maskCtx.getImageData(0, 0, pw, ph);
+  closePhotoEditor();
+  openDieCutWithCutout(comp);
 }
 
 // Build the always-visible quick-stats strip: chip size, total item count, and
