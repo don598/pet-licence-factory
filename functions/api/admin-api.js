@@ -37,7 +37,7 @@ function verifyToken(request, env) {
 }
 
 // Whitelist of columns that admin can update on pet_orders
-const ALLOWED_ORDER_UPDATES = ['status', 'tracking_number', 'notes', 'shipping_label_url', 'verification_error'];
+const ALLOWED_ORDER_UPDATES = ['status', 'tracking_number', 'notes', 'shipping_label_url', 'verification_error', 'addon_refunded'];
 
 // Strip control chars, cap length — used for admin-supplied override addresses.
 function clean(v, max = 200) {
@@ -111,7 +111,7 @@ export async function onRequest(context) {
         const limit = Math.min(Math.max(parseInt(body.limit) || 500, 1), 1000);
         const result = await db.query(
           `SELECT p.id, p.order_id, p.status, p.created_at, p.updated_at, p.pet_first_name, p.pet_last_name,
-                  p.customer_email, p.customer_name, p.shipping_option, p.total, p.pack_count, p.add_on,
+                  p.customer_email, p.customer_name, p.shipping_option, p.total, p.pack_count, p.add_on, p.addon_refunded,
                   p.chip_size, p.tracking_number, p.notes, p.stripe_payment_id,
                   p.ship_addr_line1, p.ship_addr_line2, p.ship_city, p.ship_state, p.ship_zip, p.ship_country,
                   p.verification_error, p.verification_attempts,
@@ -364,7 +364,7 @@ export async function onRequest(context) {
         // Return the refreshed row (joined with creator name) for the UI.
         const out = await db.query(
           `SELECT p.id, p.order_id, p.status, p.created_at, p.updated_at, p.pet_first_name, p.pet_last_name,
-                  p.customer_email, p.customer_name, p.shipping_option, p.total, p.pack_count, p.add_on,
+                  p.customer_email, p.customer_name, p.shipping_option, p.total, p.pack_count, p.add_on, p.addon_refunded,
                   p.chip_size, p.tracking_number, p.notes, p.stripe_payment_id,
                   p.ship_addr_line1, p.ship_addr_line2, p.ship_city, p.ship_state, p.ship_zip, p.ship_country,
                   p.verification_error, p.verification_attempts,

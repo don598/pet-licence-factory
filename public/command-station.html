@@ -613,6 +613,9 @@ html, body {
 }
 .decal-alert .decal-icon { font-size: 20px; }
 .decal-alert strong { color: var(--pink); }
+/* Refunded variant — the decal was refunded and must NOT be included. */
+.decal-alert.refunded { background: rgba(220,38,38,.10); border-color: rgba(220,38,38,.45); color: var(--red, #dc2626); }
+.decal-alert.refunded strong { color: var(--red, #dc2626); }
 
 /* Collapsible <details> sections in the order modal */
 .detail-section[open] > summary .chevron { transform: rotate(90deg); }
@@ -2719,8 +2722,8 @@ html, body {
 
       <!-- Decal alert ribbon — only shown when order includes car decal -->
       <div id="decal-alert" class="decal-alert" style="display:none">
-        <span class="decal-icon">🎯</span>
-        <span>This order includes the <strong>8×8" Car Decal</strong> add-on — don't forget to include it!</span>
+        <span class="decal-icon" id="decal-alert-icon">🎯</span>
+        <span id="decal-alert-text">This order includes the <strong>8×8" Car Decal</strong> add-on — don't forget to include it!</span>
       </div>
 
       <div id="affiliate-alert" class="affiliate-alert" style="display:none">
@@ -2805,6 +2808,12 @@ html, body {
         <div class="form-row">
           <label>Admin Notes</label>
           <textarea id="edit-notes" placeholder="Internal notes…"></textarea>
+        </div>
+        <div class="form-row" id="addon-refunded-row" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
+            <input type="checkbox" id="edit-addon-refunded" style="width:auto;margin:0">
+            <span style="font-size:13px">Car decal <strong>refunded</strong> — exclude it from the package &amp; mark it refunded on the receipt</span>
+          </label>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px">
           <button class="btn btn-green" onclick="saveOrderChanges()">✓ Save Changes</button>
@@ -4208,9 +4217,24 @@ async function openOrder(dbId) {
     ['Tracking #',    order.tracking_number],
   ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
 
-  // Decal alert — only shown when car decal was added
-  document.getElementById('decal-alert').style.display =
-    order.add_on === 'car_decal' ? 'flex' : 'none';
+  // Decal alert — shown when a car decal was added; flips to a red "refunded,
+  // do NOT include" warning once the decal has been marked refunded.
+  const hasDecal = order.add_on === 'car_decal';
+  const decalRefunded = !!order.addon_refunded;
+  const decalAlertEl = document.getElementById('decal-alert');
+  decalAlertEl.style.display = hasDecal ? 'flex' : 'none';
+  decalAlertEl.classList.toggle('refunded', hasDecal && decalRefunded);
+  if (hasDecal) {
+    document.getElementById('decal-alert-icon').textContent = decalRefunded ? '⛔' : '🎯';
+    document.getElementById('decal-alert-text').innerHTML = decalRefunded
+      ? 'The <strong>8×8" Car Decal</strong> was <strong>REFUNDED</strong> — do NOT include it in this package.'
+      : 'This order includes the <strong>8×8" Car Decal</strong> add-on — don\'t forget to include it!';
+  }
+  // Refund checkbox — only relevant for decal orders.
+  const refRow = document.getElementById('addon-refunded-row');
+  if (refRow) refRow.style.display = hasDecal ? 'block' : 'none';
+  const refCb = document.getElementById('edit-addon-refunded');
+  if (refCb) refCb.checked = decalRefunded;
 
   const affiliateAlert = document.getElementById('affiliate-alert');
   if (isAffiliateOrder(order)) {
@@ -4379,6 +4403,7 @@ async function saveOrderChanges() {
     status:          document.getElementById('edit-status').value,
     tracking_number: document.getElementById('edit-tracking').value.trim() || null,
     notes:           document.getElementById('edit-notes').value.trim()    || null,
+    addon_refunded:  document.getElementById('edit-addon-refunded').checked,
     updated_at:      new Date().toISOString(),
   };
   try {
@@ -5036,6 +5061,13 @@ function renderReceiptLabel(o) {
   const discountLabel = isFree ? 'Creator freebie (100% off)' : '15% Mini-game discount';
   const totalCents   = isFree ? 0 : (paidCents || (listSubtotal - discountAmt + shipAmt));
 
+  // Car-decal add-on refunded? Reflect it on the receipt: strike the decal
+  // line, show the refund, and net it out of the total. The refund is the
+  // decal's actual PAID share (so any 15% discount applies proportionally).
+  const addonRefunded = wantsDecal && (o.addon_refunded === true || o.addon_refunded === 't' || o.addon_refunded === 'true');
+  const decalRefundCents = addonRefunded ? Math.round(decalAmt * (listSubtotal > 0 ? paidSubtotal / listSubtotal : 1)) : 0;
+  const netTotalCents = Math.max(0, totalCents - decalRefundCents);
+
   return `
     <div class="label-page portrait label-receipt">
       <div class="lr-header">
@@ -5048,12 +5080,14 @@ function renderReceiptLabel(o) {
       <div class="lr-items">
         <div class="lr-items-title">Items</div>
         <div class="lr-line"><span class="lr-line-name">${esc(packLabel)}${o.chip_size ? ` <span class="lr-line-meta">(${esc(o.chip_size)} chip)</span>` : ''}</span><span class="lr-line-amt">${fmt(packAmt)}</span></div>
-        ${wantsDecal ? `<div class="lr-line"><span class="lr-line-name">8×8" Vinyl Car Decal</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
+        ${wantsDecal ? `<div class="lr-line"${addonRefunded ? ' style="text-decoration:line-through;opacity:.5"' : ''}><span class="lr-line-name">8×8" Vinyl Car Decal${addonRefunded ? ' (refunded)' : ''}</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
         <div class="lr-line lr-sub"><span class="lr-line-name">Subtotal</span><span class="lr-line-amt">${fmt(listSubtotal)}</span></div>
         ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">${discountLabel}</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
         <div class="lr-line"><span class="lr-line-name">${esc(shipLabel)}</span><span class="lr-line-amt">${effShipAmt === 0 ? 'FREE' : fmt(effShipAmt)}</span></div>
+        ${addonRefunded ? `<div class="lr-line" style="color:#b00020;font-weight:700"><span class="lr-line-name">Decal refunded</span><span class="lr-line-amt">−${fmt(decalRefundCents)}</span></div>` : ''}
       </div>
-      <div class="lr-total">Total: ${fmt(totalCents)}</div>
+      <div class="lr-total">Total: ${fmt(addonRefunded ? netTotalCents : totalCents)}</div>
+      ${addonRefunded ? `<div style="margin-top:8px;padding:6px 8px;border:1.5px solid #b00020;border-radius:4px;color:#b00020;font-weight:700;font-size:8pt;text-align:center;">⛔ DECAL REFUNDED — do NOT include the car decal</div>` : ''}
       <div class="lr-signoff">
         <div class="lr-tagline">Handcrafted with care by:</div>
         <div class="lr-paw" style="margin:8px 0;"><img src="${trackImageFor(emp.species, emp.name)}" alt="${esc(emp.species)} paw print"></div>

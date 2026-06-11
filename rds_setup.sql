@@ -136,6 +136,11 @@ CREATE INDEX IF NOT EXISTS idx_pet_orders_stripe_session_id ON pet_orders (strip
 -- The effective photo used for rendering is COALESCE(active_photo_url, photo_url).
 ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS active_photo_url TEXT;
 
+-- Per-item refund flag: the car-decal add-on was refunded. The printout receipt
+-- strikes the decal line + nets it out of the total, and the Command Station
+-- shows a "refunded — do not include" warning.
+ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS addon_refunded BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- ================================================================
 --  Done! Tables: pet_orders, admin_tasks, tiktok_outreach_log, tiktok_leads
 -- ================================================================
