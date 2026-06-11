@@ -4668,29 +4668,38 @@ function downloadLicence() {
   a.download = name;
   a.href     = licenceCanvas.toDataURL('image/png');
   a.click();
-
-  // Auto-advance status: paid → processed the first time the licence is
-  // downloaded (documents are printed). Leaves already-shipped/complete
-  // orders alone.
-  if (modalOrder && (modalOrder.status === 'paid' || modalOrder.status === 'pending')) {
-    maybeFlipToProcessed();
-  }
+  // Downloading does NOT change order status. An order only advances to
+  // "processed" (and emails the customer) when the documents are PRINTED —
+  // see printLabels() / markOrdersPrinted().
 }
 
-async function maybeFlipToProcessed() {
-  if (!openOrderId || !modalOrder) return;
-  try {
-    await adminAPI('update_order', { id: openOrderId, updates: { status: 'processed' } });
-    modalOrder.status = 'processed';
-    const idx = allOrders.findIndex(o => String(o.id) === String(openOrderId));
-    if (idx >= 0) allOrders[idx].status = 'processed';
-    document.getElementById('edit-status').value = 'processed';
+// Advance the just-PRINTED orders paid → processed and fire the customer email
+// (notify:true tells the server this is a print, so the stamp "on its way"
+// email goes out for stamp orders). Only a paid order advances; shipped /
+// complete / pending are left alone. This is the ONLY path that marks an order
+// processed — downloads never do.
+async function markOrdersPrinted(ids) {
+  if (!ids || !ids.length) return;
+  let flipped = 0, emailed = 0;
+  for (const id of ids) {
+    const o = allOrders.find(r => String(r.id) === String(id));
+    if (!o || o.status !== 'paid') continue;       // only advance a paid order
+    try {
+      const res = await adminAPI('update_order', { id, updates: { status: 'processed' }, notify: true });
+      o.status = 'processed';
+      if (modalOrder && String(modalOrder.id) === String(id)) {
+        modalOrder.status = 'processed';
+        const sel = document.getElementById('edit-status'); if (sel) sel.value = 'processed';
+      }
+      flipped++; if (res && res.emailSent) emailed++;
+    } catch (err) {
+      console.warn('mark-printed failed for', id, err);
+    }
+  }
+  if (flipped) {
     updateAnalytics();
     renderTable();
-    showToast('Licence downloaded · status → processed', 'ok');
-  } catch (err) {
-    // Non-fatal — download already happened
-    console.warn('Auto-status update failed:', err);
+    showToast(`Printed · ${flipped} marked processed${emailed ? ` · ${emailed} email${emailed === 1 ? '' : 's'} sent` : ''}`, 'ok');
   }
 }
 
@@ -5001,6 +5010,8 @@ function renderReceiptLabel(o) {
   `;
 }
 
+let _labelPreviewIds = [];   // order ids currently in the print preview
+
 async function openLabelPreview(orderIds) {
   if (!orderIds.length) { showToast('Select at least one order', 'err'); return; }
   const modal = document.getElementById('label-preview-modal');
@@ -5026,6 +5037,10 @@ async function openLabelPreview(orderIds) {
     return;
   }
 
+  // Remember which orders are in this print preview so printing can advance
+  // them to "processed" (printing is the only thing that does).
+  _labelPreviewIds = orders.map(o => o.id);
+
   // Render all labels — address then receipt per order
   area.innerHTML = orders.map(o => renderEnvelopeLabel(o) + renderReceiptLabel(o) + renderCertificateLabel(o)).join('');
   sub.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'} · ${orders.length * 2} labels`;
@@ -5037,6 +5052,9 @@ function closeLabelPreview() {
 
 function printLabels() {
   window.print();
+  // Printing the documents is the ONE action that advances orders to
+  // "processed" and emails the customer — never a download.
+  markOrdersPrinted(_labelPreviewIds);
 }
 
 function printSelected() {

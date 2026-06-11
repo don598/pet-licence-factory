@@ -201,10 +201,13 @@ export async function onRequest(context) {
           }
         }
 
-        // Stamp-mail shipped trigger: status just flipped to 'printed'.
-        // (Confirmation already sent at payment time by the Stripe webhook.)
-        const statusJustPrinted = priorStatus !== 'printed' && row?.status === 'printed';
-        if (statusJustPrinted && row?.shipping_option === 'stamp' && row?.customer_email) {
+        // Stamp-mail "on its way" email. Fires ONLY when the docs are PRINTED
+        // (Print Docs sends notify=true) and the order advances to 'processed' —
+        // never on a download or a manual status edit. 'processed' == the stamp
+        // order has been printed & dropped in the mail. (The order confirmation
+        // already went out at payment time via the Stripe webhook.)
+        const justProcessed = body.notify === true && priorStatus !== 'processed' && row?.status === 'processed';
+        if (justProcessed && row?.shipping_option === 'stamp' && row?.customer_email) {
           try {
             await sendStampShippedEmail(env, {
               orderId:       row.order_id,
