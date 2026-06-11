@@ -356,6 +356,44 @@ export async function onRequest(context) {
         return json(200, { success: true });
       }
 
+      // ── Photo replacement (non-destructive) ─────────────────────────────
+      // Swap the photo used for rendering WITHOUT touching the original.
+      // photo_url stays the immutable customer upload; the replacement lives
+      // in active_photo_url, and revert_photo clears it to fall back to the
+      // original. These dedicated actions are the ONLY write path to the photo
+      // columns — photo_url is intentionally absent from ALLOWED_ORDER_UPDATES
+      // so the original can never be a generic update target.
+      case 'replace_photo': {
+        const { id, photo } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+        if (typeof photo !== 'string' || !/^data:image\/[a-z0-9.+-]+;base64,/i.test(photo)) {
+          return json(400, { error: 'photo must be a base64 image data URL' });
+        }
+        // Mirror submit-order's 750KB cap so a replacement can't bloat the row.
+        if (photo.length > 750 * 1024) {
+          return json(400, { error: 'Replacement photo too large. Please use a smaller image.' });
+        }
+        const r = await db.query(
+          `UPDATE pet_orders SET active_photo_url = $1, updated_at = NOW()
+           WHERE id = $2 RETURNING id`,
+          [photo, id]
+        );
+        if (r.rowCount === 0) return json(404, { error: 'Order not found' });
+        return json(200, { success: true });
+      }
+
+      case 'revert_photo': {
+        const { id } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+        const r = await db.query(
+          `UPDATE pet_orders SET active_photo_url = NULL, updated_at = NOW()
+           WHERE id = $1 RETURNING id`,
+          [id]
+        );
+        if (r.rowCount === 0) return json(404, { error: 'Order not found' });
+        return json(200, { success: true });
+      }
+
       // ── Shipping label (EasyPost) ──────────────────────────────────────
       case 'create_shipping_label': {
         const { id } = body;

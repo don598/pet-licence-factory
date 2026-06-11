@@ -37,8 +37,14 @@ CREATE TABLE IF NOT EXISTS pet_orders (
   add_on           TEXT,
   shipping_option  TEXT DEFAULT 'stamp',
 
-  -- Photo (stored as base64 data URL)
+  -- Photo (stored as base64 data URL).
+  --   photo_url        — the customer's ORIGINAL upload. Immutable: never
+  --                      overwritten after order creation, so it can never be lost.
+  --   active_photo_url — optional admin replacement. When set, it is the photo
+  --                      used for rendering/printing; the original stays in
+  --                      photo_url untouched. NULL = use the original.
   photo_url        TEXT,
+  active_photo_url TEXT,
 
   -- Customer shipping info
   customer_name    TEXT,
@@ -124,6 +130,11 @@ ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS verification_attempts INTEGER NO
 ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS verification_error    TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_pet_orders_stripe_session_id ON pet_orders (stripe_session_id);
+
+-- Admin photo replacement (non-destructive). photo_url remains the immutable
+-- original; active_photo_url holds an admin-uploaded replacement when present.
+-- The effective photo used for rendering is COALESCE(active_photo_url, photo_url).
+ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS active_photo_url TEXT;
 
 -- ================================================================
 --  Done! Tables: pet_orders, admin_tasks, tiktok_outreach_log, tiktok_leads
