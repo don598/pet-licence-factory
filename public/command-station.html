@@ -2886,6 +2886,11 @@ html, body {
         <span id="place-scale-label" style="font-size:11px;color:var(--muted);min-width:38px">100%</span>
       </div>
       <div class="editor-tool-group">
+        <label style="font-size:11px;color:var(--muted)" title="Shrink the whole photo frame so it takes up less of the card">Frame</label>
+        <input type="range" id="place-frame" class="editor-slider" min="40" max="100" value="100" oninput="onPlacementFrame(this.value)">
+        <span id="place-frame-label" style="font-size:11px;color:var(--muted);min-width:38px">100%</span>
+      </div>
+      <div class="editor-tool-group">
         <label style="font-size:11px;color:var(--muted)">Saturation</label>
         <input type="range" id="place-sat" class="editor-slider" min="0" max="200" value="100" oninput="onPlacementSaturation(this.value)">
         <span id="place-sat-label" style="font-size:11px;color:var(--muted);min-width:38px">100%</span>
@@ -4651,13 +4656,14 @@ async function generateLicence() {
 
         // Main photo — base cover-fit, then the admin's zoom + drag offset.
         ctx.save();
-        ctx.beginPath(); ctx.rect(F.photoMain.x, F.photoMain.y, F.photoMain.w, F.photoMain.h); ctx.clip();
+        const pb = photoBoxRect(T);
+        ctx.beginPath(); ctx.rect(pb.x, pb.y, pb.w, pb.h); ctx.clip();
         if ((T.saturation || 1) !== 1) ctx.filter = `saturate(${T.saturation})`;
-        const scaleM = Math.max(F.photoMain.w / photo.width, F.photoMain.h / photo.height) * (T.scale || 1);
+        const scaleM = Math.max(pb.w / photo.width, pb.h / photo.height) * (T.scale || 1);
         const swM = photo.width * scaleM, shM = photo.height * scaleM;
         // Centre of the placed photo (box centre + drag offset); rotate about it.
-        const pcxM = F.photoMain.x + F.photoMain.w / 2 + (T.offsetX || 0);
-        const pcyM = F.photoMain.y + F.photoMain.h / 2 + (T.offsetY || 0);
+        const pcxM = pb.cx + (T.offsetX || 0);
+        const pcyM = pb.cy + (T.offsetY || 0);
         ctx.translate(pcxM, pcyM);
         if (T.rotation) ctx.rotate(T.rotation * Math.PI / 180);
         ctx.drawImage(photo, -swM / 2, -shM / 2, swM, shM);
@@ -5122,7 +5128,16 @@ let _editedPhotoUrl = null;    // data URL of editor output, used by generateLic
 let _savedMaskImageData = null; // persisted mask so reopening the editor restores your work
 // How the pet photo sits inside the licence photo box. Defaults reproduce the
 // original cover-fit/centered/full-saturation behaviour exactly.
-function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1, rotation: 0 }; }
+function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1, rotation: 0, boxScale: 1 }; }
+// The photo box on the card, optionally shrunk by the placement "Frame size"
+// (boxScale, 0.3–1). Anchored at the box CENTRE so the photo stays where it
+// sits while taking up less of the card.
+function photoBoxRect(T) {
+  const bs = Math.max(0.3, Math.min(1, (T && T.boxScale) || 1));
+  const cx = F.photoMain.x + F.photoMain.w / 2, cy = F.photoMain.y + F.photoMain.h / 2;
+  const w = F.photoMain.w * bs, h = F.photoMain.h * bs;
+  return { x: cx - w / 2, y: cy - h / 2, w, h, cx, cy };
+}
 let _photoTransform = defaultPhotoTransform();
 // Auto-enhance (auto-levels + white balance + vibrance + unsharp). _photoEnhance
 // is the on/off state; _photoEnhanceAmount is the strength (0..2, 1 = full effect)
@@ -5818,7 +5833,8 @@ function renderPlacement() {
   const ctx = c.getContext('2d');
   const s = editorState.placeFit;                 // licence-px → canvas-px
   const T = _photoTransform || defaultPhotoTransform();
-  const box = { x: F.photoMain.x * s, y: F.photoMain.y * s, w: F.photoMain.w * s, h: F.photoMain.h * s };
+  const pb = photoBoxRect(T);
+  const box = { x: pb.x * s, y: pb.y * s, w: pb.w * s, h: pb.h * s };
 
   ctx.clearRect(0, 0, c.width, c.height);
   // Grayed-out licence behind, so placement reads in context.
@@ -5835,7 +5851,7 @@ function renderPlacement() {
   ctx.save();
   ctx.beginPath(); ctx.rect(box.x, box.y, box.w, box.h); ctx.clip();
   if ((T.saturation || 1) !== 1) ctx.filter = `saturate(${T.saturation})`;
-  const baseScale = Math.max(F.photoMain.w / editorState.pw, F.photoMain.h / editorState.ph);
+  const baseScale = Math.max(pb.w / editorState.pw, pb.h / editorState.ph);
   const drawScale = baseScale * (T.scale || 1) * s;
   const dwp = editorState.pw * drawScale, dhp = editorState.ph * drawScale;
   // Centre of the placed photo (box centre + drag offset); rotate about it.
@@ -5864,6 +5880,9 @@ function syncPlacementControls() {
   if (scEl) { scEl.value = sc; document.getElementById('place-scale-label').textContent = sc + '%'; }
   if (saEl) { saEl.value = sa; document.getElementById('place-sat-label').textContent = sa + '%'; }
   if (roEl) { roEl.value = ro; document.getElementById('place-rot-label').textContent = ro + '°'; }
+  const bx = Math.round((T.boxScale || 1) * 100);
+  const bxEl = document.getElementById('place-frame');
+  if (bxEl) { bxEl.value = bx; document.getElementById('place-frame-label').textContent = bx + '%'; }
 }
 
 function onPlacementScale(v) {
@@ -5879,6 +5898,13 @@ function onPlacementSaturation(v) {
 function onPlacementRotation(v) {
   _photoTransform.rotation = Math.max(-180, Math.min(180, +v || 0));
   document.getElementById('place-rot-label').textContent = Math.round(_photoTransform.rotation) + '°';
+  renderPlacement();
+}
+// Shrink the whole photo FRAME on the card (the box, not the photo within it),
+// so the photo takes up less space. Anchored at the box centre.
+function onPlacementFrame(v) {
+  _photoTransform.boxScale = Math.max(0.4, Math.min(1, (+v || 100) / 100));
+  document.getElementById('place-frame-label').textContent = Math.round(_photoTransform.boxScale * 100) + '%';
   renderPlacement();
 }
 
