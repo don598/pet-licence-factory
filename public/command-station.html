@@ -3496,6 +3496,42 @@ function renderTable() {
 // Email delivery marker beside the customer email — fed by the SendGrid Event
 // Webhook (email_status / email_opens / email_bounce_reason on the order).
 function renderEmailMarker(o) {
+  // Per-type pills: ✉ confirmation (checkout) + 📬 the "in the mail" / shipping
+  // email (sent when the docs are printed). Falls back to the legacy single
+  // pill for orders that predate per-type email-event tracking.
+  const by = o.email_by_type;
+  if (by && typeof by === 'object' && Object.keys(by).length) {
+    let html = '';
+    if (by.confirmation) html += emailPillHtml(by.confirmation, '✉', 'Confirmation');
+    const proc = by.stamp_shipped || by.shipping;
+    if (proc) html += emailPillHtml(proc, '📬', by.shipping ? 'Shipping' : 'In-the-mail');
+    if (by.address_issue && !proc) html += emailPillHtml(by.address_issue, '⚠', 'Address-issue');
+    if (html) return html;
+  }
+  return legacyEmailPill(o);
+}
+
+// One delivery pill for a single email type. status = best SendGrid event.
+function emailPillHtml(d, icon, typeLabel) {
+  if (!d || !d.status) return '';
+  const s = d.status, opens = +(d.opens || 0);
+  let cls = 'email-sent', ic = icon, label = s;
+  if (s === 'delivered')                  { cls = 'email-ok';   label = 'Delivered'; }
+  else if (s === 'open' || s === 'click') { cls = 'email-ok';   label = opens > 1 ? `Opened ×${opens}` : 'Opened'; }
+  else if (s === 'processed')             { cls = 'email-sent'; label = 'Sent'; }
+  else if (s === 'deferred')              { cls = 'email-warn'; label = 'Deferring'; }
+  else if (s === 'bounce' || s === 'dropped') { cls = 'email-bad'; ic = '⚠'; label = 'Bounced'; }
+  else if (s === 'spamreport')            { cls = 'email-bad';  ic = '⚠'; label = 'Spam'; }
+  const when   = d.at ? ' · ' + fmtDate(d.at) : '';
+  const bad    = (s === 'bounce' || s === 'dropped' || s === 'spamreport');
+  const reason = (bad && d.reason) ? ' — ' + d.reason : '';
+  const title  = `${typeLabel} email: ${s}${when}${reason}`;
+  return `<span class="email-pill ${cls}" title="${esc(title)}" onclick="event.stopPropagation()">${ic} ${esc(label)}</span>`;
+}
+
+// Legacy single pill from the order's summary columns (last email only) — used
+// for orders that predate per-type email-event tracking (no email_by_type).
+function legacyEmailPill(o) {
   const s = o.email_status;
   if (!s) return '';
   const opens = o.email_opens || 0;

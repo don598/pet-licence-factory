@@ -118,6 +118,31 @@ export async function onRequest(context) {
                   p.affiliate_creator_id, p.affiliate_coupon_code, p.affiliate_commission_rate,
                   p.affiliate_commission_cents, p.affiliate_is_freebie,
                   p.email_status, p.email_status_at, p.email_opens, p.email_bounce_reason, p.email_last_type,
+                  -- Per-email-type delivery summary {type: {status,opens,at,reason}}
+                  -- so the dashboard can show a pill per email (confirmation,
+                  -- stamp 'in the mail', tracked shipping, address-issue).
+                  (SELECT COALESCE(json_object_agg(t.email_type,
+                            json_build_object('status', t.best, 'opens', t.opens, 'at', t.at, 'reason', t.reason)), '{}'::json)
+                     FROM (
+                       SELECT e.email_type,
+                              CASE
+                                WHEN bool_or(e.event = 'spamreport')        THEN 'spamreport'
+                                WHEN bool_or(e.event IN ('bounce','dropped')) THEN 'bounce'
+                                WHEN bool_or(e.event IN ('open','click'))    THEN 'open'
+                                WHEN bool_or(e.event = 'delivered')          THEN 'delivered'
+                                WHEN bool_or(e.event = 'deferred')           THEN 'deferred'
+                                WHEN bool_or(e.event = 'processed')          THEN 'processed'
+                                ELSE NULL
+                              END AS best,
+                              COUNT(*) FILTER (WHERE e.event = 'open') AS opens,
+                              MAX(e.occurred_at) AS at,
+                              (ARRAY_AGG(e.reason ORDER BY e.occurred_at DESC NULLS LAST)
+                                 FILTER (WHERE e.reason IS NOT NULL))[1] AS reason
+                       FROM email_events e
+                       WHERE e.order_id = p.order_id
+                       GROUP BY e.email_type
+                     ) t
+                  ) AS email_by_type,
                   c.name AS affiliate_creator_name
            FROM pet_orders p
            LEFT JOIN affiliate_creators c ON c.id = p.affiliate_creator_id
