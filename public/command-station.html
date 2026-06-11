@@ -1254,7 +1254,8 @@ html, body {
     linear-gradient(45deg, rgba(0,0,0,.10) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.10) 75%);
   background-size: 22px 22px; background-position: 0 0, 11px 11px;
 }
-.diecut-stage canvas { max-width: 100%; max-height: 56vh; filter: drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+.diecut-stage canvas { display: block; }
+.diecut-stage #dc-photo { filter: drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
 .diecut-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 18px; border-top: 1px solid var(--border); }
 
 /* ── Sidebar Nav & Dashboard Shell ───────────────────────────────── */
@@ -2923,17 +2924,38 @@ html, body {
     <div class="diecut-head">
       <div>
         <div class="modal-title">DIE-CUT STICKER</div>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:3px">White sticker border around the cutout · download the print-ready PNG</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Clean up stray hairs with the brushes, then lay a smooth white sticker border · download the print-ready PNG</div>
       </div>
       <button class="modal-close" onclick="closeDieCut()">✕</button>
     </div>
     <div class="diecut-stage"><div id="diecut-preview"></div></div>
-    <div class="diecut-controls">
-      <label style="font-size:12px;color:var(--muted)">Border</label>
-      <input type="range" id="diecut-border" class="editor-slider" min="0" max="8" step="0.25" value="2.5" oninput="onDieCutBorder(this.value)" style="flex:1;min-width:160px" title="White border thickness, as a % of the sticker's longest side">
-      <span id="diecut-border-label" style="font-size:12px;color:var(--muted);min-width:42px">2.5%</span>
-      <button class="btn btn-accent" onclick="downloadDieCut()">⬇ Download PNG</button>
-      <button class="btn btn-ghost" onclick="closeDieCut()">Close</button>
+    <div class="diecut-controls" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost editor-tool-btn active" id="dc-remove" onclick="dcSetTool('remove')" title="Erase stray hairs / whiskers">🔴 Remove</button>
+        <button class="btn btn-ghost editor-tool-btn" id="dc-restore" onclick="dcSetTool('restore')" title="Paint the cutout back where you over-erased">🔵 Restore</button>
+        <label style="font-size:11px;color:var(--muted)">Brush</label>
+        <input type="range" id="dc-brush" class="editor-slider" min="2" max="150" value="24" oninput="dcOnBrush(this.value)" style="width:104px">
+        <span id="dc-brush-label" style="font-size:11px;color:var(--muted);min-width:24px">24</span>
+        <button class="btn btn-ghost" id="dc-undo" onclick="dcUndo()" disabled>↩ Undo</button>
+        <button class="btn btn-ghost" id="dc-redo" onclick="dcRedo()" disabled>↪ Redo</button>
+        <span style="flex:1"></span>
+        <label style="font-size:11px;color:var(--muted)" title="Auto colour &amp; contrast, tuned from the pet">✨ Enhance</label>
+        <input type="range" id="dc-enhance" class="editor-slider" min="0" max="200" value="0" oninput="dcOnEnhance(this.value)" style="width:104px">
+        <span id="dc-enhance-label" style="font-size:11px;color:var(--muted);min-width:34px">0%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--muted);min-width:62px">Border</label>
+        <input type="range" id="diecut-border" class="editor-slider" min="0" max="8" step="0.25" value="2.5" oninput="onDieCutBorder(this.value)" style="flex:1;min-width:120px" title="White border thickness, as a % of the sticker's longest side">
+        <span id="diecut-border-label" style="font-size:12px;color:var(--muted);min-width:42px">2.5%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--muted);min-width:62px" title="Rounds off the ridges on the cut edge">Smoothing</label>
+        <input type="range" id="dc-smooth" class="editor-slider" min="0" max="5" step="0.25" value="1.2" oninput="dcOnSmooth(this.value)" style="flex:1;min-width:120px">
+        <span id="dc-smooth-label" style="font-size:12px;color:var(--muted);min-width:42px">1.2%</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-accent" onclick="downloadDieCut()">⬇ Download PNG</button>
+        <button class="btn btn-ghost" onclick="closeDieCut()">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3657,17 +3679,15 @@ async function revertOrderPhoto() {
   try { await generateLicence(); } catch (_) {}
 }
 
-// ── Die-cut sticker generator ────────────────────────────────────────────────
-// Takes a pet CUTOUT (subject on transparent alpha) and lays a uniform white
-// "kiss-cut" border around it. Two entry points:
-//   • generateDieCut()    — from the order modal: uses the refined cutout
-//     (_editedPhotoUrl) if the editor was applied, else auto-removes the bg.
-//   • sendEditorToDieCut()— from inside the editor: uses the live refined mask
-//     so brush / SAM / crop work flows straight in.
-let _dieCutSource = null;   // the cutout canvas (subject on alpha)
-let _dieCutCanvas = null;   // the latest generated die-cut (full-res, for download)
-let _dieCutBorderPct = 2.5; // border width as % of the cutout's longest side
-let _dieCutTimer = null;
+// ── Die-cut sticker STATION ──────────────────────────────────────────────────
+// A small standalone editor (separate from the background editor): take a pet
+// cutout, clean up stray hairs/whiskers with Remove/Restore brushes, optional
+// auto-enhance, and lay a SMOOTH white "kiss-cut" border. Entry points:
+//   • generateDieCut()     — order modal (refined cutout, else auto-bg).
+//   • sendEditorToDieCut() — from the background editor (live refined cutout).
+let dcState = null;     // die-cut station state (null when closed)
+let _dcTimer = null;    // debounce for border / smoothing re-render
+let _dcEnhTimer = null; // debounce for the enhance slider
 
 function _imgToCanvas(img) {
   const c = document.createElement('canvas');
@@ -3698,78 +3718,312 @@ function _dilateSilhouette(sil, borderPx) {
   return src;
 }
 
-// Build the die-cut: white backing in the dilated silhouette, subject on top.
-// Padded so the border has room beyond the original photo bounds.
-function buildDieCut(cutout, borderPx) {
-  const pad = Math.ceil(borderPx) + 2;
-  const w = cutout.width, h = cutout.height;
-  const W = w + pad * 2, H = h + pad * 2;
-
-  // Padded subject.
-  const subj = document.createElement('canvas'); subj.width = W; subj.height = H;
-  subj.getContext('2d').drawImage(cutout, pad, pad);
-
-  // Crisp binary white silhouette (threshold alpha so the border edge is solid).
-  const sil = document.createElement('canvas'); sil.width = W; sil.height = H;
-  const sc = sil.getContext('2d');
-  sc.drawImage(subj, 0, 0);
-  const id = sc.getImageData(0, 0, W, H), dd = id.data;
-  for (let i = 0; i < dd.length; i += 4) {
-    const on = dd[i + 3] > 128;
-    dd[i] = dd[i + 1] = dd[i + 2] = 255;
-    dd[i + 3] = on ? 255 : 0;
+// Crisp binary white silhouette from a cutout's alpha.
+function _silhouetteOf(cutout) {
+  const W = cutout.width, H = cutout.height;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const cx = c.getContext('2d');
+  cx.drawImage(cutout, 0, 0);
+  const id = cx.getImageData(0, 0, W, H), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const on = d[i + 3] > 128;
+    d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = on ? 255 : 0;
   }
-  sc.putImageData(id, 0, 0);
+  cx.putImageData(id, 0, 0);
+  return c;
+}
 
+// Smooth a binary alpha silhouette: blur then re-threshold → rounds the ridges
+// the dilation would otherwise trace from a fuzzy fur edge.
+function _smoothSilhouette(sil, radiusPx) {
+  if (radiusPx < 0.75) return sil;
+  const W = sil.width, H = sil.height;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const cx = c.getContext('2d');
+  cx.filter = `blur(${radiusPx}px)`;
+  cx.drawImage(sil, 0, 0);
+  cx.filter = 'none';
+  const id = cx.getImageData(0, 0, W, H), d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const on = d[i + 3] > 128;
+    d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = on ? 255 : 0;
+  }
+  cx.putImageData(id, 0, 0);
+  return c;
+}
+
+// The current refined cutout = enhanced base × erase-mask (RGBA), at working size.
+function dcRefinedCutout() {
+  const c = document.createElement('canvas'); c.width = dcState.pw; c.height = dcState.ph;
+  const cx = c.getContext('2d');
+  cx.drawImage(dcState.originalImg, 0, 0);
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(dcState.maskCanvas, 0, 0);
+  return c;
+}
+
+// Compose the die-cut (working size): smooth → grow → white backing → subject.
+function dcComposeDieCut() {
+  const cut = dcRefinedCutout();
+  const borderPx = Math.round(dcState.borderPct / 100 * dcState.baseDim);
+  const smoothPx = Math.round(dcState.smoothPct / 100 * dcState.baseDim);
+  let sil = _silhouetteOf(cut);
+  sil = _smoothSilhouette(sil, smoothPx);
   const grown = _dilateSilhouette(sil, borderPx);
-
+  const W = cut.width, H = cut.height;
   const out = document.createElement('canvas'); out.width = W; out.height = H;
   const ox = out.getContext('2d');
   ox.drawImage(grown, 0, 0);
-  ox.globalCompositeOperation = 'source-in';        // keep grown shape, paint it white
+  ox.globalCompositeOperation = 'source-in';
   ox.fillStyle = '#ffffff'; ox.fillRect(0, 0, W, H);
   ox.globalCompositeOperation = 'source-over';
-  ox.drawImage(subj, 0, 0);                          // subject on the white backing
+  ox.drawImage(cut, 0, 0);
   return out;
 }
 
-function renderDieCut() {
-  if (!_dieCutSource) return;
-  const borderPx = Math.round(_dieCutBorderPct / 100 * Math.max(_dieCutSource.width, _dieCutSource.height));
-  _dieCutCanvas = buildDieCut(_dieCutSource, borderPx);
+function dcBuildStage() {
   const host = document.getElementById('diecut-preview');
   host.innerHTML = '';
-  const pv = document.createElement('canvas');
-  const maxW = 560, maxH = Math.round(window.innerHeight * 0.5);
-  const s = Math.min(maxW / _dieCutCanvas.width, maxH / _dieCutCanvas.height, 1);
-  pv.width  = Math.max(1, Math.round(_dieCutCanvas.width  * s));
-  pv.height = Math.max(1, Math.round(_dieCutCanvas.height * s));
-  pv.getContext('2d').drawImage(_dieCutCanvas, 0, 0, pv.width, pv.height);
-  host.appendChild(pv);
+  const maxW = 540, maxH = Math.round(window.innerHeight * 0.46);
+  const ds = Math.min(maxW / dcState.pw, maxH / dcState.ph, 1);
+  const dw = Math.max(1, Math.round(dcState.pw * ds)), dh = Math.max(1, Math.round(dcState.ph * ds));
+  dcState.ds = ds; dcState.dw = dw; dcState.dh = dh;
+
+  const stack = document.createElement('div');
+  stack.style.position = 'relative'; stack.style.width = dw + 'px'; stack.style.height = dh + 'px';
+  const photo = document.createElement('canvas'); photo.id = 'dc-photo'; photo.width = dw; photo.height = dh; photo.style.display = 'block';
+  const overlay = document.createElement('canvas'); overlay.id = 'dc-overlay'; overlay.width = dw; overlay.height = dh;
+  overlay.style.position = 'absolute'; overlay.style.left = '0'; overlay.style.top = '0'; overlay.style.cursor = 'none';
+  stack.appendChild(photo); stack.appendChild(overlay);
+  host.appendChild(stack);
+  overlay.addEventListener('pointerdown', dcPointerDown);
+  overlay.addEventListener('pointermove', dcPointerMove);
+  overlay.addEventListener('pointerup', dcPointerUp);
+  overlay.addEventListener('pointerleave', dcPointerLeave);
 }
 
-function onDieCutBorder(v) {
-  _dieCutBorderPct = Math.max(0, Math.min(8, +v || 0));
-  document.getElementById('diecut-border-label').textContent = _dieCutBorderPct + '%';
-  clearTimeout(_dieCutTimer);
-  _dieCutTimer = setTimeout(renderDieCut, 110);      // debounce the dilation work
+function dcRenderFull() {
+  if (!dcState) return;
+  const die = dcComposeDieCut();
+  dcState.lastDie = die;
+  const photo = document.getElementById('dc-photo'); if (!photo) return;
+  const ctx = photo.getContext('2d');
+  ctx.clearRect(0, 0, photo.width, photo.height);
+  ctx.drawImage(die, 0, 0, photo.width, photo.height);
 }
 
+// Fast path during an active brush stroke: show the cutout updating (no border).
+function dcRenderFast() {
+  const cut = dcRefinedCutout();
+  const photo = document.getElementById('dc-photo'); if (!photo) return;
+  const ctx = photo.getContext('2d');
+  ctx.clearRect(0, 0, photo.width, photo.height);
+  ctx.drawImage(cut, 0, 0, photo.width, photo.height);
+}
+
+function dcDebounceFull() { clearTimeout(_dcTimer); _dcTimer = setTimeout(dcRenderFull, 90); }
+
+// ── Brushes ──────────────────────────────────────────────────────────────────
+function dcImgXY(e) {
+  const rect = e.target.getBoundingClientRect();
+  return { x: (e.clientX - rect.left) / dcState.ds, y: (e.clientY - rect.top) / dcState.ds };
+}
+function dcPaintAt(px, py) {
+  const { maskCtx, tool, brushSize } = dcState;
+  maskCtx.save();
+  if (tool === 'remove') maskCtx.globalCompositeOperation = 'destination-out';
+  else { maskCtx.globalCompositeOperation = 'source-over'; maskCtx.fillStyle = '#ffffff'; }
+  maskCtx.beginPath(); maskCtx.arc(px, py, brushSize / 2, 0, Math.PI * 2); maskCtx.fill();
+  maskCtx.restore();
+}
+function dcPaintLine(x0, y0, x1, y1) {
+  const dist = Math.hypot(x1 - x0, y1 - y0), step = Math.max(1, dcState.brushSize / 4);
+  const n = Math.ceil(dist / step);
+  for (let i = 0; i <= n; i++) { const t = n ? i / n : 0; dcPaintAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); }
+}
+function dcPointerDown(e) {
+  if (!dcState) return; e.preventDefault();
+  try { e.target.setPointerCapture(e.pointerId); } catch (_) {}
+  dcState.painting = true;
+  const { x, y } = dcImgXY(e); dcState.lastX = x; dcState.lastY = y;
+  dcPushUndo(); dcPaintAt(x, y); dcRenderFast(); dcDrawCursor(e);
+}
+function dcPointerMove(e) {
+  if (!dcState) return;
+  if (dcState.painting) {
+    const { x, y } = dcImgXY(e);
+    dcPaintLine(dcState.lastX, dcState.lastY, x, y);
+    dcState.lastX = x; dcState.lastY = y; dcRenderFast();
+  }
+  dcDrawCursor(e);
+}
+function dcPointerUp() {
+  if (!dcState || !dcState.painting) return;
+  dcState.painting = false; dcRenderFull();
+}
+function dcPointerLeave() {
+  if (!dcState) return;
+  if (dcState.painting) { dcState.painting = false; dcRenderFull(); }
+  const ov = document.getElementById('dc-overlay'); if (ov) ov.getContext('2d').clearRect(0, 0, ov.width, ov.height);
+}
+function dcDrawCursor(e) {
+  const ov = document.getElementById('dc-overlay'); if (!ov) return;
+  const ctx = ov.getContext('2d'); ctx.clearRect(0, 0, ov.width, ov.height);
+  const rect = ov.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top, r = (dcState.brushSize / 2) * dcState.ds;
+  ctx.save();
+  ctx.strokeStyle = dcState.tool === 'remove' ? 'rgba(255,80,80,.95)' : 'rgba(100,180,255,.95)';
+  ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, Math.max(2, r), 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+// ── Undo / redo ──────────────────────────────────────────────────────────────
+function dcPushUndo() {
+  const { maskCtx, pw, ph, undoStack } = dcState;
+  undoStack.push(maskCtx.getImageData(0, 0, pw, ph));
+  if (undoStack.length > 20) undoStack.shift();
+  dcState.redoStack.length = 0; dcUpdateUndoRedo();
+}
+function dcUndo() {
+  if (!dcState || dcState.undoStack.length < 2) return;
+  dcState.redoStack.push(dcState.undoStack.pop());
+  dcState.maskCtx.putImageData(dcState.undoStack[dcState.undoStack.length - 1], 0, 0);
+  dcUpdateUndoRedo(); dcRenderFull();
+}
+function dcRedo() {
+  if (!dcState || !dcState.redoStack.length) return;
+  const img = dcState.redoStack.pop(); dcState.undoStack.push(img);
+  dcState.maskCtx.putImageData(img, 0, 0); dcUpdateUndoRedo(); dcRenderFull();
+}
+function dcUpdateUndoRedo() {
+  const u = document.getElementById('dc-undo'), r = document.getElementById('dc-redo');
+  if (u) u.disabled = !dcState || dcState.undoStack.length < 2;
+  if (r) r.disabled = !dcState || !dcState.redoStack.length;
+}
+
+// ── Tools / sliders ──────────────────────────────────────────────────────────
+function dcSetTool(t) {
+  if (dcState) dcState.tool = t;
+  const rm = document.getElementById('dc-remove'), rs = document.getElementById('dc-restore');
+  if (rm) rm.classList.toggle('active', t === 'remove');
+  if (rs) rs.classList.toggle('active', t === 'restore');
+}
+function dcOnBrush(v) {
+  if (dcState) dcState.brushSize = Math.max(2, Math.min(150, +v || 24));
+  document.getElementById('dc-brush-label').textContent = dcState ? dcState.brushSize : 24;
+}
+function onDieCutBorder(v) {            // border slider
+  if (dcState) dcState.borderPct = Math.max(0, Math.min(8, +v || 0));
+  document.getElementById('diecut-border-label').textContent = (dcState ? dcState.borderPct : 0) + '%';
+  dcDebounceFull();
+}
+function dcOnSmooth(v) {
+  if (dcState) dcState.smoothPct = Math.max(0, Math.min(5, +v || 0));
+  document.getElementById('dc-smooth-label').textContent = (dcState ? dcState.smoothPct : 0) + '%';
+  dcDebounceFull();
+}
+function dcOnEnhance(v) {
+  const a = Math.max(0, Math.min(200, +v || 0)) / 100;
+  document.getElementById('dc-enhance-label').textContent = Math.round(a * 100) + '%';
+  if (!dcState) return;
+  dcState.enhanceAmount = a;
+  clearTimeout(_dcEnhTimer); _dcEnhTimer = setTimeout(() => dcApplyEnhance(a), 70);
+}
+function dcApplyEnhance(amount) {
+  if (!dcState) return;
+  const { pristine, pw, ph } = dcState;
+  if (amount <= 0) { dcState.originalImg = pristine; dcRenderFull(); return; }
+  if (!dcState.enhancedImg) {
+    try { dcState.enhancedImg = autoEnhanceToCanvas(pristine, pristine, pw, ph); }
+    catch (e) { dcState.enhancedImg = null; }
+  }
+  const out = document.createElement('canvas'); out.width = pw; out.height = ph;
+  const ox = out.getContext('2d'); ox.drawImage(pristine, 0, 0);
+  const enh = dcState.enhancedImg;
+  if (enh) {
+    const base = ox.getImageData(0, 0, pw, ph), bd = base.data;
+    const ed = enh.getContext('2d').getImageData(0, 0, pw, ph).data;
+    for (let i = 0; i < bd.length; i += 4) {
+      for (let k = 0; k < 3; k++) { const val = bd[i + k] + amount * (ed[i + k] - bd[i + k]); bd[i + k] = val < 0 ? 0 : val > 255 ? 255 : val; }
+    }
+    ox.putImageData(base, 0, 0);
+  }
+  dcState.originalImg = out;
+  dcRenderFull();
+}
+
+// ── Station setup ────────────────────────────────────────────────────────────
+// Pads the cutout so the border has room, sets up the erase mask + brush state,
+// and opens the modal. Border/smoothing preferences carry over between opens.
 function openDieCutWithCutout(cutout) {
   if (!cutout || !cutout.width) { showToast('No cutout to build from', 'err'); return; }
-  _dieCutSource = cutout;
-  const sl = document.getElementById('diecut-border');
-  if (sl) { sl.value = _dieCutBorderPct; document.getElementById('diecut-border-label').textContent = _dieCutBorderPct + '%'; }
+  const w0 = cutout.width, h0 = cutout.height;
+  const baseDim = Math.max(w0, h0);
+  const margin = Math.round(baseDim * 0.12);     // room for the border (max 8%) + slack
+  const pw = w0 + margin * 2, ph = h0 + margin * 2;
+
+  const pristine = document.createElement('canvas'); pristine.width = pw; pristine.height = ph;
+  pristine.getContext('2d').drawImage(cutout, margin, margin);
+
+  const mask = document.createElement('canvas'); mask.width = pw; mask.height = ph;
+  const mctx = mask.getContext('2d');
+  mctx.fillStyle = '#ffffff'; mctx.fillRect(0, 0, pw, ph);   // keep everything initially
+
+  const prevBorder = dcState ? dcState.borderPct : 2.5;
+  const prevSmooth = dcState ? dcState.smoothPct : 1.2;
+
+  dcState = {
+    pristine, originalImg: pristine, enhancedImg: null, enhanceAmount: 0,
+    maskCanvas: mask, maskCtx: mctx,
+    pw, ph, baseDim,
+    borderPct: prevBorder, smoothPct: prevSmooth,
+    tool: 'remove', brushSize: 24,
+    painting: false, lastX: 0, lastY: 0,
+    undoStack: [], redoStack: [],
+    ds: 1, dw: 0, dh: 0, lastDie: null,
+  };
+  dcState.undoStack.push(mctx.getImageData(0, 0, pw, ph));
+
+  dcBuildStage();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  const lbl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('diecut-border', dcState.borderPct); lbl('diecut-border-label', dcState.borderPct + '%');
+  set('dc-smooth', dcState.smoothPct);     lbl('dc-smooth-label', dcState.smoothPct + '%');
+  set('dc-brush', dcState.brushSize);      lbl('dc-brush-label', dcState.brushSize);
+  set('dc-enhance', 0);                     lbl('dc-enhance-label', '0%');
+  dcSetTool('remove');
+  dcUpdateUndoRedo();
+
   document.getElementById('diecut-modal').classList.add('open');
-  renderDieCut();
+  dcRenderFull();
 }
 
 function closeDieCut() { document.getElementById('diecut-modal').classList.remove('open'); }
 
+// Trim transparent margins so the exported PNG is tight to the sticker.
+function _trimTransparent(src) {
+  const W = src.width, H = src.height;
+  const d = src.getContext('2d').getImageData(0, 0, W, H).data;
+  let minX = W, minY = H, maxX = -1, maxY = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (d[(y * W + x) * 4 + 3] > 8) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+  }
+  if (maxX < 0) return null;
+  const pad = 2;
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+  maxX = Math.min(W - 1, maxX + pad); maxY = Math.min(H - 1, maxY + pad);
+  const w = maxX - minX + 1, h = maxY - minY + 1;
+  const o = document.createElement('canvas'); o.width = w; o.height = h;
+  o.getContext('2d').drawImage(src, minX, minY, w, h, 0, 0, w, h);
+  return o;
+}
+
 function downloadDieCut() {
-  if (!_dieCutCanvas) return;
+  if (!dcState) return;
+  const die = dcComposeDieCut();
+  const outC = _trimTransparent(die) || die;
   const name = ((modalOrder && modalOrder.order_id) || 'order') + '-diecut.png';
-  _dieCutCanvas.toBlob((b) => {
+  outC.toBlob((b) => {
     if (!b) return;
     const url = URL.createObjectURL(b);
     const a = document.createElement('a'); a.href = url; a.download = name;
