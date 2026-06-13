@@ -13,7 +13,7 @@
   var CENTS = {
     pack1:    1395,   // 1-Pack Licence Sticker
     pack2:    1999,   // 2-Pack Licence Stickers
-    decal:     499,   // 8×8" Vinyl Car Decal
+    decal:     449,   // 4.5×4.5" Vinyl Car Decal
     stamp:      95,   // Stamp Shipping
     standard:  699,   // Standard Shipping (USPS Ground Advantage)
     priority:  1099,  // Priority Shipping (USPS Priority Flat Rate Envelope)

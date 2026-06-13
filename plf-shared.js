@@ -50,7 +50,7 @@ async function submitOrder(orderData) {
 // truth for what Stripe charges). The literal below is a safe fallback if
 // pricing.js hasn't loaded.
 const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
-  || { pack1: 13.95, pack2: 19.99, decal: 4.99, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
+  || { pack1: 13.95, pack2: 19.99, decal: 4.49, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
 
 // ═══════════════════════════════════════════════════════════
 // GLOBAL STATE
@@ -398,7 +398,7 @@ function buildOrderSummaryHTML(cssPrefix) {
   const p = cssPrefix || '';
   const { base, dec, disc, ship, total } = calcOrder();
   let h = `<div class="${p}order-line"><span>${packQty}-Pack Licence Sticker${packQty > 1 ? 's' : ''}</span><span>$${base.toFixed(2)}</span></div>`;
-  if (wantsDecal) h += `<div class="${p}order-line"><span>8×8" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
+  if (wantsDecal) h += `<div class="${p}order-line"><span>4.5×4.5" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
   if (discountEarned) {
     const discColor = p ? 'color:#00ff41' : 'color:#4caf50';
     h += `<div class="${p}order-line" style="${discColor}"><span>Discount (15%)</span><span>-$${disc.toFixed(2)}</span></div>`;

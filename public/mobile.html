@@ -392,7 +392,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
       </div>
       <div class="m-decal-row" id="decal-row" onclick="toggleDecal()">
         <div class="m-decal-check"><span id="decal-check"> </span></div>
-        <div class="m-decal-text" id="decal-text">ADD 8×8&quot; VINYL CAR DECAL<br>+$4.99 · Weatherproof</div>
+        <div class="m-decal-text" id="decal-text">ADD 4.5×4.5&quot; VINYL CAR DECAL<br>+$4.49 · Weatherproof</div>
       </div>
       <div id="m-s5-discount">🎉 15% DISCOUNT EARNED!</div>
       <button class="m-btn gold" id="m-play-game-btn" onclick="openMiniGame()">🎮 PLAY GAMES FOR 15% OFF</button>
@@ -555,7 +555,7 @@ const A = {
 // in sync with functions/_shared/pricing.js (server source of truth). Literal
 // is a safe fallback if pricing.js hasn't loaded.
 const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
-  || { pack1:13.95, pack2:19.99, decal:4.99, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
+  || { pack1:13.95, pack2:19.99, decal:4.49, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
 
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -1489,11 +1489,11 @@ function updatePriceDisplay(){
   if(d){
     $('price-1').innerHTML = `<span class="old-price">$${p1.toFixed(2)}</span><span class="new-price">$${(p1*(1-disc)).toFixed(2)}</span>`;
     $('price-2').innerHTML = `<span class="old-price">$${p2.toFixed(2)}</span><span class="new-price">$${(p2*(1-disc)).toFixed(2)}</span>`;
-    $('decal-text').innerHTML = `ADD 8×8" VINYL CAR DECAL<br><span class="old-price">+$${dec.toFixed(2)}</span><span class="new-price">+$${(dec*(1-disc)).toFixed(2)}</span> · Weatherproof`;
+    $('decal-text').innerHTML = `ADD 4.5×4.5" VINYL CAR DECAL<br><span class="old-price">+$${dec.toFixed(2)}</span><span class="new-price">+$${(dec*(1-disc)).toFixed(2)}</span> · Weatherproof`;
   } else {
     $('price-1').textContent = `$${p1.toFixed(2)}`;
     $('price-2').textContent = `$${p2.toFixed(2)}`;
-    $('decal-text').innerHTML = `ADD 8×8" VINYL CAR DECAL<br>+$${dec.toFixed(2)} · Weatherproof`;
+    $('decal-text').innerHTML = `ADD 4.5×4.5" VINYL CAR DECAL<br>+$${dec.toFixed(2)} · Weatherproof`;
   }
 }
 
@@ -1737,7 +1737,7 @@ function buildOrderSummary(){
   const shipPrice=PRICES[shippingOption]||PRICES.stamp;
   const total=base+dec+disc+shipPrice;
   let h=`<div class="m-order-line"><span>${packQty}-Pack Licence Sticker${packQty>1?'s':''}</span><span>$${base.toFixed(2)}</span></div>`;
-  if(wantsDecal)h+=`<div class="m-order-line"><span>8×8" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
+  if(wantsDecal)h+=`<div class="m-order-line"><span>4.5×4.5" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
   if(discountEarned)h+=`<div class="m-order-line" style="color:#00ff41"><span>Discount (15%)</span><span>-$${Math.abs(disc).toFixed(2)}</span></div>`;
   const shipNames={stamp:'Stamp Mail (USPS)',standard:'Standard Shipping',priority:'Priority Shipping'};
   h+=`<div class="m-order-line"><span>${shipNames[shippingOption]||'Shipping'}</span><span>+$${shipPrice.toFixed(2)}</span></div>`;
