@@ -24,3 +24,17 @@ CCA/
 
 # Legal (sensitive documents)
 legal/
+
+# Inbox-agent grader audit reports (contain creator PII)
+inbox-agent-audits/
+
+# Command Center native app (separate Xcode project, keep out of public web repo)
+command-center-widget/
+
+# Physical product print files (handbooks) — same category as CCA/
+Pet License Handbook*.pdf
+Pet license handbook*.pdf
+
+# Test fixtures / unused assets (keep off the public repo)
+public/images/test-pets/
+public/images/social-avatar.png
