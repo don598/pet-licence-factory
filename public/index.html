@@ -98,6 +98,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060808;font-family:
 .start-btn{font-family:'Press Start 2P',monospace;font-size:clamp(9px,1.4vw,16px);background:#0a1a0a;color:#00ff41;border:3px solid #00cc33;padding:clamp(12px,2vh,20px) clamp(24px,4vw,48px);cursor:pointer;letter-spacing:2px;animation:btnPulse 2s ease-in-out infinite;transition:background .12s,transform .08s;pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:clamp(6px,1vw,12px);line-height:1}
 .start-btn:hover{background:#00cc33;color:#0a1a0a}
 .start-btn:active{transform:translate(2px,2px);box-shadow:none!important;animation:none}
+.skip-link{font-family:'Press Start 2P',monospace;font-size:clamp(8px,1.3vw,11.5px);color:#3ce673;text-decoration:none;letter-spacing:1px;pointer-events:auto;transition:color .15s,text-shadow .15s;margin-top:clamp(4px,1vh,10px);line-height:1.6;text-shadow:0 0 7px rgba(0,255,65,.45);display:inline-flex;align-items:center;gap:7px}
+.skip-link:hover{color:#5dff8a;text-shadow:0 0 12px rgba(0,255,65,.75)}
+.skip-arrow{flex-shrink:0;filter:drop-shadow(0 0 5px rgba(0,255,65,.5));animation:skipNudge 1.4s ease-in-out infinite}
+@keyframes skipNudge{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
+.skip-link:hover .skip-arrow{animation:none;transform:translateX(4px)}
 
 /* ── Fade ── */
 #fade{position:absolute;inset:0;z-index:200;background:#060808;opacity:1;pointer-events:all;transition:opacity .8s ease-out}
@@ -128,6 +133,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#060808;font-family:
       <div class="cta-area">
         <p class="tagline">Turn your credit card into your fur baby's official driver's licence. Custom credit card skin stickers — designed, laminated & shipped by our finest animal staff.</p>
         <button class="start-btn" id="start-btn">🏭 ENTER THE FACTORY</button>
+        <a class="skip-link" href="product.html"><span>Skip the game &middot; shop direct</span><svg class="skip-arrow" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
     </div>
 
