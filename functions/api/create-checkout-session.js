@@ -1,4 +1,4 @@
-// ── Pet Licence Factory — Stripe Checkout (Cloudflare Pages Function) ───────
+// ── Pet License Factory — Stripe Checkout (Cloudflare Pages Function) ───────
 // POST /api/create-checkout-session
 // Body: { orderId, packQty, wantsDecal, discountEarned, petData, origin, cancelUrl,
 //         promoCode?, affiliateRef? }
@@ -66,11 +66,11 @@ export async function onRequest(context) {
         currency: 'usd',
         product_data: {
           name: packQty === 2
-            ? 'Pet Licence Sticker (2-Pack)'
-            : 'Pet Licence Sticker (1-Pack)',
+            ? 'Pet License Sticker (2-Pack)'
+            : 'Pet License Sticker (1-Pack)',
           description: discountEarned
-            ? 'Custom pet licence sticker — 15% mini-game discount applied!'
-            : 'Custom pet licence sticker with your pet\'s photo and info',
+            ? 'Custom pet license sticker — 15% mini-game discount applied!'
+            : 'Custom pet license sticker with your pet\'s photo and info',
         },
         unit_amount: packAmount,
       },
@@ -133,7 +133,7 @@ export async function onRequest(context) {
     }
 
     // ── Freebie restriction: scope the 100%-off creator welcome code to a
-    // single 1-pack pet licence at regular price. Without this the freebie
+    // single 1-pack pet license at regular price. Without this the freebie
     // would zero out a 2-pack or a decal add-on too, which is not the deal.
     // Replace the line items with a fresh single-item cart regardless of
     // what the body asked for. The 100% coupon then zeros the cart and
@@ -144,8 +144,8 @@ export async function onRequest(context) {
         price_data: {
           currency: 'usd',
           product_data: {
-            name: 'Pet Licence Sticker (1-Pack)',
-            description: 'Creator welcome freebie — custom pet licence sticker',
+            name: 'Pet License Sticker (1-Pack)',
+            description: 'Creator welcome freebie — custom pet license sticker',
           },
           unit_amount: PRICES.pack1,
         },

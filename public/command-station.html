@@ -2284,6 +2284,14 @@ html, body {
         </button>
       </div>
 
+      <div class="sidebar-section-label">Tools</div>
+      <div class="sidebar-nav">
+        <button class="nav-item" onclick="document.getElementById('custom-diecut-input').click()" title="Upload any pet photo and make a die-cut sticker — background removal, brush cleanup, smooth white border, download. For add-ons, corrections, or resends; no order needed.">
+          <span class="nav-icon">🎯</span><span>Die-Cut Studio</span>
+        </button>
+        <input type="file" id="custom-diecut-input" accept="image/*" style="display:none" onchange="uploadCustomDieCut(this.files && this.files[0]); this.value='';">
+      </div>
+
       <div class="sidebar-section-label">General</div>
       <div class="sidebar-nav">
         <button class="nav-item" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle theme">
@@ -3737,6 +3745,7 @@ async function revertOrderPhoto() {
 //   • generateDieCut()     — order modal (refined cutout, else auto-bg).
 //   • sendEditorToDieCut() — from the background editor (live refined cutout).
 let dcState = null;     // die-cut station state (null when closed)
+let _dcSourceName = null;  // 'custom' for a standalone Die-Cut Studio upload, else order-based
 let _dcTimer = null;    // debounce for border / smoothing re-render
 let _dcEnhTimer = null; // debounce for the enhance slider
 
@@ -4085,7 +4094,8 @@ function downloadDieCut() {
   if (!dcState) return;
   const die = dcComposeDieCut();
   const outC = _trimTransparent(die) || die;
-  const name = ((modalOrder && modalOrder.order_id) || 'order') + '-diecut.png';
+  const base = _dcSourceName === 'custom' ? 'custom' : ((modalOrder && modalOrder.order_id) || 'order');
+  const name = base + '-diecut.png';
   outC.toBlob((b) => {
     if (!b) return;
     const url = URL.createObjectURL(b);
@@ -4099,6 +4109,7 @@ function downloadDieCut() {
 // applied, otherwise auto-removes the background first (like the card flow).
 async function generateDieCut() {
   const o = modalOrder; if (!o) return;
+  _dcSourceName = null;   // order-based die-cut → name from the order id
   const btn = document.getElementById('gen-diecut-btn');
   const prev = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⌛ Building…'; }
@@ -4134,8 +4145,34 @@ function sendEditorToDieCut() {
   cx.drawImage(maskCanvas, 0, 0);
   _editedPhotoUrl = comp.toDataURL('image/png');
   _savedMaskImageData = maskCtx.getImageData(0, 0, pw, ph);
+  _dcSourceName = null;   // order-based die-cut → name from the order id
   closePhotoEditor();
   openDieCutWithCutout(comp);
+}
+
+// ── Die-Cut Studio: upload ANY pet photo (no order needed) and run the exact
+// same die-cut pipeline — re-encode → auto background removal → die-cut editor
+// (brush cleanup, smoothing, white border, download). Built for add-ons,
+// corrections, and resends so we never have to mutate an existing order.
+async function uploadCustomDieCut(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type || '')) { showToast('Please choose an image file', 'err'); return; }
+  showToast('Processing photo…', 'ok');
+  let dataUrl;
+  try { dataUrl = await _reencodePhoto(file); }
+  catch (e) { showToast('Could not read that image. Try a JPEG or PNG.', 'err', true); return; }
+  showToast('Removing background…', 'ok');
+  let cutout;
+  try {
+    const url = await removePhotoBackground(dataUrl);
+    cutout = _imgToCanvas(await loadImg(url));
+  } catch (e) {
+    showToast('Background removal failed: ' + (e.message || e), 'err', true);
+    return;
+  }
+  _dcSourceName = 'custom';   // download as custom-diecut.png
+  openDieCutWithCutout(cutout);
+  showToast('Ready — clean up edges, set the border, then download ✓', 'ok');
 }
 
 // Build the always-visible quick-stats strip: chip size, total item count, and

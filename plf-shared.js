@@ -1,6 +1,6 @@
 'use strict';
 // ═══════════════════════════════════════════════════════════
-// Pet Licence Factory — Shared Engine
+// Pet License Factory — Shared Engine
 // Common logic used by both desktop (game.html) and mobile (mobile.html)
 // ═══════════════════════════════════════════════════════════
 
@@ -158,7 +158,7 @@ function ensureSpriteLoop() {
 // STATION DIALOGUE LINES
 // ═══════════════════════════════════════════════════════════
 const S1_LINES = [
-  "Want a licence, huh? I'm gonna need your pet's info. Fill out that form and make it snappy. I have a nap scheduled in exactly 10 minutes.",
+  "Want a license, huh? I'm gonna need your pet's info. Fill out that form and make it snappy. I have a nap scheduled in exactly 10 minutes.",
 ];
 const S1_POST_FORM = [
   "About time. Now get yourself over to the photographer. And tell them not to take all day — some of us have things to do.",
@@ -199,7 +199,7 @@ function validateAndBuildPetData() {
       petFirstName: first, petLastName: last,
       dlNumber: String(Math.floor(1000000000 + Math.random() * 8999999999)),
       dob, issDate: iss, expDate: expS, sex, species, eyeColor: eyes, weight,
-      height: height.toUpperCase(), licenceClass: classMap[species] || 'D',
+      height: height.toUpperCase(), licenseClass: classMap[species] || 'D',
       restrictions: 'ALL', addrMode,
       addrLine1: addrMode === 'real' ? $('fAddr1').value.trim() : '456 Woofington Drive',
       addrLine2: addrMode === 'real' ? $('fAddr2').value.trim() : 'Tailwag, TX 76543',
@@ -208,9 +208,9 @@ function validateAndBuildPetData() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// LICENCE COMPOSITOR
+// LICENSE COMPOSITOR
 // ═══════════════════════════════════════════════════════════
-const licCanvas = $('licence-canvas');
+const licCanvas = $('license-canvas');
 const licCtx    = licCanvas.getContext('2d');
 let licTemplate = null, _licDPR = 1;
 const TW = 1322, TH = 830;
@@ -239,7 +239,7 @@ function sc(v, h) { return v * (h ? licCanvas.width / TW : licCanvas.height / TH
 function sf(k) { const f = F[k]; return { x: sc(f.x, 1), y: sc(f.y, 0), w: sc(f.w, 1), h: sc(f.h, 0) }; }
 
 function resizeLicCanvas() {
-  const wrap = $('licence-preview-wrap') || $('m-lic-wrap');
+  const wrap = $('license-preview-wrap') || $('m-lic-wrap');
   if (!wrap) return;
   const cw = wrap.offsetWidth || 260;
   _licDPR = Math.min(window.devicePixelRatio || 1, 3);
@@ -259,7 +259,7 @@ function drawLicPlaceholder() {
   licCtx.fillStyle = '#3a2210';
   licCtx.font = `bold ${Math.floor(cw * .065)}px 'Press Start 2P',monospace`;
   licCtx.textAlign = 'center'; licCtx.textBaseline = 'middle';
-  licCtx.fillText('LICENCE', cw / 2, ch / 2 - 9);
+  licCtx.fillText('LICENSE', cw / 2, ch / 2 - 9);
   licCtx.fillText('PREVIEW', cw / 2, ch / 2 + 11);
 }
 
@@ -283,7 +283,7 @@ function refreshLicPreview() {
     { k: 'sex',       v: petData.sex || '',                c: '#1a0a00' },
     { k: 'weight',    v: petData.weight || '',             c: '#1a0a00' },
     { k: 'eyes',      v: petData.eyeColor || '',           c: '#1a0a00' },
-    { k: 'licClass',  v: petData.licenceClass || '',       c: '#1a0a00' },
+    { k: 'licClass',  v: petData.licenseClass || '',       c: '#1a0a00' },
     { k: 'restrict',  v: petData.restrictions || 'ALL',   c: '#1a0a00' }
   ];
   licCtx.textBaseline = 'middle';
@@ -324,7 +324,7 @@ function refreshLicPreview() {
   }
 }
 
-function loadLicenceTemplate() {
+function loadLicenseTemplate() {
   if (licTemplate) { refreshLicPreview(); return; }
   const img = new Image();
   img.onload = () => { licTemplate = img; resizeLicCanvas(); refreshLicPreview(); };
@@ -397,7 +397,7 @@ function buildOrderSummaryHTML(cssPrefix) {
   // cssPrefix: '' for desktop classes, 'm-' for mobile classes
   const p = cssPrefix || '';
   const { base, dec, disc, ship, total } = calcOrder();
-  let h = `<div class="${p}order-line"><span>${packQty}-Pack Licence Sticker${packQty > 1 ? 's' : ''}</span><span>$${base.toFixed(2)}</span></div>`;
+  let h = `<div class="${p}order-line"><span>${packQty}-Pack License Sticker${packQty > 1 ? 's' : ''}</span><span>$${base.toFixed(2)}</span></div>`;
   if (wantsDecal) h += `<div class="${p}order-line"><span>4.5×4.5" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
   if (discountEarned) {
     const discColor = p ? 'color:#00ff41' : 'color:#4caf50';

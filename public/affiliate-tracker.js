@@ -1,4 +1,4 @@
-// ── Pet Licence Factory — Affiliate URL Tracker ────────────────────────────
+// ── Pet License Factory — Affiliate URL Tracker ────────────────────────────
 // Reads ?ref=<code> from the URL on page load, sends it to the
 // /api/affiliate-track-click endpoint, and lets the server set the
 // first-party attribution cookie. Idempotent — safe to include on every

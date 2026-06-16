@@ -1,4 +1,4 @@
-// ── Pet Licence Factory — Affiliate Creator Onboarding ─────────────────────
+// ── Pet License Factory — Affiliate Creator Onboarding ─────────────────────
 // Shared creator setup flow used by the admin invite action and public
 // self-service signup. Keeps DB reservation, approval-gated Stripe coupon
 // creation, and onboarding email logging in one place.
@@ -255,7 +255,7 @@ export async function sendOnboardingAndLog(env, db, opts) {
       [
         opts.creatorId,
         opts.creatorEmail,
-        `🎉 You're in — your Pet Licence Factory creator kit`,
+        `🎉 You're in — your Pet License Factory creator kit`,
         result?.messageId || null,
         !!result?.success,
         result?.error ? String(result.error).slice(0, 500) : null,

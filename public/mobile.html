@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
-<title>Pet Licence Factory</title>
+<title>Pet License Factory</title>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -109,7 +109,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 .m-photo-btn{font-family:'Press Start 2P',monospace;font-size:7px;padding:10px;background:#001500;color:#00cc33;border:1px solid #004a00;cursor:pointer;touch-action:manipulation;text-align:center}
 .m-photo-btn:active{background:#002500;color:#00ff41;border-color:#00ff41}
 #m-lic-wrap{margin-top:12px}
-#licence-canvas{display:block;width:100%;border:1px solid #004a00;border-radius:2px}
+#license-canvas{display:block;width:100%;border:1px solid #004a00;border-radius:2px}
 
 /* ── Laminator ── */
 .m-lam-wrap{margin:10px 0}
@@ -166,7 +166,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 .m-decal-row.active .m-decal-text{color:#00cc33}
 #m-s5-discount{display:none;background:#001a00;border:2px solid #00ff41;color:#00ff41;font-size:10px;padding:10px;text-align:center;margin-top:8px;text-shadow:0 0 10px #00FF00,0 0 4px #00ff41;box-shadow:0 0 16px rgba(0,255,65,.5);animation:arcade-pulse 1.5s infinite}
 
-/* ── Licence preview card (checkout) ── */
+/* ── License preview card (checkout) ── */
 .lic-preview-card{position:absolute;top:2%;right:2%;z-index:25;cursor:pointer;transition:all .4s cubic-bezier(.25,.8,.25,1);border:2px solid rgba(0,255,65,.3);border-radius:6px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.4);display:none}
 .lic-preview-card.show{display:block}
 .lic-preview-card .lic-label{background:rgba(0,10,0,.9);color:#00ff41;font-size:6px;padding:3px 8px;text-align:center;pointer-events:none;border-bottom:1px solid rgba(0,255,65,.2)}
@@ -223,7 +223,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 <!-- ══ FADE ══ -->
 <div id="fade"></div>
 
-<!-- Licence preview card (shown during checkout) -->
+<!-- License preview card (shown during checkout) -->
 <div class="lic-backdrop" id="lic-backdrop"></div>
 <div class="lic-preview-card" id="lic-preview-card">
   <div class="lic-label">YOUR CARD</div>
@@ -336,7 +336,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
       </div>
     </div>
     <p style="color:#00cc33;font-size:6px;margin-top:6px;line-height:1.8;text-shadow:0 0 4px rgba(0,255,65,.3)">▸ Tap photo to upload · Drag to reposition · Pinch or zoom buttons to fit</p>
-    <div id="m-lic-wrap"><canvas id="licence-canvas"></canvas></div>
+    <div id="m-lic-wrap"><canvas id="license-canvas"></canvas></div>
     <button class="m-btn" id="approve-btn" onclick="s2ApprovePic()" disabled>LOOKS GOOD! ▶</button>
   </div>
 
@@ -382,12 +382,12 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
         <div class="m-pack-card selected" id="pack-1" onclick="selectPack(1)">
           <div class="m-pack-title">1-PACK</div>
           <div class="m-pack-price" id="price-1">$13.95</div>
-          <div class="m-pack-sub">1 licence sticker</div>
+          <div class="m-pack-sub">1 license sticker</div>
         </div>
         <div class="m-pack-card" id="pack-2" onclick="selectPack(2)">
           <div class="m-pack-title">2-PACK</div>
           <div class="m-pack-price" id="price-2">$19.99</div>
-          <div class="m-pack-sub">2 licence stickers</div>
+          <div class="m-pack-sub">2 license stickers</div>
         </div>
       </div>
       <div class="m-decal-row" id="decal-row" onclick="toggleDecal()">
@@ -458,7 +458,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
   <div class="co-card-wrap">
     <canvas id="co-card-canvas" style="width:clamp(200px,65vw,320px)"></canvas>
   </div>
-  <div class="co-title">✨ YOUR PET LICENCE ✨</div>
+  <div class="co-title">✨ YOUR PET LICENSE ✨</div>
   <div class="co-divider"></div>
   <div class="co-body">
     <div id="co-order-lines"></div>
@@ -573,7 +573,7 @@ function setBg(el,url){ el.style.backgroundImage=`url('${url}')`; }
 function showStation(n){
   document.querySelectorAll('.station').forEach(s=>s.classList.remove('active'));
   $('s'+n).classList.add('active');
-  // Hide licence preview card when leaving checkout
+  // Hide license preview card when leaving checkout
   if (n !== 5) hideLicPreviewCard();
   // Dismiss checkout overlay if open
   if($('checkout-overlay')) $('checkout-overlay').classList.remove('active');
@@ -828,7 +828,7 @@ function bulldogReleaseButton() {
 // ═══════════════════════════════════════════════════════════
 // STATION 1 — REGISTRATION
 // ═══════════════════════════════════════════════════════════
-const S1_LINES=["Want a licence, huh? I'm gonna need your pet's info. Fill out that form and make it snappy. I have a nap scheduled in exactly 10 minutes."];
+const S1_LINES=["Want a license, huh? I'm gonna need your pet's info. Fill out that form and make it snappy. I have a nap scheduled in exactly 10 minutes."];
 const S1_LINES_V2=["Oh. You again. Fine — fill out the form. I was JUST about to start my nap."];
 const S1_LINES_V3=["*heavy sigh* ...Form. Fill. Now."];
 const S1_POST_FORM=["About time. Now get yourself over to the photographer. And tell them not to take all day — some of us have things to do."];
@@ -884,7 +884,7 @@ function submitForm(){
     petFirstName:first, petLastName:last,
     dlNumber:String(Math.floor(1000000000+Math.random()*8999999999)),
     dob, issDate:iss, expDate:expS, sex, species, eyeColor:eyes,
-    weight, height:height.toUpperCase(), licenceClass:classMap[species]||'D',
+    weight, height:height.toUpperCase(), licenseClass:classMap[species]||'D',
     restrictions:'ALL', addrMode,
     addrLine1:addrMode==='real'?$('fAddr1').value.trim():'456 Woofington Drive',
     addrLine2:addrMode==='real'?$('fAddr2').value.trim():'Tailwag, TX 76543',
@@ -915,7 +915,7 @@ function startStation2(){
   const lines = stationVisits[2] === 1 ? S2_LINES : stationVisits[2] === 2 ? S2_LINES_V2 : S2_LINES_V3;
   showStation(2); hidePanel(); hideAllBubbles();
   setBg($('s2-bg'),A.s2bg);
-  initCropCanvas(); loadLicenceTemplate();
+  initCropCanvas(); loadLicenseTemplate();
   runDialogue(2,lines,()=>{ showPanel('ps2'); setNav(null,()=>s2Back()); },()=>fadeTransition(()=>startStation1()));
 }
 function s2Back(){ sfxClick(); hidePanel(); setNav(null,null); setTimeout(()=>fadeTransition(()=>startStation1()),150); }
@@ -1055,8 +1055,8 @@ $('photo-file').addEventListener('change',e=>{
   reader.readAsDataURL(file);
 });
 
-// ── Licence canvas ──
-const licCanvas=$('licence-canvas');
+// ── License canvas ──
+const licCanvas=$('license-canvas');
 const licCtx=licCanvas.getContext('2d');
 let licTemplate=null, _licDPR=1;
 const TW=1322, TH=830; // TH updated: cropped card removes bottom tag (1322×830)
@@ -1081,7 +1081,7 @@ function resizeLicCanvas(){
   if(licTemplate)refreshLicPreview();else drawLicPlaceholder();
 }
 resizeLicCanvas();
-function drawLicPlaceholder(){const cw=licCanvas.width,ch=licCanvas.height;licCtx.fillStyle='#000d00';licCtx.fillRect(0,0,cw,ch);licCtx.fillStyle='#003d20';licCtx.font=`bold ${Math.floor(cw*.065)}px 'Press Start 2P',monospace`;licCtx.textAlign='center';licCtx.textBaseline='middle';licCtx.fillStyle='#00cc33';licCtx.fillText('LICENCE',cw/2,ch/2-9);licCtx.fillText('PREVIEW',cw/2,ch/2+11);}
+function drawLicPlaceholder(){const cw=licCanvas.width,ch=licCanvas.height;licCtx.fillStyle='#000d00';licCtx.fillRect(0,0,cw,ch);licCtx.fillStyle='#003d20';licCtx.font=`bold ${Math.floor(cw*.065)}px 'Press Start 2P',monospace`;licCtx.textAlign='center';licCtx.textBaseline='middle';licCtx.fillStyle='#00cc33';licCtx.fillText('LICENSE',cw/2,ch/2-9);licCtx.fillText('PREVIEW',cw/2,ch/2+11);}
 function refreshLicPreview(){
   if(!licTemplate)return;
   const cw=licCanvas.width,ch=licCanvas.height;
@@ -1098,7 +1098,7 @@ function refreshLicPreview(){
   }
   // Text fields
   const addr={l1:petData.addrLine1||'456 Woofington Drive',l2:petData.addrLine2||'Tailwag, TX 76543'};
-  const tfs=[{k:'dlNumber',v:petData.dlNumber||'',c:'#1a0a00'},{k:'expDate',v:petData.expDate||'',c:'#1a0a00'},{k:'issDate',v:petData.issDate||'',c:'#1a0a00'},{k:'dob',v:petData.dob||'',c:'#c0200a'},{k:'firstName',v:petData.petFirstName||'',c:'#1a0a00'},{k:'lastName',v:petData.petLastName||'',c:'#1a0a00'},{k:'addrLine1',v:addr.l1,c:'#1a0a00'},{k:'addrLine2',v:addr.l2,c:'#1a0a00'},{k:'height',v:petData.height||'',c:'#1a0a00'},{k:'sex',v:petData.sex||'',c:'#1a0a00'},{k:'weight',v:petData.weight||'',c:'#1a0a00'},{k:'eyes',v:petData.eyeColor||'',c:'#1a0a00'},{k:'licClass',v:petData.licenceClass||'',c:'#1a0a00'},{k:'restrict',v:'ALL',c:'#1a0a00'}];
+  const tfs=[{k:'dlNumber',v:petData.dlNumber||'',c:'#1a0a00'},{k:'expDate',v:petData.expDate||'',c:'#1a0a00'},{k:'issDate',v:petData.issDate||'',c:'#1a0a00'},{k:'dob',v:petData.dob||'',c:'#c0200a'},{k:'firstName',v:petData.petFirstName||'',c:'#1a0a00'},{k:'lastName',v:petData.petLastName||'',c:'#1a0a00'},{k:'addrLine1',v:addr.l1,c:'#1a0a00'},{k:'addrLine2',v:addr.l2,c:'#1a0a00'},{k:'height',v:petData.height||'',c:'#1a0a00'},{k:'sex',v:petData.sex||'',c:'#1a0a00'},{k:'weight',v:petData.weight||'',c:'#1a0a00'},{k:'eyes',v:petData.eyeColor||'',c:'#1a0a00'},{k:'licClass',v:petData.licenseClass||'',c:'#1a0a00'},{k:'restrict',v:'ALL',c:'#1a0a00'}];
   licCtx.textBaseline='middle';
   const pxFloor=4*_licDPR, pxCap=9*_licDPR;
   tfs.forEach(({k,v,c})=>{const f=sf(k);let px=Math.max(pxFloor,Math.min(f.h*.45,f.w*.12,pxCap));licCtx.fillStyle=c;licCtx.textAlign='left';licCtx.font=`${px}px 'Press Start 2P',monospace`;while(licCtx.measureText(v).width>f.w-6&&px>pxFloor){px-=.3;licCtx.font=`${px}px 'Press Start 2P',monospace`;}licCtx.fillText(v,f.x+3,f.y+f.h/2,f.w-6);});
@@ -1113,14 +1113,14 @@ function refreshLicPreview(){
   while(licCtx.measureText(fullName).width>sig.w-4&&sPx>5*_licDPR){sPx-=.5;licCtx.font=`${sPx}px 'Sacramento',cursive`;}
   licCtx.fillText(fullName,sig.x+sig.w/2,sig.y+sig.h/2);
 }
-function loadLicenceTemplate(){if(licTemplate){refreshLicPreview();return;}const img=new Image();img.onload=()=>{licTemplate=img;resizeLicCanvas();refreshLicPreview();};img.onerror=()=>drawLicPlaceholder();img.src=A.template;}
+function loadLicenseTemplate(){if(licTemplate){refreshLicPreview();return;}const img=new Image();img.onload=()=>{licTemplate=img;resizeLicCanvas();refreshLicPreview();};img.onerror=()=>drawLicPlaceholder();img.src=A.template;}
 
 // ═══════════════════════════════════════════════════════════
 // STATION 3 — LAMINATOR
 // ═══════════════════════════════════════════════════════════
 const S3_LINES=[
   ()=>`WHHRRR. CLUNK. ● I am MK-7 Laminator Unit. I have laminated 847,293 documents. This will be 847,294.`,
-  ()=>`Your licence data: acceptable. Temperature: optimal. Pressure calibration: complete. Stand clear of the rollers.`,
+  ()=>`Your license data: acceptable. Temperature: optimal. Pressure calibration: complete. Stand clear of the rollers.`,
 ];
 const S3_LINES_V2=[
   "● Unit recognises returning customer. Skipping introduction. Rollers pre-heated. Commencing lamination.",
@@ -1233,7 +1233,7 @@ function initChipDragUI(){
     ctx.fillStyle='#003a00';
     ctx.font=`${Math.floor(cw*.04)}px 'Press Start 2P',monospace`;
     ctx.textAlign='center';
-    ctx.fillText('COMPLETE LICENCE FIRST',cw/2,ch/2);
+    ctx.fillText('COMPLETE LICENSE FIRST',cw/2,ch/2);
   }
 
   // Reset tray & state
@@ -1456,7 +1456,7 @@ function fireChipSparks() {
 // ═══════════════════════════════════════════════════════════
 const S5_LINES=[
   ()=>`*happy hop!* Oh my goodness, hi hi HI!! I'm Bonnie! Welcome to the final stop — I am SO excited for you!!`,
-  ()=>`The licence for ${petData.petFirstName||'your pet'} ${petData.petLastName||''} is going to look absolutely AMAZING!`,
+  ()=>`The license for ${petData.petFirstName||'your pet'} ${petData.petLastName||''} is going to look absolutely AMAZING!`,
   ()=>`Pick your pack! Oh — and you can add a weatherproof vinyl car decal too. SO cute. *ear wiggle*`,
 ];
 const S5_LINES_V2=[
@@ -1736,7 +1736,7 @@ function buildOrderSummary(){
   const disc=discountEarned?-((base+dec)*PRICES.disc):0; // 15% off entire cart
   const shipPrice=PRICES[shippingOption]||PRICES.stamp;
   const total=base+dec+disc+shipPrice;
-  let h=`<div class="m-order-line"><span>${packQty}-Pack Licence Sticker${packQty>1?'s':''}</span><span>$${base.toFixed(2)}</span></div>`;
+  let h=`<div class="m-order-line"><span>${packQty}-Pack License Sticker${packQty>1?'s':''}</span><span>$${base.toFixed(2)}</span></div>`;
   if(wantsDecal)h+=`<div class="m-order-line"><span>4.5×4.5" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
   if(discountEarned)h+=`<div class="m-order-line" style="color:#00ff41"><span>Discount (15%)</span><span>-$${Math.abs(disc).toFixed(2)}</span></div>`;
   const shipNames={stamp:'Stamp Mail (USPS)',standard:'Standard Shipping',priority:'Priority Shipping'};
@@ -1767,7 +1767,7 @@ async function s5Checkout(){
   }
   window.PLF_ORDER = { ...orderData, orderId };
 
-  // Stash a full-resolution licence snapshot (with the chip composited) so the
+  // Stash a full-resolution license snapshot (with the chip composited) so the
   // success page shows a personalized preview on return from Stripe — same as
   // game.html. Mobile renders the chip separately, so we composite it here.
   // Best-effort: wrapped so a failure never blocks checkout.
@@ -2134,7 +2134,7 @@ function tickStage3(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// LICENCE PREVIEW CARD (checkout station)
+// LICENSE PREVIEW CARD (checkout station)
 // ═══════════════════════════════════════════════════════════
 function drawLicWithChip(ctx, cw, ch) {
   ctx.drawImage(licCanvas, 0, 0, licCanvas.width, licCanvas.height, 0, 0, cw, ch);
@@ -2302,10 +2302,10 @@ window.addEventListener('load',()=>{
   const skipToCheckout = params.get('checkout');
   if(skipToCheckout){
     // Dev shortcut: ?checkout — jump straight to checkout summary with dummy data
-    petData={petFirstName:'BISCUIT',petLastName:'DONOVAN',dlNumber:'1234567890',dob:'03/15/20',issDate:'04/12/26',expDate:'04/12/30',sex:'M',species:'DOG',eyeColor:'BRN',weight:'65',height:"2'01",licenceClass:'D',restrictions:'ALL',addrMode:'fake',addrLine1:'456 Woofington Drive',addrLine2:'Tailwag, TX 76543'};
+    petData={petFirstName:'BISCUIT',petLastName:'DONOVAN',dlNumber:'1234567890',dob:'03/15/20',issDate:'04/12/26',expDate:'04/12/30',sex:'M',species:'DOG',eyeColor:'BRN',weight:'65',height:"2'01",licenseClass:'D',restrictions:'ALL',addrMode:'fake',addrLine1:'456 Woofington Drive',addrLine2:'Tailwag, TX 76543'};
     chipSize='mini'; packQty=1; wantsDecal=false; shippingOption='stamp';
     // Load template, then start station 5 and open checkout once ready
-    const _origLoad = loadLicenceTemplate;
+    const _origLoad = loadLicenseTemplate;
     const tplImg = new Image();
     tplImg.onload = () => {
       licTemplate = tplImg;
@@ -2315,7 +2315,7 @@ window.addEventListener('load',()=>{
     };
     tplImg.src = A.template;
   } else if(skipToS4){
-    loadLicenceTemplate();
+    loadLicenseTemplate();
     setTimeout(()=>{ startStation4(); },100);
   } else {
     // Always start at Station 1 — the welcome page (mobile-welcome.html) is the real homepage

@@ -1,4 +1,4 @@
-// ── Pet Licence Factory — Canonical Pricing (CLIENT) ────────────────────────
+// ── Pet License Factory — Canonical Pricing (CLIENT) ────────────────────────
 // SINGLE SOURCE OF TRUTH for prices shown in the browser: the builder order
 // summary (plf-shared.js) and the Command Station printed receipt.
 //
@@ -11,8 +11,8 @@
 (function (root) {
   // Amounts in US cents.
   var CENTS = {
-    pack1:    1395,   // 1-Pack Licence Sticker
-    pack2:    1999,   // 2-Pack Licence Stickers
+    pack1:    1395,   // 1-Pack License Sticker
+    pack2:    1999,   // 2-Pack License Stickers
     decal:     449,   // 4.5×4.5" Vinyl Car Decal
     stamp:      95,   // Stamp Shipping
     standard:  699,   // Standard Shipping (USPS Ground Advantage)

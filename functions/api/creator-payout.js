@@ -1,4 +1,4 @@
-// ── Pet Licence Factory — Creator Cashout ───────────────────────────────────
+// ── Pet License Factory — Creator Cashout ───────────────────────────────────
 // POST /api/creator-payout
 // Body: { token, method, amountCents, recipientEmail? }
 // Auth: creator dashboard_token (creator-facing, NOT admin JWT)
@@ -331,7 +331,7 @@ async function handleStoreCredit({ env, db, creator, payoutRow, amountCents, rec
     // is also visible on the dashboard payout history.
     try {
       const link = `${siteOrigin}/game.html?promo=${encodeURIComponent(code)}`;
-      const subject = `Your $${(redemptionCents / 100).toFixed(2)} Pet Licence Factory credit (code ${code})`;
+      const subject = `Your $${(redemptionCents / 100).toFixed(2)} Pet License Factory credit (code ${code})`;
       const html = renderStoreCreditEmail({
         creatorName:    creator.name,
         baseCents:      amountCents,
@@ -508,12 +508,12 @@ function renderStoreCreditEmail({ creatorName, baseCents, bonusCents, redemption
   return `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,sans-serif;background:#f6f6f8;margin:0;padding:24px;">
   <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e7e7ee;">
     <h1 style="margin:0 0 8px;font-size:22px;color:#1a1a1f;">Your PLF credit is ready</h1>
-    <p style="margin:0 0 16px;color:#444;">Hi ${esc(creatorName || 'Creator')} — you cashed out $${esc(baseUsd)} as Pet Licence Factory store credit. We added a 10% bonus on top, so your code is worth <b>$${esc(redeemUsd)}</b> when you check out.</p>
+    <p style="margin:0 0 16px;color:#444;">Hi ${esc(creatorName || 'Creator')} — you cashed out $${esc(baseUsd)} as Pet License Factory store credit. We added a 10% bonus on top, so your code is worth <b>$${esc(redeemUsd)}</b> when you check out.</p>
     <div style="background:#fff8e1;border:2px dashed #f6c343;border-radius:10px;padding:18px;text-align:center;margin:20px 0;">
       <div style="font-family:monospace;font-size:24px;letter-spacing:2px;font-weight:bold;color:#1a1a1f;">${esc(code)}</div>
       <div style="font-size:13px;color:#777;margin-top:6px;">$${esc(baseUsd)} cashout + $${esc(bonusUsd)} bonus = $${esc(redeemUsd)} redeemable</div>
     </div>
-    <p style="margin:0 0 16px;color:#444;">Tap the button below to start a new licence with the credit pre-applied:</p>
+    <p style="margin:0 0 16px;color:#444;">Tap the button below to start a new license with the credit pre-applied:</p>
     <p style="text-align:center;margin:0 0 24px;">
       <a href="${esc(link)}" style="display:inline-block;background:#ff6b6b;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Use my credit →</a>
     </p>

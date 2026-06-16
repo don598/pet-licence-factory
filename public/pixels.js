@@ -1,4 +1,4 @@
-// ── Pet Licence Factory — Meta + TikTok Pixel Bootstrap ────────────────────
+// ── Pet License Factory — Meta + TikTok Pixel Bootstrap ────────────────────
 // Lazy-loads Meta Pixel and TikTok Pixel iff their IDs are configured via
 // /api/pixels-config (driven by META_PIXEL_ID + TIKTOK_PIXEL_ID env vars).
 //

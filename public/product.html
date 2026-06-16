@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>Pet Licence Factory — Custom Pet Driver's Licence</title>
-<meta name="description" content="Turn your pet into a fully licensed driver. A custom pet driver's licence card-skin with your pet's photo and details, shipped to your door."/>
+<title>Pet License Factory — Custom Pet Driver's License</title>
+<meta name="description" content="Turn your pet into a fully licensed driver. A custom pet driver's license card-skin with your pet's photo and details, shipped to your door."/>
 <link rel="icon" href="favicon-32.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -100,7 +100,7 @@ header{
 #ov-photo{overflow:hidden;background:#d9d2c4;display:flex;align-items:center;justify-content:center}
 #ov-photo .ph{font-family:'Nunito';font-weight:800;color:#9a9080;font-size:3.4cqw;text-align:center;line-height:1.3;letter-spacing:.3px;text-transform:uppercase}
 #petImg{position:absolute;top:0;left:0;max-width:none;display:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
-#ov-photo.has-photo{touch-action:none;cursor:grab}
+#ov-photo.has-photo{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 #ov-photo.has-photo.dragging{cursor:grabbing}
 .card-caption{margin-top:11px;text-align:center;font-size:12.5px;color:var(--muted);font-weight:700}
 .card-caption .dot{color:var(--teal)}
@@ -116,6 +116,9 @@ header{
 h1{font-size:clamp(26px,6.4vw,38px);line-height:1.08;margin:13px 0 6px;letter-spacing:-.5px;font-weight:900}
 h1 .hl{color:var(--brand-dk)}
 .subtitle{color:var(--muted);font-size:15.5px;margin:0 0 13px;max-width:48ch}
+.usability{display:flex;align-items:flex-start;gap:10px;background:var(--teal-soft);border:1.5px solid #9fe3dc;color:#0c7d72;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:700;line-height:1.45;margin:0 0 16px;max-width:50ch}
+.usability .ui{font-size:18px;line-height:1.2;flex-shrink:0}
+.usability b{color:#0a6a60;font-weight:900}
 .rating{display:flex;align-items:center;gap:9px;margin-bottom:14px;font-weight:700;font-size:14px;color:var(--muted)}
 .stars{color:var(--gold);letter-spacing:2px;font-size:16px}
 .price-row{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
@@ -306,6 +309,35 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 .foot a:hover{color:var(--brand-dk)}
 .foot .fine{font-size:12px;color:var(--faint);font-weight:600;max-width:52ch}
 
+/* ── Sample slideshow (top) ── */
+.slideshow{position:relative;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);background:var(--surface);aspect-ratio:1322/830}
+.ss-slide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s ease}
+.ss-slide.active{opacity:1}
+.ss-arrow{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.85);color:var(--ink);font-size:20px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:2;line-height:0;padding-bottom:3px;transition:background .15s}
+.ss-arrow:hover{background:#fff}
+.ss-prev{left:10px}.ss-next{right:10px}
+.ss-dots{position:absolute;bottom:11px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:2}
+.ss-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);border:1px solid rgba(0,0,0,.12);cursor:pointer;padding:0;transition:background .15s,transform .15s}
+.ss-dot.active{background:#fff;transform:scale(1.3)}
+
+/* ── "Preview yours" button ── */
+.preview-yours{width:100%;margin-top:14px;font-family:inherit;font-weight:900;font-size:14px;background:var(--brand-soft);color:var(--brand-dk);border:1.5px solid #ffd0c4;border-radius:12px;padding:12px;cursor:pointer;display:none;align-items:center;justify-content:center;gap:8px;transition:background .15s,border-color .15s,transform .08s}
+.preview-yours.show{display:flex;animation:previewIn .42s cubic-bezier(.2,.7,.2,1)}
+@keyframes previewIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.preview-yours:hover{border-color:var(--brand);background:#ffe7df;transform:translateY(-1px)}
+.preview-yours:active{transform:translateY(0)}
+
+/* ── Preview modal ── */
+.modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(20,16,10,.62);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:18px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:100%;max-width:430px;padding:18px;margin:auto;animation:modalIn .25s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.modal-head h3{margin:0;font-size:18px;font-weight:900}
+.modal-close{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line-2);background:var(--surface-2);font-size:15px;font-weight:900;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}
+.modal-close:hover{border-color:var(--brand);color:var(--brand-dk)}
+.modal-hint{font-size:12.5px;color:var(--muted);font-weight:600;text-align:center;margin-top:12px;line-height:1.5}
+
 /* ── Desktop ──────────────────────────────────────── */
 @media(min-width:920px){
   .config{grid-template-columns:0.9fr 1.1fr;gap:40px;align-items:start;padding:40px 0 46px}
@@ -327,7 +359,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
   <nav class="nav">
     <a class="brand" href="index.html">
       <img class="brand-ico" src="favicon-192.png" alt=""/>
-      <span>PET&nbsp;LICENCE<br><b>FACTORY</b></span>
+      <span>PET&nbsp;LICENSE<br><b>FACTORY</b></span>
     </a>
     <a class="portal-btn" href="game.html" aria-label="Play the factory game">
       <span class="portal-stars" aria-hidden="true"></span>
@@ -341,16 +373,17 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 
   <section class="config" id="build">
 
-    <!-- ── LEFT: live preview ── -->
+    <!-- ── LEFT: sample license slideshow ── -->
     <div class="config-preview">
-      <div class="card-shell">
-        <div class="card-frame" id="cardFrame">
-          <img class="tpl" src="images/Blank Card cropped.jpeg" alt="Pet licence card"/>
-          <div class="ov" id="ov-photo"><img id="petImg" alt="" draggable="false"/><span class="ph">Your<br>pet's<br>photo</span></div>
-          <!-- text overlays injected by JS -->
-        </div>
-        <div class="card-caption"><span class="dot">●</span> Live preview &middot; updates as you build</div>
+      <div class="slideshow" id="sampleShow">
+        <img class="ss-slide active" src="images/preview-licences/luna-whiskers.png" alt="Luna Whiskers sample pet license"/>
+        <img class="ss-slide" src="images/preview-licences/max-woofington.png" alt="Max Woofington sample pet license"/>
+        <img class="ss-slide" src="images/preview-licences/oliver-pawsley.png" alt="Oliver Pawsley sample pet license"/>
+        <button class="ss-arrow ss-prev" id="ssPrev" type="button" aria-label="Previous sample">‹</button>
+        <button class="ss-arrow ss-next" id="ssNext" type="button" aria-label="Next sample">›</button>
+        <div class="ss-dots" id="ssDots"></div>
       </div>
+      <div class="card-caption"><span class="dot">●</span> Custom made for your pet.</div>
       <div class="preview-trust">
         <span>🔒 Secure Stripe checkout</span>
         <span>🇺🇸 Ships in the US</span>
@@ -361,8 +394,9 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
     <div class="config-main">
       <div class="pitch">
         <span class="eyebrow">🪪 Official-ish™ pet ID</span>
-        <h1>Your pet is now a <span class="hl">licensed driver.</span></h1>
-        <p class="subtitle">A custom pet driver's licence printed as a premium credit-card skin, with your furry friend's photo, name, and very official stats.</p>
+        <h1>Turn your credit card into your <span class="hl">pet's driver's license.</span></h1>
+        <p class="subtitle">A custom pet driver's license printed as a premium credit-card skin, with your furry friend's photo, name, and very official stats.</p>
+        <div class="usability"><span class="ui">💳</span><span><b>Doesn't affect your card at all.</b> Swipe, insert, and tap all keep working perfectly — it's a thin printed skin that sticks on top, not a new card.</span></div>
         <div class="rating"><span class="stars">★★★★★</span><span>4.9 &middot; 1,200+ happy pets</span></div>
         <div class="price-row"><span class="big" id="priceMain">$13.95</span><span class="from">+ shipping</span></div>
         <div class="pills">
@@ -396,17 +430,12 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
               <button class="link-btn" id="changePhoto">Change</button>
             </div>
             <input type="file" id="fileInput" accept="image/*" hidden/>
-            <div class="adjust" id="adjustRow">
-              <span class="adjust-lab">🔍 Zoom</span>
-              <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1" aria-label="Zoom photo"/>
-              <button type="button" class="link-btn" id="resetCrop">Reset</button>
-            </div>
-            <div class="tip"><span>💡</span><span><b>Drag the photo on the card preview</b> to reposition it, and use the zoom slider (or pinch / scroll) to frame your pet just right.</span></div>
+            <div class="tip"><span>💡</span><span>A clear, front-facing shot works best. After uploading, tap <b>Preview yours</b> to reposition &amp; zoom your pet on the card.</span></div>
           </div>
 
           <!-- Step 2: Details -->
           <div class="step-panel" data-step="2">
-            <div class="step-title"><h2>Licence details</h2></div>
+            <div class="step-title"><h2>License details</h2></div>
             <div class="grid2">
               <div class="field"><label>Pet's first name</label><input id="fFirst" type="text" placeholder="Luna" maxlength="20"/></div>
               <div class="field"><label>Last name</label><input id="fLast" type="text" placeholder="Whiskers" maxlength="20"/></div>
@@ -442,7 +471,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
           <div class="step-panel" data-step="3">
             <div class="step-title"><h2>Choose your pack</h2></div>
             <div class="opts" id="packOpts">
-              <div class="opt-card sel" data-pack="1"><span class="check">✓</span><span class="ot">1-Pack</span><span class="od">One licence sticker</span><span class="op" id="packP1">$13.95</span></div>
+              <div class="opt-card sel" data-pack="1"><span class="check">✓</span><span class="ot">1-Pack</span><span class="od">One license sticker</span><span class="op" id="packP1">$13.95</span></div>
               <div class="opt-card" data-pack="2"><span class="badge" id="packSave">SAVE 28%</span><span class="check">✓</span><span class="ot">2-Pack</span><span class="od">Two stickers — gift one</span><span class="op" id="packP2">$19.99</span></div>
             </div>
           </div>
@@ -452,10 +481,10 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
             <div class="step-title"><h2>Match your card's chip</h2></div>
             <p class="step-help">Look at the card you'll stick this onto and pick the chip size that matches, so the cut-out lines up perfectly over your real chip.</p>
             <div class="opts" id="chipOpts">
-              <div class="opt-card chip-card sel" data-chip="mini"><span class="check">✓</span><img src="images/mini-chip.png" alt="Mini chip"/><span class="ot">Mini Chip</span><span class="od">For cards with a smaller chip</span></div>
-              <div class="opt-card chip-card" data-chip="standard"><span class="check">✓</span><img src="images/classic-chip.png" alt="Classic chip"/><span class="ot">Classic Chip</span><span class="od">For cards with a larger chip</span></div>
+              <div class="opt-card chip-card sel" data-chip="mini"><span class="badge">MOST COMMON</span><span class="check">✓</span><img src="images/mini-chip.png" alt="Mini chip"/><span class="ot">Mini Chip</span><span class="od">The smaller chip on most cards</span></div>
+              <div class="opt-card chip-card" data-chip="standard"><span class="check">✓</span><img src="images/classic-chip.png" alt="Classic chip"/><span class="ot">Classic Chip</span><span class="od">The larger chip on some cards</span></div>
             </div>
-            <div class="tip"><span>💳</span><span>Not sure? Most modern debit &amp; credit cards use the larger <b>Classic</b> chip. Older or slimmer cards often have the <b>Mini</b>.</span></div>
+            <div class="tip"><span>💳</span><span>Not sure? Most debit &amp; credit cards use the smaller <b>Mini</b> chip. Only some cards have the larger <b>Classic</b> — check yours to be sure.</span></div>
           </div>
 
           <!-- Step 5: Review -->
@@ -488,18 +517,8 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
           <button class="nav-btn next" id="wizNext">Continue →</button>
         </div>
         <div class="err" id="errBox"></div>
+        <button type="button" class="preview-yours" id="previewYours">👁 Preview yours</button>
       </div>
-    </div>
-  </section>
-
-  <!-- ── Sample gallery ── -->
-  <section class="gallery">
-    <h2 class="gallery-h">✨ Fresh off the press</h2>
-    <p class="gallery-sub">A few licences our staff recently printed &mdash; yours is next.</p>
-    <div class="gallery-row">
-      <div class="gallery-card"><img src="images/preview-licences/luna-whiskers.png" alt="Luna Whiskers sample pet licence" loading="lazy"/></div>
-      <div class="gallery-card"><img src="images/preview-licences/max-woofington.png" alt="Max Woofington sample pet licence" loading="lazy"/></div>
-      <div class="gallery-card"><img src="images/preview-licences/oliver-pawsley.png" alt="Oliver Pawsley sample pet licence" loading="lazy"/></div>
     </div>
   </section>
 
@@ -512,16 +531,38 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 
 </main>
 
+<!-- ── Preview yours modal (live card + crop) ── -->
+<div class="modal-overlay" id="previewModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Your license preview">
+    <div class="modal-head">
+      <h3>Your license preview</h3>
+      <button class="modal-close" id="previewClose" type="button" aria-label="Close preview">✕</button>
+    </div>
+    <div class="card-frame" id="cardFrame">
+      <img class="tpl" src="images/Blank Card cropped.jpeg" alt="Pet license card"/>
+      <div class="ov" id="ov-photo"><img id="petImg" alt="" draggable="false"/><span class="ph">Your<br>pet's<br>photo</span></div>
+      <!-- text overlays injected by JS -->
+    </div>
+    <div class="modal-hint">Drag your pet to reposition &middot; pinch, scroll, or use the slider to zoom</div>
+    <div class="adjust show" id="adjustRow">
+      <span class="adjust-lab">🔍 Zoom</span>
+      <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1" aria-label="Zoom photo"/>
+      <button type="button" class="link-btn" id="resetCrop">Reset</button>
+    </div>
+    <button class="cta" id="previewDone" type="button" style="margin-top:14px"><span class="ico">✓</span><span class="label">Looks great</span></button>
+  </div>
+</div>
+
 <footer>
   <div class="foot">
-    <a class="brand" href="index.html" style="font-size:10px"><img class="brand-ico" src="favicon-192.png" alt="" style="width:28px;height:28px"/><span>PET LICENCE <b>FACTORY</b></span></a>
+    <a class="brand" href="index.html" style="font-size:10px"><img class="brand-ico" src="favicon-192.png" alt="" style="width:28px;height:28px"/><span>PET LICENSE <b>FACTORY</b></span></a>
     <div class="links">
       <a href="game.html">Play the game</a>
       <a href="privacy.html">Privacy</a>
       <a href="refunds.html">Refunds</a>
       <a href="terms.html">Terms</a>
     </div>
-    <p class="fine">Pet Licence Factory makes novelty pet ID card-skins for entertainment. Not a real government document. Made with 🐾 for pets everywhere.</p>
+    <p class="fine">Pet License Factory makes novelty pet ID card-skins for entertainment. Not a real government document. Made with 🐾 for pets everywhere.</p>
   </div>
 </footer>
 
@@ -536,7 +577,7 @@ var PRICES = (window.PLF_PRICES_USD) || { pack1:13.95, pack2:19.99, decal:4.49, 
 
 var state = { photo:null, crop:{cx:0.5,cy:0.5,zoom:1}, packQty:1, chipSize:'mini', wantsDecal:false, addrReal:false, discount:false };
 
-// ── Stable licence numbers/dates (mirrors plf-shared.js) ──
+// ── Stable license numbers/dates (mirrors plf-shared.js) ──
 var pad = function(n){return String(n).padStart(2,'0');};
 var now = new Date();
 var ISS = pad(now.getMonth()+1)+'/'+pad(now.getDate())+'/'+String(now.getFullYear()).slice(2);
@@ -647,6 +688,7 @@ function downscalePhoto(file, cb){
   reader.readAsDataURL(file);
 }
 var ovPhoto = $('ov-photo'), petImg = $('petImg');
+var photoEverAdded = false;
 function handleFile(file){
   if(!file || !/^image\//.test(file.type)) return;
   downscalePhoto(file, function(url){
@@ -661,11 +703,34 @@ function handleFile(file){
     $('dropzone').classList.add('has');
     $('uploadRow').classList.add('show');
     $('dropzone').style.display='none';
-    $('adjustRow').classList.add('show');
     $('zoomRange').value = 1;
-    bump(); clearErr();
+    bump(); clearErr(); revealPreviewBtn();
+    // First upload: pop the preview so they can frame their pet right away.
+    if(!photoEverAdded){ photoEverAdded = true; openPreview(); }
   });
 }
+
+// ── Preview modal (live card + crop) ──
+function openPreview(){
+  refreshPreview();
+  var m = $('previewModal');
+  m.classList.add('open'); m.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(function(){ refreshPreview(); renderPhoto(); });
+}
+function closePreview(){
+  var m = $('previewModal');
+  m.classList.remove('open'); m.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+}
+// Reveal the "Preview yours" button (animated in) once any data is entered.
+var previewRevealed = false;
+function revealPreviewBtn(){ if(previewRevealed) return; previewRevealed = true; $('previewYours').classList.add('show'); }
+$('previewYours').addEventListener('click', openPreview);
+$('previewClose').addEventListener('click', closePreview);
+$('previewDone').addEventListener('click', closePreview);
+$('previewModal').addEventListener('click', function(e){ if(e.target === this) closePreview(); });
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && $('previewModal').classList.contains('open')) closePreview(); });
 
 // ── Interactive photo crop: drag to pan, slider/scroll/pinch to zoom ──
 function renderPhoto(){
@@ -685,8 +750,10 @@ function renderPhoto(){
 }
 var ptrs = {}, ptrCount = 0, dragLast = null, pinchBase = null;
 function ptrList(){ var a=[]; for(var k in ptrs) a.push(ptrs[k]); return a; }
+ovPhoto.addEventListener('dragstart', function(e){ e.preventDefault(); });
 ovPhoto.addEventListener('pointerdown', function(e){
   if(!state.photo) return;
+  e.preventDefault();   // stop native image-drag / text-selection so mouse panning works on desktop
   try{ ovPhoto.setPointerCapture(e.pointerId); }catch(_){}
   ptrs[e.pointerId] = {x:e.clientX, y:e.clientY}; ptrCount++;
   if(ptrCount===2){
@@ -740,8 +807,8 @@ $('dropzone').addEventListener('drop', function(e){ if(e.dataTransfer.files[0]) 
 
 // ── Form wiring ──
 ['fFirst','fLast','fSpecies','fSex','fDob','fEyes','fHeight','fWeight','fAddr1','fAddr2'].forEach(function(id){
-  $(id).addEventListener('input', refreshPreview);
-  $(id).addEventListener('change', refreshPreview);
+  $(id).addEventListener('input', function(){ revealPreviewBtn(); refreshPreview(); });
+  $(id).addEventListener('change', function(){ revealPreviewBtn(); refreshPreview(); });
 });
 $('addrToggle').addEventListener('change', function(e){
   state.addrReal = e.target.checked;
@@ -754,17 +821,18 @@ $('packOpts').addEventListener('click', function(e){
   var c = e.target.closest('[data-pack]'); if(!c) return;
   state.packQty = parseInt(c.getAttribute('data-pack'));
   [].forEach.call(this.children, function(ch){ ch.classList.toggle('sel', ch===c); });
-  recalc();
+  revealPreviewBtn(); recalc();
 });
 $('chipOpts').addEventListener('click', function(e){
   var c = e.target.closest('[data-chip]'); if(!c) return;
   state.chipSize = c.getAttribute('data-chip');
   [].forEach.call(this.children, function(ch){ ch.classList.toggle('sel', ch===c); });
+  revealPreviewBtn();
 });
 $('decal').addEventListener('click', function(){
   state.wantsDecal = !state.wantsDecal;
   this.classList.toggle('sel', state.wantsDecal);
-  recalc(); updateRecap();
+  revealPreviewBtn(); recalc(); updateRecap();
 });
 
 // ── Pricing / summary ──
@@ -775,7 +843,7 @@ function recalc(){
   var disc = state.discount ? (base+dec)*PRICES.disc : 0;
   var total = base + dec - disc;
   var h = '';
-  h += '<div class="line"><span>'+state.packQty+'-Pack Licence Sticker'+(state.packQty>1?'s':'')+'</span><span>'+money(base)+'</span></div>';
+  h += '<div class="line"><span>'+state.packQty+'-Pack License Sticker'+(state.packQty>1?'s':'')+'</span><span>'+money(base)+'</span></div>';
   if(state.wantsDecal) h += '<div class="line"><span>4.5×4.5" Vinyl Car Decal</span><span>+'+money(dec)+'</span></div>';
   if(state.discount) h += '<div class="line save"><span>First-time buyer (15% off)</span><span>−'+money(disc)+'</span></div>';
   h += '<div class="line muted"><span>Shipping</span><span>at checkout</span></div>';
@@ -948,7 +1016,7 @@ function checkout(){
   clearErr();
   var first=$('fFirst').value.trim(), last=$('fLast').value.trim(), species=$('fSpecies').value;
   if(!state.photo){ go(1,'b'); showErr('Please add a photo of your pet first 📸'); return; }
-  if(!first||!last||!species||!$('fSex').value||!$('fDob').value||!$('fEyes').value||!$('fHeight').value.trim()||!$('fWeight').value.trim()){ go(2,'b'); showErr('Please complete all the licence details.'); return; }
+  if(!first||!last||!species||!$('fSex').value||!$('fDob').value||!$('fEyes').value||!$('fHeight').value.trim()||!$('fWeight').value.trim()){ go(2,'b'); showErr('Please complete all the license details.'); return; }
   if(state.addrReal && (!$('fAddr1').value.trim()||!$('fAddr2').value.trim())){ go(2,'b'); showErr('Please complete the address fields (or turn that toggle off).'); return; }
 
   checking=true;
@@ -1005,6 +1073,29 @@ $('checkoutBtn').addEventListener('click', checkout);
   var cat = $('portalCat'); if(!cat) return;
   var f = 0;
   setInterval(function(){ f = (f+1) % 12; cat.style.backgroundPosition = (-f*30)+'px 0'; }, 1000/7);
+})();
+
+// ── Sample license slideshow ──
+(function(){
+  var slides = [].slice.call(document.querySelectorAll('.ss-slide'));
+  var dotsWrap = $('ssDots'); if(slides.length < 2 || !dotsWrap) return;
+  var idx = 0, timer = null;
+  slides.forEach(function(_, i){
+    var d = document.createElement('button');
+    d.type = 'button'; d.className = 'ss-dot' + (i===0?' active':''); d.setAttribute('aria-label','Sample '+(i+1));
+    d.addEventListener('click', function(){ go(i); restart(); });
+    dotsWrap.appendChild(d);
+  });
+  var dots = [].slice.call(dotsWrap.children);
+  function go(n){
+    idx = (n + slides.length) % slides.length;
+    slides.forEach(function(s,i){ s.classList.toggle('active', i===idx); });
+    dots.forEach(function(d,i){ d.classList.toggle('active', i===idx); });
+  }
+  function restart(){ if(timer) clearInterval(timer); timer = setInterval(function(){ go(idx+1); }, 3800); }
+  $('ssNext').addEventListener('click', function(){ go(idx+1); restart(); });
+  $('ssPrev').addEventListener('click', function(){ go(idx-1); restart(); });
+  restart();
 })();
 
 // ── Go ──

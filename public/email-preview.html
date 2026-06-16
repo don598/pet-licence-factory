@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Email Preview — Pet Licence Factory</title>
+  <title>Email Preview — Pet License Factory</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -36,7 +36,7 @@
 
     const petFull = "Luna Whiskers";
     const orderId = "PLF-2026-DEMO1";
-    const packLabel = "1-Pack Licence Sticker";
+    const packLabel = "1-Pack License Sticker";
     const chipSize = "Mini";
     const total = "$29.99";
     const customerName = "Sarah Whiskers";
@@ -44,7 +44,7 @@
     const trackingNumber = "9400111899228191993466";
     const trackUrl = `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`;
     const rabbitImg = `<img src="/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">`;
-    const plfTitle = `<img src="/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">`;
+    const plfTitle = `<img src="/images/wordmark-email.png" alt="Pet License Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">`;
     const gfont = `<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">`;
 
     function confirmHTML(shipLabel, isStamp) {
@@ -88,20 +88,20 @@
         ${isStamp ? `<tr><td style="padding:0 32px 8px;">
           <div style="background:#f0f8ff;border:1px dashed #0099cc;border-radius:4px;padding:14px 18px;">
             <div style="font-size:12px;color:#0099cc;font-weight:700;margin-bottom:6px;">📮 Stamp Mail — No Tracking Number</div>
-            <div style="font-size:13px;color:#223355;line-height:1.6;">Your order ships via USPS stamp mail. There's no tracking number with this option. If your licence hasn't arrived after <strong style="color:#0099cc;">21 days</strong> (most orders arrive in 3–5 days), email us at <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll make it right — free replacement included.</div>
+            <div style="font-size:13px;color:#223355;line-height:1.6;">Your order ships via USPS stamp mail. There's no tracking number with this option. If your license hasn't arrived after <strong style="color:#0099cc;">21 days</strong> (most orders arrive in 3–5 days), email us at <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll make it right — free replacement included.</div>
           </div>
         </td></tr>` : ''}
 
         <tr><td style="padding:16px 32px 24px;">
           <h2 style="margin:0 0 12px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">⚡ What Happens Next</h2>
           ${isStamp ? `<ol style="margin:0;padding-left:20px;font-size:14px;color:#223355;line-height:1.8;">
-            <li>🖨️ We print your custom licence sticker (2–3 business days).</li>
+            <li>🖨️ We print your custom license sticker (2–3 business days).</li>
             <li>📮 We seal and stamp your envelope and drop it in the mail.</li>
             <li>📬 Keep an eye on your mailbox — stamp mail typically arrives in 3–5 business days.</li>
             <li>❓ Not arrived after 21 days? Email <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll sort it out.</li>
             <li>🏆 ${petFull} is the fastest animal in the neighborhood.</li>
           </ol>` : `<ol style="margin:0;padding-left:20px;font-size:14px;color:#223355;line-height:1.8;">
-            <li>🖨️ We print your custom licence sticker (2–3 business days).</li>
+            <li>🖨️ We print your custom license sticker (2–3 business days).</li>
             <li>📫 We carefully package it and ship it via your chosen method.</li>
             <li>📧 You get a follow-up email with tracking once it's in the mail.</li>
             <li>🏆 ${petFull} is the fastest animal in the neighborhood.</li>
@@ -110,7 +110,7 @@
 
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Just reply to this email — we read every message.<br>
-          <span style="opacity:.6;">Pet Licence Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054</span>
+          <span style="opacity:.6;">Pet License Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054</span>
         </td></tr>
       </table>
     </td></tr>
@@ -131,7 +131,7 @@
           ${rabbitImg}
           <div style="font-size:32px;margin-bottom:8px;">📬</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Shipped!</h1>
-          <p style="margin:8px 0 24px;font-size:15px;color:#334477;line-height:1.5;">${petFull}'s licence just hit the mail stream.</p>
+          <p style="margin:8px 0 24px;font-size:15px;color:#334477;line-height:1.5;">${petFull}'s license just hit the mail stream.</p>
           <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:4px;padding:16px;margin:16px 0;text-align:left;">
             <div style="font-size:11px;color:#5577aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Tracking Number</div>
             <div style="font-family:'Courier New',monospace;font-size:15px;color:#0055cc;word-break:break-all;">${trackingNumber}</div>
@@ -142,7 +142,7 @@
         </td></tr>
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Reply to this email any time.<br>
-          <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
+          <span style="opacity:.6;">Pet License Factory · Houston, TX</span>
         </td></tr>
       </table>
     </td></tr>

@@ -1,4 +1,4 @@
-// ── Pet Licence Factory — Stripe Connect Express helpers ────────────────────
+// ── Pet License Factory — Stripe Connect Express helpers ────────────────────
 // Thin wrappers around Stripe's Connect API for Express accounts. Used to
 // onboard creators for direct-deposit cash payouts ($25+ tier) and to push
 // money to them via stripe.transfers.create.
@@ -48,7 +48,7 @@ export async function createExpressAccount(env, creator) {
     business_type: 'individual',
     business_profile: {
       url:                  affiliateUrl,
-      product_description:  'Affiliate / creator commission for promoting Pet Licence Factory products (custom printed pet licence card skins).',
+      product_description:  'Affiliate / creator commission for promoting Pet License Factory products (custom printed pet license card skins).',
       mcc:                  '5732', // "Electronics Stores" — closest match for printed novelty goods sold via affiliate marketing
     },
     metadata: {

@@ -1,4 +1,4 @@
-// ── Pet Licence Factory — SendGrid Email Helpers (Cloudflare) ────────────────
+// ── Pet License Factory — SendGrid Email Helpers (Cloudflare) ────────────────
 // Uses SendGrid v3 REST API via fetch. No Node SDK needed — works on the
 // Workers runtime. Sends from `hello@petlicensefactory.com`, which is
 // domain-authenticated (DKIM/SPF) in SendGrid for best inbox placement.
@@ -8,7 +8,7 @@
 const SENDGRID_ENDPOINT = 'https://api.sendgrid.com/v3/mail/send';
 
 const DEFAULT_FROM_EMAIL = 'hello@petlicensefactory.com';
-const DEFAULT_FROM_NAME  = 'Pet Licence Factory';
+const DEFAULT_FROM_NAME  = 'Pet License Factory';
 // Replies route here regardless of the from-address (so we can send from a
 // branded @petlicensefactory.com address while replies still land in the
 // monitored creditcardart inbox). Override per-send via the replyTo arg, or
@@ -101,12 +101,12 @@ export async function sendOrderConfirmationEmail(env, order) {
     priority: 'Priority Shipping (3–5 business days)',
   })[shippingOption] || 'Standard Shipping';
   const packLabel = (parseInt(packCount) === 2 ? '2-Pack' : '1-Pack')
-    + ' Licence Sticker' + (addOn === 'car_decal' ? ' + Car Decal' : '');
+    + ' License Sticker' + (addOn === 'car_decal' ? ' + Car Decal' : '');
 
   const addrParts = [shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry]
     .filter(Boolean).join('<br>');
 
-  const subject = `🐾 Order confirmed — ${petFull}'s Pet Licence is being processed!`;
+  const subject = `🐾 Order confirmed — ${petFull}'s Pet License is being processed!`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -118,7 +118,7 @@ export async function sendOrderConfirmationEmail(env, order) {
 
         <!-- Header -->
         <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <img src="https://petlicensefactory.com/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Order Confirmed!</h1>
           <p style="margin:12px 0 0;font-size:14px;color:#334477;line-height:1.5;">
@@ -158,7 +158,7 @@ export async function sendOrderConfirmationEmail(env, order) {
         ${shippingOption === 'stamp' ? `<tr><td style="padding:0 32px 8px;">
           <div style="background:#f0f8ff;border:1px dashed #0099cc;border-radius:4px;padding:14px 18px;">
             <div style="font-size:12px;color:#0099cc;font-weight:700;margin-bottom:6px;">📮 Stamp Mail — No Tracking Number</div>
-            <div style="font-size:13px;color:#223355;line-height:1.6;">Your order ships via USPS stamp mail. There's no tracking number with this option. If your licence hasn't arrived after <strong style="color:#0099cc;">21 days</strong> (most orders arrive in 3–5 days), email us at <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll make it right — free replacement included.</div>
+            <div style="font-size:13px;color:#223355;line-height:1.6;">Your order ships via USPS stamp mail. There's no tracking number with this option. If your license hasn't arrived after <strong style="color:#0099cc;">21 days</strong> (most orders arrive in 3–5 days), email us at <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll make it right — free replacement included.</div>
           </div>
         </td></tr>` : ''}
 
@@ -166,13 +166,13 @@ export async function sendOrderConfirmationEmail(env, order) {
         <tr><td style="padding:16px 32px 24px;">
           <h2 style="margin:0 0 12px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">⚡ What Happens Next</h2>
           ${shippingOption === 'stamp' ? `<ol style="margin:0;padding-left:20px;font-size:14px;color:#223355;line-height:1.8;">
-            <li>🖨️ We print your custom licence sticker (2–3 business days).</li>
+            <li>🖨️ We print your custom license sticker (2–3 business days).</li>
             <li>📮 We seal and stamp your envelope and drop it in the mail.</li>
             <li>📬 Keep an eye on your mailbox — stamp mail typically arrives in 3–5 business days.</li>
             <li>❓ Not arrived after 21 days? Email <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll sort it out.</li>
             <li>🏆 ${esc(petFull)} is the fastest animal in the neighborhood.</li>
           </ol>` : `<ol style="margin:0;padding-left:20px;font-size:14px;color:#223355;line-height:1.8;">
-            <li>🖨️ We print your custom licence sticker (2–3 business days).</li>
+            <li>🖨️ We print your custom license sticker (2–3 business days).</li>
             <li>📫 We carefully package it and ship it via your chosen method.</li>
             <li>📧 You get a follow-up email with tracking once it's in the mail.</li>
             <li>🏆 ${esc(petFull)} is the fastest animal in the neighborhood.</li>
@@ -184,7 +184,7 @@ export async function sendOrderConfirmationEmail(env, order) {
           <div style="background:#f0f5ff;border:1px dashed #0088cc;border-radius:6px;padding:18px 20px;text-align:center;">
             <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:8px;">📸 Show off ${esc(petFull)}!</div>
             <p style="margin:0 0 12px;font-size:13px;color:#334477;line-height:1.6;">
-              When ${esc(petFull)}'s licence arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
+              When ${esc(petFull)}'s license arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
             </p>
             <a href="https://www.instagram.com/petlicensefactory/" style="display:inline-block;padding:12px 22px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">DM us @petlicensefactory →</a>
           </div>
@@ -193,7 +193,7 @@ export async function sendOrderConfirmationEmail(env, order) {
         <!-- Footer -->
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Just reply to this email — we read every message.<br>
-          <span style="opacity:.6;">Pet Licence Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054</span>
+          <span style="opacity:.6;">Pet License Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054</span>
         </td></tr>
       </table>
     </td></tr>
@@ -212,13 +212,13 @@ Chip:     ${chipSize || 'mini'}
 Shipping: ${shipLabel}
 Total:    ${total || '—'}
 
-${addrParts ? `Shipping to:\n${customerName ? customerName + '\n' : ''}${[shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry].filter(Boolean).join('\n')}\n\n` : ''}Next up: we'll print ${petFull}'s licence, package it with care, and ship it your way. You'll get a tracking email once it's out the door.
+${addrParts ? `Shipping to:\n${customerName ? customerName + '\n' : ''}${[shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry].filter(Boolean).join('\n')}\n\n` : ''}Next up: we'll print ${petFull}'s license, package it with care, and ship it your way. You'll get a tracking email once it's out the door.
 
-📸 Show off ${petFull}! When the licence arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
+📸 Show off ${petFull}! When the license arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
 
 Questions? Just reply to this email.
 
-— Pet Licence Factory`;
+— Pet License Factory`;
 
   return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'confirmation' } });
 }
@@ -231,7 +231,7 @@ export async function sendStampShippedEmail(env, order) {
   if (!customerEmail) return { skipped: true, reason: 'no email' };
 
   const petFull = [petFirstName, petLastName].filter(Boolean).join(' ') || 'your pet';
-  const subject = `📬 ${petFull}'s Pet Licence is in the mail!`;
+  const subject = `📬 ${petFull}'s Pet License is in the mail!`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
@@ -240,12 +240,12 @@ export async function sendStampShippedEmail(env, order) {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <img src="https://petlicensefactory.com/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <div style="font-size:32px;margin-bottom:8px;">📮</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">It's In The Mail!</h1>
           <p style="margin:8px 0 20px;font-size:15px;color:#334477;line-height:1.5;">
-            ${esc(petFull)}'s licence is sealed, stamped, and on its way via USPS.
+            ${esc(petFull)}'s license is sealed, stamped, and on its way via USPS.
           </p>
           <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:4px;padding:16px;margin:16px 0;text-align:left;">
             <div style="font-size:11px;color:#5577aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Order</div>
@@ -263,7 +263,7 @@ export async function sendStampShippedEmail(env, order) {
           <div style="background:#f0f5ff;border:1px dashed #0088cc;border-radius:6px;padding:18px 20px;text-align:center;">
             <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:8px;">📸 Show off ${esc(petFull)}!</div>
             <p style="margin:0 0 12px;font-size:13px;color:#334477;line-height:1.6;">
-              When ${esc(petFull)}'s licence arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
+              When ${esc(petFull)}'s license arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
             </p>
             <a href="https://www.instagram.com/petlicensefactory/" style="display:inline-block;padding:12px 22px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">DM us @petlicensefactory →</a>
           </div>
@@ -271,7 +271,7 @@ export async function sendStampShippedEmail(env, order) {
 
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Reply to this email any time.<br>
-          <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
+          <span style="opacity:.6;">Pet License Factory · Houston, TX</span>
         </td></tr>
       </table>
     </td></tr>
@@ -279,16 +279,16 @@ export async function sendStampShippedEmail(env, order) {
 </body></html>`;
 
   const text =
-`📮 ${petFull}'s Pet Licence is in the mail!
+`📮 ${petFull}'s Pet License is in the mail!
 
 Order: ${orderId || '—'}
 
 Stamp mail doesn't include a tracking number. Most orders arrive in 3–5 business days.
 If yours hasn't shown up after 21 days, just reply to this email and we'll send a free replacement.
 
-📸 Show off ${petFull}! When the licence arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
+📸 Show off ${petFull}! When the license arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
 
-— Pet Licence Factory`;
+— Pet License Factory`;
 
   return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'stamp_shipped' } });
 }
@@ -303,7 +303,7 @@ export async function sendAddressIssueEmail(env, order) {
 
   const petFull = [petFirstName, petLastName].filter(Boolean).join(' ') || 'your pet';
   const fixUrl  = `${siteOrigin || 'https://petlicensefactory.com'}/success.html?session_id=${encodeURIComponent(sessionId || '')}&order_id=${encodeURIComponent(orderId || '')}`;
-  const subject = `⚠️ We couldn't verify your shipping address for ${petFull}'s licence`;
+  const subject = `⚠️ We couldn't verify your shipping address for ${petFull}'s license`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
@@ -312,14 +312,14 @@ export async function sendAddressIssueEmail(env, order) {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #e0a800;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#fff8e1 0%,#ffffff 100%);">
-          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <div style="font-size:32px;margin-bottom:8px;">⚠️</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#a86c00;letter-spacing:2px;text-transform:uppercase;line-height:1.5;">Address Couldn't Be<br>Verified</h1>
           <p style="margin:14px 0 4px;font-size:15px;color:#334477;line-height:1.5;">
             Good news first: <strong>you have not been charged.</strong>
           </p>
           <p style="margin:8px 0 20px;font-size:14px;color:#334477;line-height:1.5;">
-            We tried to verify your shipping address with USPS for ${esc(petFull)}'s licence, but it didn't come back as deliverable. We've put the payment on hold so we don't ship to a bad address.
+            We tried to verify your shipping address with USPS for ${esc(petFull)}'s license, but it didn't come back as deliverable. We've put the payment on hold so we don't ship to a bad address.
           </p>
         </td></tr>
         <tr><td style="padding:0 32px 8px;">
@@ -345,7 +345,7 @@ export async function sendAddressIssueEmail(env, order) {
         </td></tr>
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Need help? Reply to this email any time.<br>
-          <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
+          <span style="opacity:.6;">Pet License Factory · Houston, TX</span>
         </td></tr>
       </table>
     </td></tr>
@@ -353,7 +353,7 @@ export async function sendAddressIssueEmail(env, order) {
 </body></html>`;
 
   const text =
-`⚠️ We couldn't verify your shipping address for ${petFull}'s licence.
+`⚠️ We couldn't verify your shipping address for ${petFull}'s license.
 
 Good news first: you have NOT been charged.
 
@@ -365,7 +365,7 @@ Order: ${orderId || '—'}
 
 If you don't fix the address within 7 days, the card hold drops automatically and no charge is made. You can also just reply to this email and we'll sort it out manually.
 
-— Pet Licence Factory`;
+— Pet License Factory`;
 
   return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'address_issue' } });
 }
@@ -376,7 +376,7 @@ export async function sendShippingNotificationEmail(env, order) {
   if (!customerEmail || !trackingNumber) return { skipped: true };
 
   const petFull = [petFirstName, petLastName].filter(Boolean).join(' ') || 'your pet';
-  const subject = `📬 ${petFull}'s Pet Licence is on the way!`;
+  const subject = `📬 ${petFull}'s Pet License is on the way!`;
 
   // USPS tracking URL (works for stamp/standard/priority — all USPS)
   const trackUrl = `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(trackingNumber)}`;
@@ -388,12 +388,12 @@ export async function sendShippingNotificationEmail(env, order) {
     <tr><td align="center">
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <img src="https://petlicensefactory.com/images/rabbit-email.gif" width="80" height="80" alt="🐰" style="display:block;margin:0 auto 12px;image-rendering:pixelated;">
           <div style="font-size:32px;margin-bottom:8px;">📬</div>
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:16px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Shipped!</h1>
           <p style="margin:8px 0 24px;font-size:15px;color:#334477;line-height:1.5;">
-            ${esc(petFull)}'s licence just hit the mail stream.
+            ${esc(petFull)}'s license just hit the mail stream.
           </p>
           <div style="background:#f0f5ff;border:1px solid #0088cc;border-radius:4px;padding:16px;margin:16px 0;text-align:left;">
             <div style="font-size:11px;color:#5577aa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Tracking Number</div>
@@ -409,7 +409,7 @@ export async function sendShippingNotificationEmail(env, order) {
           <div style="background:#f0f5ff;border:1px dashed #0088cc;border-radius:6px;padding:18px 20px;text-align:center;">
             <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:8px;">📸 Show off ${esc(petFull)}!</div>
             <p style="margin:0 0 12px;font-size:13px;color:#334477;line-height:1.6;">
-              When ${esc(petFull)}'s licence arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
+              When ${esc(petFull)}'s license arrives, snap a photo of your pet with it and send it to us in a DM on Instagram. We post our favourites on our page (with a shout-out to you), so don't be shy!
             </p>
             <a href="https://www.instagram.com/petlicensefactory/" style="display:inline-block;padding:12px 22px;background:#0077ff;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">DM us @petlicensefactory →</a>
           </div>
@@ -417,7 +417,7 @@ export async function sendShippingNotificationEmail(env, order) {
 
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Reply to this email any time.<br>
-          <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
+          <span style="opacity:.6;">Pet License Factory · Houston, TX</span>
         </td></tr>
       </table>
     </td></tr>
@@ -425,15 +425,15 @@ export async function sendShippingNotificationEmail(env, order) {
 </body></html>`;
 
   const text =
-`📬 ${petFull}'s Pet Licence is on the way!
+`📬 ${petFull}'s Pet License is on the way!
 
 Tracking: ${trackingNumber}
 Order:    ${orderId || '—'}
 Track it: ${trackUrl}
 
-📸 Show off ${petFull}! When the licence arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
+📸 Show off ${petFull}! When the license arrives, snap a photo of your pet with it and DM it to us on Instagram @petlicensefactory. We post our favourites on our page (with a shout-out to you).
 
-— Pet Licence Factory`;
+— Pet License Factory`;
 
   return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'shipping' } });
 }
@@ -457,7 +457,7 @@ export function renderCreatorOnboardingEmail(opts) {
   const freebieUrl   = `${siteOrigin}/game.html?promo=${encodeURIComponent(freebieCode)}`;
   const dashboardUrl = `${siteOrigin}/dashboard.html?token=${encodeURIComponent(dashboardToken)}`;
 
-  const subject = `🎉 You're in — your Pet Licence Factory creator kit`;
+  const subject = `🎉 You're in — your Pet License Factory creator kit`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
@@ -467,7 +467,7 @@ export function renderCreatorOnboardingEmail(opts) {
       <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
 
         <tr><td style="padding:32px 32px 16px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="420" style="display:block;margin:0 auto 20px;max-width:80%;height:auto;image-rendering:pixelated;">
           <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;line-height:1.6;">Welcome To The<br>Creator Kit, ${esc(creatorName || 'Creator')}!</h1>
           <p style="margin:14px 0 0;font-size:14px;color:#334477;line-height:1.6;">
             Everything you need to start posting and earning is right here.
@@ -495,11 +495,11 @@ export function renderCreatorOnboardingEmail(opts) {
         <!-- Freebie -->
         <tr><td style="padding:16px 32px 8px;">
           <div style="background:#fff8e1;border:1px solid #e0a800;border-radius:6px;padding:18px 20px;">
-            <div style="font-size:11px;color:#a86c00;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">🎁 Your free Pet Licence</div>
+            <div style="font-size:11px;color:#a86c00;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">🎁 Your free Pet License</div>
             <p style="margin:0 0 12px;font-size:14px;color:#5a4a00;line-height:1.6;">
-              Click the button below to claim your complimentary Pet Licence sticker — free product, free stamp shipping, on us.
+              Click the button below to claim your complimentary Pet License sticker — free product, free stamp shipping, on us.
             </p>
-            <a href="${esc(freebieUrl)}" style="display:inline-block;padding:12px 22px;background:#e0a800;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">Claim My Free Licence →</a>
+            <a href="${esc(freebieUrl)}" style="display:inline-block;padding:12px 22px;background:#e0a800;color:#ffffff;text-decoration:none;border-radius:4px;font-weight:700;font-size:13px;letter-spacing:1px;">Claim My Free License →</a>
             <div style="margin-top:8px;font-size:11px;color:#a86c00;font-family:'Courier New',monospace;">Code: ${esc(freebieCode)} · single-use · expires in 30 days</div>
           </div>
         </td></tr>
@@ -520,7 +520,7 @@ export function renderCreatorOnboardingEmail(opts) {
           <div style="background:#f7faff;border:1px solid rgba(0,102,255,.18);border-radius:6px;padding:18px 20px;">
             <div style="font-size:13px;color:#0077ff;font-weight:700;margin-bottom:10px;">What you get</div>
             <ol style="margin:0;padding-left:20px;font-size:13px;color:#223355;line-height:1.7;">
-              <li><strong>Free product</strong> — claim your complimentary Pet Licence sample above.</li>
+              <li><strong>Free product</strong> — claim your complimentary Pet License sample above.</li>
               <li><strong>Commission package</strong> — share your code/link and earn ${esc(commissionPct)}% on paid orders.</li>
               <li><strong>$10 video bonus</strong> — upload your TikTok review video in your dashboard after posting. Once reviewed, we’ll add the bonus.</li>
             </ol>
@@ -534,8 +534,8 @@ export function renderCreatorOnboardingEmail(opts) {
             <li>Post an authentic TikTok review video within 14 days of receiving your product.</li>
             <li>Upload that video in your dashboard as proof so we can review it for the $10 bonus.</li>
             <li>Add your TikTok Spark Ads authorization code in the dashboard if you want us to promote the video with ad spend.</li>
-            <li>Tag <strong>@petlicencefactory</strong> so we can re-share.</li>
-            <li>Be honest. Show the licence; show your pet's reaction. Authenticity outperforms polish.</li>
+            <li>Tag <strong>@petlicensefactory</strong> so we can re-share.</li>
+            <li>Be honest. Show the license; show your pet's reaction. Authenticity outperforms polish.</li>
           </ul>
         </td></tr>
 
@@ -554,7 +554,7 @@ export function renderCreatorOnboardingEmail(opts) {
 
         <tr><td style="padding:20px 32px;background:#f0f5ff;border-top:1px solid rgba(0,102,255,.15);text-align:center;font-size:12px;color:#6688aa;line-height:1.6;">
           Questions? Just reply to this email.<br>
-          <span style="opacity:.6;">Pet Licence Factory · Houston, TX</span>
+          <span style="opacity:.6;">Pet License Factory · Houston, TX</span>
         </td></tr>
       </table>
     </td></tr>
@@ -562,12 +562,12 @@ export function renderCreatorOnboardingEmail(opts) {
 </body></html>`;
 
   const text =
-`Welcome to the Pet Licence Factory creator kit, ${creatorName || 'Creator'}!
+`Welcome to the Pet License Factory creator kit, ${creatorName || 'Creator'}!
 
 Your coupon code:   ${affiliateCode}   (${customerDiscountPct}% off — you earn ${commissionPct}%)
 Your affiliate URL: ${refUrl}
 
-🎁 Claim your free Pet Licence:
+🎁 Claim your free Pet License:
 ${freebieUrl}
 (Code: ${freebieCode} — single-use, 30-day expiry)
 
@@ -583,7 +583,7 @@ The brief:
 - Post an authentic TikTok review video within 14 days of receiving your product.
 - Upload that video in your dashboard as proof so we can review it for the $10 bonus.
 - Add your TikTok Spark Ads authorization code in the dashboard if you want us to promote the video with ad spend.
-- Tag @petlicencefactory.
+- Tag @petlicensefactory.
 - Authenticity > polish.
 
 When am I paid?  Monthly, via Venmo / PayPal / Zelle.
@@ -591,7 +591,7 @@ What counts?     Any paid order using your code, OR any paid order from a visito
 
 Questions? Reply to this email.
 
-— Pet Licence Factory`;
+— Pet License Factory`;
 
   return {
     subject,
@@ -615,7 +615,7 @@ export async function sendCreatorMagicLinkEmail(env, opts) {
   const { creatorEmail, creatorName, magicUrl, expiresMinutes = 30 } = opts;
   if (!creatorEmail) return { skipped: true, reason: 'no email' };
 
-  const subject = `🔑 Sign in to your Pet Licence Factory dashboard`;
+  const subject = `🔑 Sign in to your Pet License Factory dashboard`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"></head>
@@ -624,7 +624,7 @@ export async function sendCreatorMagicLinkEmail(env, opts) {
     <tr><td align="center">
       <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;background:#ffffff;border:2px solid #0066ff;border-radius:8px;overflow:hidden;">
         <tr><td style="padding:32px;text-align:center;background:linear-gradient(180deg,#eef4ff 0%,#ffffff 100%);">
-          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet Licence Factory" width="380" style="display:block;margin:0 auto 16px;max-width:80%;height:auto;image-rendering:pixelated;">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="380" style="display:block;margin:0 auto 16px;max-width:80%;height:auto;image-rendering:pixelated;">
           <h1 style="margin:0 0 8px;font-family:'Press Start 2P','Courier New',monospace;font-size:14px;color:#0077ff;letter-spacing:2px;text-transform:uppercase;">Sign In</h1>
           <p style="margin:8px 0 20px;font-size:14px;color:#334477;line-height:1.5;">
             ${creatorName ? `Hey ${esc(creatorName)} — c` : 'C'}lick the button to open your dashboard.
@@ -641,7 +641,7 @@ export async function sendCreatorMagicLinkEmail(env, opts) {
 </body></html>`;
 
   const text =
-`Sign in to your Pet Licence Factory dashboard:
+`Sign in to your Pet License Factory dashboard:
 ${magicUrl}
 
 This link expires in ${expiresMinutes} minutes and can be used once. Didn't request this? Ignore it.`;
