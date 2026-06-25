@@ -537,6 +537,60 @@ export async function onRequest(context) {
         return json(200, { codes });
       }
 
+      // Backfill historical orders so the stored total matches what Stripe
+      // actually charged (amount_total: post-discount, incl. shipping). The
+      // webhook does this for new orders; this fixes ones paid before that fix.
+      // Reads from Stripe + UPDATEs total only — no emails, no side effects.
+      // Cursor-paged in small batches so one request stays well under the
+      // Cloudflare Workers subrequest cap; the client loops until done.
+      case 'reconcile_totals': {
+        const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+        const limit  = Math.min(Math.max(parseInt(body.limit) || 20, 1), 50);
+        const cursor = parseInt(body.cursor) || null;   // process orders with id < cursor
+
+        const res = await db.query(
+          `SELECT id, order_id, total, stripe_session_id, stripe_payment_intent
+             FROM pet_orders
+            WHERE status <> 'pending'
+              AND (stripe_session_id IS NOT NULL
+                   OR (stripe_payment_intent IS NOT NULL AND stripe_payment_intent <> ''))
+              AND ($1::int IS NULL OR id < $1)
+            ORDER BY id DESC
+            LIMIT $2`,
+          [cursor, limit]
+        );
+
+        let checked = 0, updated = 0, failed = 0, lastId = null;
+        const changes = [];
+        for (const o of res.rows) {
+          checked++; lastId = o.id;
+          let cents = null;
+          try {
+            if (o.stripe_session_id) {
+              const s = await stripe.checkout.sessions.retrieve(o.stripe_session_id);
+              if (Number.isFinite(s?.amount_total)) cents = s.amount_total;
+            }
+          } catch (e) { /* fall through to the PaymentIntent */ }
+          if (cents === null && o.stripe_payment_intent) {
+            try {
+              const pi = await stripe.paymentIntents.retrieve(o.stripe_payment_intent);
+              const a = pi?.amount_received ?? pi?.amount;
+              if (Number.isFinite(a)) cents = a;
+            } catch (e) { /* leave null — counted as failed below */ }
+          }
+          if (cents === null) { failed++; continue; }
+          const newTotal = '$' + (cents / 100).toFixed(2);
+          if (newTotal !== o.total) {
+            await db.query('UPDATE pet_orders SET total = $1, updated_at = NOW() WHERE id = $2', [newTotal, o.id]);
+            updated++;
+            changes.push({ orderId: o.order_id, from: o.total || '—', to: newTotal });
+          }
+        }
+
+        const done = res.rows.length < limit;
+        return json(200, { checked, updated, failed, changes, nextCursor: done ? null : lastId, done });
+      }
+
       default:
         return json(400, { error: `Unknown action: ${action}` });
     }

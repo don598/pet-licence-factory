@@ -2386,6 +2386,7 @@ html, body {
                 <button class="filter-tab t-done" data-filter="complete"  onclick="setFilter('complete')">Complete</button>
               </div>
               <button class="btn btn-ghost" style="margin-left:auto" onclick="openGiftModal()" title="Create a 100%-off, single-use gift code">🎁 Gift code</button>
+              <button class="btn btn-ghost" onclick="reconcileTotals(this)" title="Re-pull the actual charged amount from Stripe for every paid order and update its total (fixes gift/discount orders showing list price). No emails sent.">↻ Reconcile totals</button>
             </div>
             <div class="bulk-action-bar" id="bulk-action-bar">
               <span class="bulk-count" id="bulk-count">0 selected</span>
@@ -3087,6 +3088,35 @@ function copyGiftCode(text, el, label) {
     const prev = el.textContent; el.textContent = label || 'Copied!';
     setTimeout(() => { el.textContent = prev; }, 1200);
   });
+}
+
+// Backfill: re-pull each paid order's real charged amount from Stripe and update
+// its stored total. The admin API processes a small batch per call (subrequest
+// cap), so loop the cursor until done. No emails are sent.
+async function reconcileTotals(btn) {
+  if (!confirm('Re-pull the actual charged amount from Stripe for every paid order and update its stored total to match?\n\nThis fixes gift-code / discounted orders that still show the old list price. No emails are sent.')) return;
+  const orig = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Reconciling…'; }
+  let cursor = null, checked = 0, updated = 0, failed = 0, guard = 0;
+  const changes = [];
+  try {
+    do {
+      const r = await adminAPI('reconcile_totals', { cursor, limit: 20 });
+      checked += r.checked || 0;
+      updated += r.updated || 0;
+      failed  += r.failed  || 0;
+      if (Array.isArray(r.changes)) changes.push(...r.changes);
+      cursor = r.nextCursor;
+      guard++;
+    } while (cursor && guard < 200);
+    if (changes.length) console.table(changes);
+    showToast(`Reconciled ${checked} order${checked === 1 ? '' : 's'} · ${updated} updated${failed ? ' · ' + failed + ' skipped' : ''}`, 'ok');
+    await loadOrders();
+  } catch (e) {
+    showToast('Reconcile failed: ' + (e.message || e), 'err', true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+  }
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
