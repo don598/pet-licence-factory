@@ -1812,7 +1812,10 @@ async function s5Checkout(){
   // mobile checkout bug).
   try {
     const affiliateRef = (window.PLFAffiliate && window.PLFAffiliate.getRef && window.PLFAffiliate.getRef()) || '';
-    const promoCode    = (new URLSearchParams(window.location.search).get('promo') || '').trim();
+    // ?promo= from the URL, else the code stashed by affiliate-tracker.js — so a
+    // single homepage gift link survives the redirect into this builder.
+    const promoCode    = (new URLSearchParams(window.location.search).get('promo') || '').trim()
+                      || (window.PLFPromo && window.PLFPromo.getCode && window.PLFPromo.getCode()) || '';
 
     const resp = await fetch('/api/create-checkout-session', {
       method: 'POST',

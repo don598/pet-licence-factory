@@ -1053,7 +1053,7 @@ function checkout(){
       var orderId=d.orderId;
       try{ if(snap){ var st=JSON.parse(localStorage.getItem('plf_last_preview')); st.orderId=orderId; localStorage.setItem('plf_last_preview',JSON.stringify(st)); } }catch(e){}
       var affiliateRef=(window.PLFAffiliate&&window.PLFAffiliate.getRef&&window.PLFAffiliate.getRef())||'';
-      var promoCode=(new URLSearchParams(window.location.search).get('promo')||'').trim();
+      var promoCode=(new URLSearchParams(window.location.search).get('promo')||'').trim()||(window.PLFPromo&&window.PLFPromo.getCode&&window.PLFPromo.getCode())||'';
       return fetch('/api/create-checkout-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         orderId:orderId, packQty:state.packQty, wantsDecal:state.wantsDecal, discountEarned:state.discount,
         petData:{petFirstName:first,petLastName:last},

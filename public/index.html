@@ -11,9 +11,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&display=swap" rel="stylesheet"/>
 <script>
-// Redirect mobile users to dedicated mobile welcome page
+// Redirect mobile users to dedicated mobile welcome page. Carry the query
+// string (e.g. ?promo= / ?ref=) so a gift/affiliate link to the homepage
+// survives the gate — this runs before affiliate-tracker.js can stash them.
 if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (window.innerWidth <= 768 && 'ontouchstart' in window)) {
-  window.location.replace('mobile-welcome.html');
+  window.location.replace('mobile-welcome.html' + window.location.search);
 }
 </script>
 <style>

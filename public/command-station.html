@@ -2664,7 +2664,7 @@ html, body {
       <button class="modal-close" onclick="closeGiftModal()">✕</button>
     </div>
     <div class="modal-body">
-      <p class="modal-sub" style="margin:0;">100% off · single use · expires in 30 days. Works exactly like a creator welcome code — free sticker <em>and</em> free shipping. Share the <strong>link</strong> (not just the code): the free shipping only kicks in when the recipient opens it. The discount is applied automatically at checkout.</p>
+      <p class="modal-sub" style="margin:0;">100% off · single use · expires in 30 days. Free sticker <em>and</em> free shipping, just like a creator welcome code. Share the <strong>link</strong> below: it works on any device (game or product page) and applies the gift automatically at checkout.</p>
       <label class="aff-stack">Label <span style="color:var(--muted)">(optional — for your records)</span><input id="giftLabel" maxlength="80" placeholder="e.g. Sarah's gift" autocomplete="off" /></label>
       <label class="aff-stack">How many
         <select id="giftCount">
@@ -3056,11 +3056,12 @@ async function createGiftCodes() {
     const origin = window.location.origin;
     results.innerHTML = (codes || []).map(c => {
       const exp = new Date(c.expiresAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      // The redemption LINK is what guarantees free shipping: it carries the
-      // code through ?promo= into create-checkout-session, which then swaps in
-      // the $0 stamp-shipping option. A bare code typed into Stripe's own promo
-      // box zeros the sticker but still charges shipping — so push the link.
-      const link = `${origin}/game.html?promo=${encodeURIComponent(c.code)}`;
+      // Hand out the redemption LINK, not a bare code. The link carries the
+      // code via ?promo= (stashed by affiliate-tracker.js) so it survives every
+      // hop — game or product page, desktop or mobile — and triggers the $0
+      // stamp-shipping freebie path. A code typed into Stripe's own promo box
+      // would only zero the sticker, not shipping, so we don't surface it.
+      const link = `${origin}/?promo=${encodeURIComponent(c.code)}`;
       return `<div style="display:flex;flex-direction:column;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <code style="font-size:15px;font-weight:700;letter-spacing:.5px;flex:1;">${esc(c.code)}</code>
@@ -3069,7 +3070,6 @@ async function createGiftCodes() {
         <div style="display:flex;align-items:center;gap:6px;">
           <input readonly value="${esc(link)}" onclick="this.select()" style="flex:1;font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-soft);min-width:0;" />
           <button class="btn btn-blue" style="padding:5px 10px;font-size:12px;white-space:nowrap;" onclick="copyGiftCode('${esc(link)}', this, 'Link copied!')">Copy link</button>
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap;" onclick="copyGiftCode('${esc(c.code)}', this, 'Code copied!')" title="Copy just the code (note: a bare code does not include free shipping)">Code</button>
         </div>
       </div>`;
     }).join('');
