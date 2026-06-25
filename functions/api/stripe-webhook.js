@@ -91,6 +91,14 @@ export async function onRequest(context) {
     orderId, shipAmt, shippingOption, hasAddr: !!addr?.line1, email, paymentIntentId,
   });
 
+  // Record what Stripe ACTUALLY charged (amount_total, in cents) as the order
+  // total, so Command Station, the receipt, and the confirmation email match the
+  // Stripe transaction instead of the client-submitted list price — which
+  // ignores promo/gift codes and shipping. COALESCE guards a missing value.
+  const paidTotal = Number.isFinite(session.amount_total)
+    ? '$' + (session.amount_total / 100).toFixed(2)
+    : null;
+
   // ── 1. Persist what Stripe gave us and mark the order paid ───────────────
   let orderRow;
   try {
@@ -108,8 +116,9 @@ export async function onRequest(context) {
          ship_zip              = $9,
          ship_country          = $10,
          shipping_option       = $11,
+         total                 = COALESCE($12, total),
          updated_at            = NOW()
-       WHERE order_id = $12
+       WHERE order_id = $13
        RETURNING order_id, pet_first_name, pet_last_name, pack_count, add_on, chip_size,
                  shipping_option, total, customer_email, customer_name,
                  ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country`,
@@ -125,6 +134,7 @@ export async function onRequest(context) {
         addr.postal_code || '',
         addr.country     || 'US',
         shippingOption,
+        paidTotal,
         orderId,
       ]
     );

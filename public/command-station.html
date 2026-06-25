@@ -3230,7 +3230,7 @@ function parseTotal(t) { return parseFloat((t || '0').replace(/[^0-9.]/g, '')) |
 // but the row stores the client-submitted full price — so freebies must not
 // count toward revenue or show a dollar amount.
 function orderRevenue(o) { return isAffiliateFreebie(o) ? 0 : parseTotal(o.total); }
-function orderAmountLabel(o) { return isAffiliateFreebie(o) ? 'Free' : (o.total || '—'); }
+function orderAmountLabel(o) { if (isAffiliateFreebie(o)) return 'Free'; if (!o.total) return '—'; return parseTotal(o.total) === 0 ? 'Free' : o.total; }
 // An "incomplete checkout" is an abandoned-cart shell: submit-order writes a
 // `pending` row before redirecting to Stripe, and the webhook moves any
 // COMPLETED checkout out of `pending` (to address_pending_verification / paid /
