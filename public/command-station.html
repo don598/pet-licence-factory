@@ -2664,7 +2664,7 @@ html, body {
       <button class="modal-close" onclick="closeGiftModal()">✕</button>
     </div>
     <div class="modal-body">
-      <p class="modal-sub" style="margin:0;">100% off · single use · expires in 30 days. Works exactly like a creator welcome code — free sticker <em>and</em> free shipping. Share the code; the recipient enters it at checkout.</p>
+      <p class="modal-sub" style="margin:0;">100% off · single use · expires in 30 days. Works exactly like a creator welcome code — free sticker <em>and</em> free shipping. Share the <strong>link</strong> (not just the code): the free shipping only kicks in when the recipient opens it. The discount is applied automatically at checkout.</p>
       <label class="aff-stack">Label <span style="color:var(--muted)">(optional — for your records)</span><input id="giftLabel" maxlength="80" placeholder="e.g. Sarah's gift" autocomplete="off" /></label>
       <label class="aff-stack">How many
         <select id="giftCount">
@@ -3053,12 +3053,24 @@ async function createGiftCodes() {
   btn.disabled = true; btn.textContent = 'Creating…';
   try {
     const { codes } = await adminAPI('create_comp_code', { label, count });
+    const origin = window.location.origin;
     results.innerHTML = (codes || []).map(c => {
       const exp = new Date(c.expiresAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      return `<div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
-        <code style="font-size:15px;font-weight:700;letter-spacing:.5px;flex:1;">${esc(c.code)}</code>
-        <span style="font-size:11px;color:var(--muted)">expires ${esc(exp)}</span>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="copyGiftCode('${esc(c.code)}', this)">Copy</button>
+      // The redemption LINK is what guarantees free shipping: it carries the
+      // code through ?promo= into create-checkout-session, which then swaps in
+      // the $0 stamp-shipping option. A bare code typed into Stripe's own promo
+      // box zeros the sticker but still charges shipping — so push the link.
+      const link = `${origin}/game.html?promo=${encodeURIComponent(c.code)}`;
+      return `<div style="display:flex;flex-direction:column;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <code style="font-size:15px;font-weight:700;letter-spacing:.5px;flex:1;">${esc(c.code)}</code>
+          <span style="font-size:11px;color:var(--muted)">expires ${esc(exp)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input readonly value="${esc(link)}" onclick="this.select()" style="flex:1;font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-soft);min-width:0;" />
+          <button class="btn btn-blue" style="padding:5px 10px;font-size:12px;white-space:nowrap;" onclick="copyGiftCode('${esc(link)}', this, 'Link copied!')">Copy link</button>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap;" onclick="copyGiftCode('${esc(c.code)}', this, 'Code copied!')" title="Copy just the code (note: a bare code does not include free shipping)">Code</button>
+        </div>
       </div>`;
     }).join('');
     btn.textContent = 'Create more';
@@ -3070,9 +3082,9 @@ async function createGiftCodes() {
     btn.disabled = false;
   }
 }
-function copyGiftCode(code, el) {
-  navigator.clipboard.writeText(code).then(() => {
-    const prev = el.textContent; el.textContent = 'Copied!';
+function copyGiftCode(text, el, label) {
+  navigator.clipboard.writeText(text).then(() => {
+    const prev = el.textContent; el.textContent = label || 'Copied!';
     setTimeout(() => { el.textContent = prev; }, 1200);
   });
 }
@@ -4732,19 +4744,36 @@ async function generateLicence() {
         ctx.drawImage(photo, -swM / 2, -shM / 2, swM, shM);
         ctx.restore();
 
-        // Watermark photo (20% opacity, circular clip) — saturation only, stays centred.
+        // Watermark photo (20% opacity, circular clip). Mirror the EXACT framing
+        // shown in the main photo box — zoom, pan, rotation, frame size and
+        // saturation — so the secondary ghost always tracks the primary photo
+        // after any placement edit, instead of showing its own separate crop.
         ctx.save();
         const wm = F.photoWmark;
-        const cx = wm.x + wm.w / 2, cy = wm.y + wm.h / 2;
-        const rx = wm.w / 2, ry = wm.h / 2;
-        ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
-        if ((T.saturation || 1) !== 1) ctx.filter = `saturate(${T.saturation})`;
+        ctx.beginPath();
+        ctx.ellipse(wm.x + wm.w / 2, wm.y + wm.h / 2, wm.w / 2, wm.h / 2, 0, 0, Math.PI * 2);
+        ctx.clip();
         ctx.globalAlpha = 0.2;
-        const scaleW = Math.max(wm.w / photo.width, wm.h / photo.height);
-        const swW = photo.width * scaleW, shW = photo.height * scaleW;
-        const sxW = wm.x + (wm.w - swW) / 2;
-        const syW = wm.y + (wm.h - shW) / 2;
-        ctx.drawImage(photo, sxW, syW, swW, shW);
+
+        // Render the placed pet into an offscreen buffer the size of the main
+        // photo box, applying the same transform the main photo uses, then
+        // cover-fit that buffer into the watermark ellipse so the two stay in sync.
+        const wbuf = document.createElement('canvas');
+        wbuf.width  = Math.max(1, Math.round(pb.w));
+        wbuf.height = Math.max(1, Math.round(pb.h));
+        const wbx = wbuf.getContext('2d');
+        wbx.imageSmoothingEnabled = true;
+        wbx.imageSmoothingQuality = 'high';
+        if ((T.saturation || 1) !== 1) wbx.filter = `saturate(${T.saturation})`;
+        const scaleWb = Math.max(pb.w / photo.width, pb.h / photo.height) * (T.scale || 1);
+        const swWb = photo.width * scaleWb, shWb = photo.height * scaleWb;
+        wbx.translate(pb.w / 2 + (T.offsetX || 0), pb.h / 2 + (T.offsetY || 0));
+        if (T.rotation) wbx.rotate(T.rotation * Math.PI / 180);
+        wbx.drawImage(photo, -swWb / 2, -shWb / 2, swWb, shWb);
+
+        const scaleW = Math.max(wm.w / wbuf.width, wm.h / wbuf.height);
+        const swW = wbuf.width * scaleW, shW = wbuf.height * scaleW;
+        ctx.drawImage(wbuf, wm.x + (wm.w - swW) / 2, wm.y + (wm.h - shW) / 2, swW, shW);
         ctx.globalAlpha = 1;
         ctx.restore();
       } catch { /* photo failed — continue without it */ }
