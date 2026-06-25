@@ -2665,7 +2665,7 @@ html, body {
       <button class="modal-close" onclick="closeGiftModal()">✕</button>
     </div>
     <div class="modal-body">
-      <p class="modal-sub" style="margin:0;">100% off · single use · expires in 30 days. Free sticker <em>and</em> free shipping, just like a creator welcome code. Share the <strong>link</strong> below: it works on any device (game or product page) and applies the gift automatically at checkout.</p>
+      <p class="modal-sub" style="margin:0;">100% off · single use · expires in 30 days. Free sticker <em>and</em> free shipping. Copy the <strong>Product</strong> link (goes straight to the order page, best on phones) or the <strong>Game</strong> link (plays the factory game first), then send it. The gift applies automatically at checkout.</p>
       <label class="aff-stack">Label <span style="color:var(--muted)">(optional — for your records)</span><input id="giftLabel" maxlength="80" placeholder="e.g. Sarah's gift" autocomplete="off" /></label>
       <label class="aff-stack">How many
         <select id="giftCount">
@@ -3013,6 +3013,11 @@ html, body {
 // ── Admin API (server-side — no secrets in frontend) ─────────────────────────
 let adminToken = sessionStorage.getItem('plf_admin_token');
 
+// Customer/creator-facing share links must always point at the PRODUCTION
+// domain, not whatever URL an admin opens Command Station on (a preview or the
+// pages.dev URL). Change this one line if the production domain ever moves.
+const PROD_BASE = 'https://petlicensefactory.com';
+
 async function adminAPI(action, params = {}) {
   const res = await fetch('/api/admin-api', {
     method: 'POST',
@@ -3054,24 +3059,29 @@ async function createGiftCodes() {
   btn.disabled = true; btn.textContent = 'Creating…';
   try {
     const { codes } = await adminAPI('create_comp_code', { label, count });
-    const origin = window.location.origin;
     results.innerHTML = (codes || []).map(c => {
       const exp = new Date(c.expiresAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      // Hand out the redemption LINK, not a bare code. The link carries the
-      // code via ?promo= (stashed by affiliate-tracker.js) so it survives every
-      // hop — game or product page, desktop or mobile — and triggers the $0
-      // stamp-shipping freebie path. A code typed into Stripe's own promo box
+      // Hand out a redemption LINK (not a bare code) on the PRODUCTION domain.
+      // The code rides in via ?promo= and triggers the $0 stamp-shipping freebie
+      // path. Two flavours to choose from: the product page (direct, mobile-
+      // friendly) and the factory game. A code typed into Stripe's own promo box
       // would only zero the sticker, not shipping, so we don't surface it.
-      const link = `${origin}/?promo=${encodeURIComponent(c.code)}`;
-      return `<div style="display:flex;flex-direction:column;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;">
+      const code = encodeURIComponent(c.code);
+      const productLink = `${PROD_BASE}/product?promo=${code}`;
+      const gameLink    = `${PROD_BASE}/game?promo=${code}`;
+      const linkRow = (lbl, url, primary) => `
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:10px;color:var(--muted);width:52px;flex:none;text-transform:uppercase;letter-spacing:.5px;">${lbl}</span>
+          <input readonly value="${esc(url)}" onclick="this.select()" style="flex:1;font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-soft);min-width:0;" />
+          <button class="btn ${primary ? 'btn-blue' : 'btn-ghost'}" style="padding:5px 10px;font-size:12px;white-space:nowrap;" onclick="copyGiftCode('${esc(url)}', this, 'Copied!')">Copy</button>
+        </div>`;
+      return `<div style="display:flex;flex-direction:column;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
         <div style="display:flex;align-items:center;gap:8px;">
           <code style="font-size:15px;font-weight:700;letter-spacing:.5px;flex:1;">${esc(c.code)}</code>
           <span style="font-size:11px;color:var(--muted)">expires ${esc(exp)}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <input readonly value="${esc(link)}" onclick="this.select()" style="flex:1;font-size:11px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-soft);min-width:0;" />
-          <button class="btn btn-blue" style="padding:5px 10px;font-size:12px;white-space:nowrap;" onclick="copyGiftCode('${esc(link)}', this, 'Link copied!')">Copy link</button>
-        </div>
+        ${linkRow('Product', productLink, true)}
+        ${linkRow('Game', gameLink, false)}
       </div>`;
     }).join('');
     btn.textContent = 'Create more';
@@ -7400,7 +7410,7 @@ function affTiktokHandle(profileUrl) {
 function affRenderDrawer(data) {
   const c = data.creator;
   const l = data.ledger;
-  const origin     = window.location.origin;
+  const origin     = PROD_BASE;   // creator-facing share links use production, not the admin's current URL
   const isPendingReview = c.setup_status === 'pending_review';
   if (isPendingReview) {
     affRenderReviewDrawer(c);
@@ -7796,7 +7806,7 @@ function affCopy(s) {
   }
 }
 function affCopySignupLink() {
-  const url = `${window.location.origin}/creators.html`;
+  const url = `${PROD_BASE}/creators.html`;
   affCopy(url);
   showToast('Creator signup link copied');
 }
