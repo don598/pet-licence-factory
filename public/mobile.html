@@ -4,6 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
 <title>Pet License Factory</title>
+<!-- Preload the first scene's background so it's ready at first paint (the game opens on Station 1) -->
+<link rel="preload" as="image" href="images/mobile/Station%201%20background%20mobile.webp">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -542,13 +544,13 @@ async function submitOrder(orderData) {
 // ASSETS
 // ═══════════════════════════════════════════════════════════
 const A = {
-  s1bg:       'images/mobile/Station%201%20background%20mobile.png',
-  s2bg:       'images/mobile/Station%202%20background%20mobile.png',
-  s3bg:       'images/mobile/Station%203%20background%20mobile.png',
-  s3bgOpen:   'images/mobile/Station%203%20background%20mobile.png',
-  s3bgClosed: 'images/mobile/Station%204%20background%20mobile.png',
-  s4bg:       'images/mobile/Station%205%20background%20mobile.png',
-  s5bg:       'images/mobile/Station%206%20background%20mobile.png',
+  s1bg:       'images/mobile/Station%201%20background%20mobile.webp',
+  s2bg:       'images/mobile/Station%202%20background%20mobile.webp',
+  s3bg:       'images/mobile/Station%203%20background%20mobile.webp',
+  s3bgOpen:   'images/mobile/Station%203%20background%20mobile.webp',
+  s3bgClosed: 'images/mobile/Station%204%20background%20mobile.webp',
+  s4bg:       'images/mobile/Station%205%20background%20mobile.webp',
+  s5bg:       'images/mobile/Station%206%20background%20mobile.webp',
   template:   'images/Blank%20Card%20cropped.jpeg',
 };
 // Canonical client prices come from /pricing.js (window.PLF_PRICES_USD), kept
