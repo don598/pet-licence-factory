@@ -5282,16 +5282,33 @@ function renderReceiptLabel(o) {
   const shipAmt    = PRICES[shipKey] ?? PRICES.stamp;
   const shipLabel  = ({ stamp: 'Stamp Shipping', standard: 'Standard Shipping', priority: 'Priority Shipping' })[shipKey] || 'Shipping';
 
-  // Derive discount from actual paid total (stored as "$12.81") — avoids needing a new column.
-  // A 100%-off creator freebie is free end-to-end (incl. shipping), so the
-  // receipt must show $0 — not the client-submitted full price.
-  const isFree       = isAffiliateFreebie(o);
-  const paidCents    = isFree ? 0 : Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
-  const paidSubtotal = Math.max(0, paidCents - shipAmt);
-  const effShipAmt   = isFree ? 0 : shipAmt;
-  const discountAmt  = isFree ? listSubtotal : Math.max(0, listSubtotal - paidSubtotal);
-  const discountLabel = isFree ? 'Creator freebie (100% off)' : '15% Mini-game discount';
-  const totalCents   = isFree ? 0 : (paidCents || (listSubtotal - discountAmt + shipAmt));
+  // Reconcile the breakdown to the ACTUAL charged total (o.total is the real
+  // Stripe amount and the source of truth). A 100%-off gift/freebie is free end
+  // to end (sticker AND shipping), so a $0.00 total renders as $0 with FREE
+  // shipping; we never recompute and re-add shipping. The old code did
+  // `paidCents || fallback`, and since 0 is falsy a genuinely free order fell
+  // back to the shipping price (that is why it showed $0.95). The discount label
+  // is derived, not hardcoded, so a 100%-off order no longer reads "15% Mini-game".
+  const isFree    = isAffiliateFreebie(o);
+  const paidCents = isFree ? 0 : Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
+  let effShipAmt, paidSubtotal;
+  if (isFree || paidCents <= 0) {           // fully comped: free sticker + free shipping
+    effShipAmt = 0; paidSubtotal = 0;
+  } else if (paidCents <= shipAmt) {        // only a token amount charged: treat shipping as comped
+    effShipAmt = 0; paidSubtotal = paidCents;
+  } else {                                  // normal: shipping at list, sticker discounted
+    effShipAmt = shipAmt; paidSubtotal = paidCents - shipAmt;
+  }
+  const discountAmt = Math.max(0, listSubtotal - paidSubtotal);
+  const totalCents  = isFree ? 0 : paidCents;   // trust the real total (0 is valid)
+  const discountEarned = (o.discount_earned === true || o.discount_earned === 't' || o.discount_earned === 'true');
+  const discPct = listSubtotal > 0 ? Math.round((discountAmt / listSubtotal) * 100) : 0;
+  let discountLabel;
+  if (isFree)                       discountLabel = 'Creator freebie (100% off)';
+  else if (o.affiliate_coupon_code) discountLabel = `Gift / promo (${o.affiliate_coupon_code})`;
+  else if (discPct >= 99)           discountLabel = 'Gift / promo (100% off)';
+  else if (discountEarned)          discountLabel = 'First-time buyer discount';
+  else                              discountLabel = 'Discount';
 
   // Car-decal add-on refunded? Reflect it on the receipt: strike the decal
   // line, show the refund, and net it out of the total. The refund is the
@@ -5314,7 +5331,7 @@ function renderReceiptLabel(o) {
         <div class="lr-line"><span class="lr-line-name">${esc(packLabel)}${o.chip_size ? ` <span class="lr-line-meta">(${esc(o.chip_size)} chip)</span>` : ''}</span><span class="lr-line-amt">${fmt(packAmt)}</span></div>
         ${wantsDecal ? `<div class="lr-line"${addonRefunded ? ' style="text-decoration:line-through;opacity:.5"' : ''}><span class="lr-line-name">4.5×4.5" Vinyl Car Decal${addonRefunded ? ' (refunded)' : ''}</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
         <div class="lr-line lr-sub"><span class="lr-line-name">Subtotal</span><span class="lr-line-amt">${fmt(listSubtotal)}</span></div>
-        ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">${discountLabel}</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
+        ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">${esc(discountLabel)}</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
         <div class="lr-line"><span class="lr-line-name">${esc(shipLabel)}</span><span class="lr-line-amt">${effShipAmt === 0 ? 'FREE' : fmt(effShipAmt)}</span></div>
         ${addonRefunded ? `<div class="lr-line" style="color:#b00020;font-weight:700"><span class="lr-line-name">Decal refunded</span><span class="lr-line-amt">−${fmt(decalRefundCents)}</span></div>` : ''}
       </div>
