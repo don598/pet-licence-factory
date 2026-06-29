@@ -2429,7 +2429,7 @@ html, body {
             </div>
             <div class="bulk-action-bar" id="bulk-action-bar">
               <span class="bulk-count" id="bulk-count">0 selected</span>
-              <button class="btn btn-accent" onclick="printSelected()">🖨 Print Documents & Send Shipping Confirmation Email</button>
+              <button class="btn btn-accent" id="bulk-print-btn" onclick="printSelected()">🖨 Print Documents & Send Shipping Confirmation Email</button>
               <button class="btn btn-ghost" onclick="bulkMarkProcessed()">✓ Mark Processed (no email)</button>
               <button class="btn btn-ghost" onclick="clearSelection()">Clear</button>
             </div>
@@ -2816,7 +2816,7 @@ html, body {
           <button class="btn btn-blue"   id="edit-photo-btn" onclick="openPhotoEditor()" style="display:none">✎ Edit Photo</button>
           <button class="btn btn-blue"   id="gen-diecut-btn" onclick="generateDieCut()" style="display:none" title="Make a die-cut sticker (white border) from this pet — uses your refined cutout if you've edited it, otherwise auto-removes the background">🎯 Die-Cut</button>
           <button class="btn btn-blue"   id="dl-btn"  onclick="downloadLicence()" style="display:none">⬇ Download PNG</button>
-          <button class="btn btn-ghost"  onclick="printSingleOrder()">🖨 Print Docs & Send Shipping Confirmation Email</button>
+          <button class="btn btn-ghost"  id="print-single-btn" onclick="printSingleOrder()">🖨 Print Docs & Send Shipping Confirmation Email</button>
         </div>
         <!-- Photo source: download original / replace (non-destructive) / revert.
              The original upload is never overwritten, so Revert always restores it. -->
@@ -3044,7 +3044,7 @@ html, body {
     <div class="label-preview-actions">
       <div style="flex:1;font-size:11px;color:var(--muted)">4×6 label printer — each order produces an address sticker + a receipt sticker</div>
       <button class="btn btn-ghost" onclick="closeLabelPreview()">Cancel</button>
-      <button class="btn btn-green" onclick="printLabels()">🖨 Print All & Send Shipping Confirmation Email</button>
+      <button class="btn btn-green" id="print-all-btn" onclick="printLabels()">🖨 Print All & Send Shipping Confirmation Email</button>
     </div>
   </div>
 </div>
@@ -4357,6 +4357,16 @@ async function openOrder(dbId) {
   if (!order) { showToast('Could not load order details', 'err'); return; }
   modalOrder = order;
 
+  // Keep the print button honest: only promise the shipping email when this
+  // order will actually send it (a paid stamp order). Otherwise it is a reprint.
+  const psBtn = document.getElementById('print-single-btn');
+  if (psBtn) {
+    const st = (order.status || '').trim();
+    psBtn.textContent = printWillEmail(order)
+      ? '🖨 Print Docs & Send Shipping Confirmation Email'
+      : (['processed', 'shipped', 'complete'].includes(st) ? '🖨 Reprint Docs (email already sent)' : '🖨 Print Docs (no email)');
+  }
+
   // Header
   const petName = [order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet';
   document.getElementById('modal-title').textContent = petName.toUpperCase();
@@ -5044,6 +5054,13 @@ function updateBulkBar() {
   if (count > 0) {
     bar.classList.add('visible');
     document.getElementById('bulk-count').textContent = `${count} selected`;
+    // Honest bulk label: how many of the selected orders will actually email.
+    const sel = Array.from(selectedOrderIds).map(id => allOrders.find(o => String(o.id) === String(id))).filter(Boolean);
+    const nEmail = sel.filter(printWillEmail).length;
+    const bp = document.getElementById('bulk-print-btn');
+    if (bp) bp.textContent = nEmail > 0
+      ? `🖨 Print Documents & Email ${nEmail} Customer${nEmail === 1 ? '' : 's'}`
+      : '🖨 Print Documents (no emails)';
   } else {
     bar.classList.remove('visible');
   }
@@ -5409,10 +5426,27 @@ async function openLabelPreview(orderIds) {
   // Render all labels — address then receipt per order
   area.innerHTML = orders.map(o => renderEnvelopeLabel(o) + renderReceiptLabel(o) + renderCertificateLabel(o)).join('');
   sub.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'} · ${orders.length * 2} labels`;
+
+  // Honest "Print All" label: how many of these orders will actually email.
+  const nEmail = orders.filter(printWillEmail).length;
+  const pa = document.getElementById('print-all-btn');
+  if (pa) pa.textContent = nEmail > 0
+    ? `🖨 Print All & Email ${nEmail} Customer${nEmail === 1 ? '' : 's'}`
+    : '🖨 Print All (no emails)';
 }
 
 function closeLabelPreview() {
   document.getElementById('label-preview-modal').classList.remove('open');
+}
+
+// Will printing this order actually send the stamp "on its way" email? Mirrors
+// the server guard (admin-api update_order): only a PAID stamp order with an
+// email advances to processed and triggers the send. Already-processed orders,
+// non-stamp orders, or orders with no email do NOT email on print.
+function printWillEmail(o) {
+  return !!(o && (o.status || '').trim() === 'paid'
+    && (o.shipping_option || 'stamp').toLowerCase() === 'stamp'
+    && o.customer_email);
 }
 
 function printLabels() {
