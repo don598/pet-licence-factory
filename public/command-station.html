@@ -1570,6 +1570,39 @@ html, body {
 .email-pill.email-warn { color: var(--amber, #d97706); background: rgba(217,119,6,.10); border-color: rgba(217,119,6,.30); }
 .email-pill.email-bad  { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.34); }
 
+/* Latest-email chip (replaces the row of per-type pills) — status + subtitle,
+   click for the full activity popup. */
+.email-chip {
+  display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: 3px 9px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface2); cursor: pointer; font-family: inherit;
+  line-height: 1.2; text-align: left; flex: 0 0 auto;
+}
+.email-chip:hover { filter: brightness(.97); }
+.email-chip .ec-line { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.email-chip .ec-sub  { font-size: 9px; font-weight: 600; opacity: .72; white-space: nowrap; }
+.email-chip.email-ok   { color: var(--green); background: rgba(34,197,94,.10);  border-color: rgba(34,197,94,.30); }
+.email-chip.email-sent { color: var(--muted); background: var(--surface2);       border-color: var(--border); }
+.email-chip.email-warn { color: var(--amber, #d97706); background: rgba(217,119,6,.10); border-color: rgba(217,119,6,.30); }
+.email-chip.email-bad  { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.34); }
+
+/* Email-activity popup */
+.ea-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.ea-overlay.open { display: flex; }
+.ea-card { background: var(--surface, #fff); color: var(--text); width: min(440px, 94vw); max-height: 82vh; overflow: auto; border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.32); padding: 18px; }
+.ea-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.ea-title { font-size: 15px; font-weight: 800; }
+.ea-sub { font-size: 12px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+.ea-close { border: none; background: var(--surface2); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 13px; color: var(--muted); flex: 0 0 auto; }
+.ea-body { display: flex; flex-direction: column; gap: 8px; }
+.ea-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.ea-type { font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+.ea-right { display: inline-flex; align-items: center; gap: 9px; }
+.ea-right .email-pill { margin-left: 0; cursor: default; }
+.ea-when { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.ea-reason { flex-basis: 100%; font-size: 11px; color: var(--red, #ef4444); }
+.ea-empty { font-size: 12.5px; color: var(--muted); text-align: center; padding: 18px; }
+
 /* Stripe Connect badge — small secondary indicator beside the creator name.
    .ready = green (account verified), .onboarding = amber (incomplete). */
 .aff-connect-badge {
@@ -3579,59 +3612,106 @@ function renderTable() {
   updateBulkBar();
 }
 
-// Email delivery marker beside the customer email — fed by the SendGrid Event
-// Webhook (email_status / email_opens / email_bounce_reason on the order).
+// Email marker beside the customer email — ONE chip showing the latest email's
+// status, with a subtitle naming which email it was. Click it for the full
+// per-email breakdown (openEmailActivity). Fed by the SendGrid Event Webhook,
+// summarized into o.email_by_type {type: {status,opens,at,reason}} (+ legacy
+// o.email_status fallback for orders that predate per-type tracking).
 function renderEmailMarker(o) {
-  // Per-type pills: ✉ confirmation (checkout) + 📬 the "in the mail" / shipping
-  // email (sent when the docs are printed). Falls back to the legacy single
-  // pill for orders that predate per-type email-event tracking.
-  const by = o.email_by_type;
-  if (by && typeof by === 'object' && Object.keys(by).length) {
-    let html = '';
-    if (by.confirmation) html += emailPillHtml(by.confirmation, '✉', 'Confirmation');
-    const proc = by.stamp_shipped || by.shipping;
-    if (proc) html += emailPillHtml(proc, '📬', by.shipping ? 'Shipping' : 'In-the-mail');
-    if (by.address_issue && !proc) html += emailPillHtml(by.address_issue, '⚠', 'Address-issue');
-    if (html) return html;
+  const latest = latestEmail(o);
+  if (!latest) return '';
+  const meta = emailTypeMeta(latest.type);
+  const v = emailStatusView(latest.d);
+  const icon = v.cls === 'email-bad' ? '⚠' : meta.icon;
+  return `<button type="button" class="email-chip ${v.cls}" onclick="event.stopPropagation();openEmailActivity(${o.id})" title="View full email activity">`
+    + `<span class="ec-line"><span class="ec-ico">${icon}</span>${esc(v.text)}</span>`
+    + `<span class="ec-sub">${esc(meta.label)}</span></button>`;
+}
+
+// Map a SendGrid "best event" status to a display class + short label.
+function emailStatusView(d) {
+  const s = d && d.status, opens = +((d && d.opens) || 0);
+  if (s === 'delivered')                 return { cls: 'email-ok',   text: 'Delivered' };
+  if (s === 'open' || s === 'click')     return { cls: 'email-ok',   text: opens > 1 ? `Opened ×${opens}` : 'Opened' };
+  if (s === 'processed')                 return { cls: 'email-sent', text: 'Sent' };
+  if (s === 'deferred')                  return { cls: 'email-warn', text: 'Deferring' };
+  if (s === 'bounce' || s === 'dropped') return { cls: 'email-bad',  text: 'Bounced' };
+  if (s === 'spamreport')                return { cls: 'email-bad',  text: 'Spam' };
+  return { cls: 'email-sent', text: s || 'Unknown' };
+}
+
+// Icon + human label for each email type we send.
+function emailTypeMeta(key) {
+  switch (key) {
+    case 'confirmation':  return { icon: '✉', label: 'Order confirmation' };
+    case 'address_issue': return { icon: '⚠', label: 'Address issue' };
+    case 'stamp_shipped': return { icon: '📬', label: 'Shipping confirmation' };
+    case 'shipping':      return { icon: '📦', label: 'Shipping confirmation' };
+    default:              return { icon: '✉', label: 'Email' };
   }
-  return legacyEmailPill(o);
 }
 
-// One delivery pill for a single email type. status = best SendGrid event.
-function emailPillHtml(d, icon, typeLabel) {
-  if (!d || !d.status) return '';
-  const s = d.status, opens = +(d.opens || 0);
-  let cls = 'email-sent', ic = icon, label = s;
-  if (s === 'delivered')                  { cls = 'email-ok';   label = 'Delivered'; }
-  else if (s === 'open' || s === 'click') { cls = 'email-ok';   label = opens > 1 ? `Opened ×${opens}` : 'Opened'; }
-  else if (s === 'processed')             { cls = 'email-sent'; label = 'Sent'; }
-  else if (s === 'deferred')              { cls = 'email-warn'; label = 'Deferring'; }
-  else if (s === 'bounce' || s === 'dropped') { cls = 'email-bad'; ic = '⚠'; label = 'Bounced'; }
-  else if (s === 'spamreport')            { cls = 'email-bad';  ic = '⚠'; label = 'Spam'; }
-  const when   = d.at ? ' · ' + fmtDate(d.at) : '';
-  const bad    = (s === 'bounce' || s === 'dropped' || s === 'spamreport');
-  const reason = (bad && d.reason) ? ' — ' + d.reason : '';
-  const title  = `${typeLabel} email: ${s}${when}${reason}`;
-  return `<span class="email-pill ${cls}" title="${esc(title)}" onclick="event.stopPropagation()">${ic} ${esc(label)}</span>`;
+// The furthest-along email actually sent (shipping goes out last, confirmation
+// first), so the chip reflects the most recent email in the order's lifecycle.
+function latestEmail(o) {
+  const by = (o && o.email_by_type) || {};
+  for (const key of ['shipping', 'stamp_shipped', 'address_issue', 'confirmation']) {
+    if (by[key] && by[key].status) return { type: key, d: by[key] };
+  }
+  if (o && o.email_status) {
+    return { type: o.email_last_type || 'confirmation',
+             d: { status: o.email_status, opens: o.email_opens, at: o.email_status_at, reason: o.email_bounce_reason } };
+  }
+  return null;
 }
 
-// Legacy single pill from the order's summary columns (last email only) — used
-// for orders that predate per-type email-event tracking (no email_by_type).
-function legacyEmailPill(o) {
-  const s = o.email_status;
-  if (!s) return '';
-  const opens = o.email_opens || 0;
-  let cls = 'email-sent', icon = '✉', label = s;
-  if (s === 'delivered')               { cls = 'email-ok';   label = 'Delivered'; }
-  else if (s === 'open' || s === 'click') { cls = 'email-ok'; label = opens > 1 ? `Opened ×${opens}` : 'Opened'; }
-  else if (s === 'processed')          { cls = 'email-sent'; label = 'Sent'; }
-  else if (s === 'deferred')           { cls = 'email-warn'; label = 'Deferring'; }
-  else if (s === 'bounce' || s === 'dropped') { cls = 'email-bad'; icon = '⚠'; label = 'Bounced'; }
-  else if (s === 'spamreport')         { cls = 'email-bad';  icon = '⚠'; label = 'Spam'; }
-  const when   = o.email_status_at ? ' · ' + fmtDate(o.email_status_at) : '';
-  const reason = o.email_bounce_reason ? ' — ' + o.email_bounce_reason : '';
-  const title  = `Email: ${s}${when}${reason}`;
-  return `<span class="email-pill ${cls}" title="${esc(title)}" onclick="event.stopPropagation()">${icon} ${esc(label)}</span>`;
+// Popup: every email we sent for this order and its current status.
+function openEmailActivity(id) {
+  const o = allOrders.find(r => String(r.id) === String(id));
+  if (!o) return;
+  const by = o.email_by_type || {};
+  let rows = '';
+  for (const key of ['confirmation', 'address_issue', 'stamp_shipped', 'shipping']) {
+    const d = by[key];
+    if (!d || !d.status) continue;
+    const meta = emailTypeMeta(key), v = emailStatusView(d);
+    const icon = v.cls === 'email-bad' ? '⚠' : meta.icon;
+    const when = d.at ? fmtDate(d.at) : '';
+    const reason = (v.cls === 'email-bad' && d.reason) ? `<div class="ea-reason">${esc(d.reason)}</div>` : '';
+    rows += `<div class="ea-row"><div class="ea-type"><span class="ea-ico">${icon}</span>${esc(meta.label)}</div>`
+      + `<div class="ea-right"><span class="email-pill ${v.cls}">${esc(v.text)}</span>`
+      + `<span class="ea-when">${esc(when)}</span></div>${reason}</div>`;
+  }
+  if (!rows && o.email_status) {
+    const v = emailStatusView({ status: o.email_status, opens: o.email_opens });
+    const when = o.email_status_at ? fmtDate(o.email_status_at) : '';
+    rows = `<div class="ea-row"><div class="ea-type"><span class="ea-ico">✉</span>${esc(emailTypeMeta(o.email_last_type).label)}</div>`
+      + `<div class="ea-right"><span class="email-pill ${v.cls}">${esc(v.text)}</span><span class="ea-when">${esc(when)}</span></div></div>`;
+  }
+  if (!rows) rows = '<div class="ea-empty">No email activity recorded yet.</div>';
+  const m = ensureEmailActivityModal();
+  m.querySelector('.ea-sub').textContent = o.customer_email || `${o.pet_first_name || ''} ${o.pet_last_name || ''}`.trim() || ('Order ' + (o.order_id || o.id));
+  m.querySelector('.ea-body').innerHTML = rows;
+  m.classList.add('open');
+}
+function closeEmailActivity() {
+  const m = document.getElementById('email-activity-modal');
+  if (m) m.classList.remove('open');
+}
+function ensureEmailActivityModal() {
+  let m = document.getElementById('email-activity-modal');
+  if (m) return m;
+  m = document.createElement('div');
+  m.id = 'email-activity-modal';
+  m.className = 'ea-overlay';
+  m.addEventListener('click', closeEmailActivity);
+  m.innerHTML = '<div class="ea-card"><div class="ea-head"><div><div class="ea-title">Email activity</div>'
+    + '<div class="ea-sub"></div></div><button class="ea-close" type="button">✕</button></div>'
+    + '<div class="ea-body"></div></div>';
+  m.querySelector('.ea-card').addEventListener('click', function (e) { e.stopPropagation(); });
+  m.querySelector('.ea-close').addEventListener('click', closeEmailActivity);
+  document.body.appendChild(m);
+  return m;
 }
 
 function fmtDate(ts) {
