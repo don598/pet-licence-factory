@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<title>Pet License Factory</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&display=swap" rel="stylesheet"/>
+<script>
+// Redirect mobile users to dedicated mobile welcome page. Carry the query
+// string (e.g. ?promo= / ?ref=) so a gift/affiliate link to the homepage
+// survives the gate — this runs before affiliate-tracker.js can stash them.
+if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (window.innerWidth <= 768 && 'ontouchstart' in window)) {
+  window.location.replace('mobile-welcome.html' + window.location.search);
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#060808;font-family:'Press Start 2P',monospace}
+.scene{position:relative;width:100%;height:100%;overflow:hidden}
+#star-canvas{position:absolute;inset:0;z-index:1}
+.scene::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);pointer-events:none;z-index:100}
+
+/* ── Split layout: left content + right factory ── */
+.split-layout{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;gap:clamp(24px,4vw,64px);pointer-events:none;padding:clamp(16px,3vh,40px) clamp(24px,4vw,60px)}
+
+/* ── Left column: title, cards, CTA ── */
+.left-col{flex:0 1 auto;display:flex;flex-direction:column;align-items:flex-start;gap:clamp(16px,2.5vh,28px);pointer-events:none}
+
+/* ── Right column: factory window ── */
+.right-col{flex:0 0 42%;max-width:42%;display:flex;align-items:center;justify-content:center;pointer-events:none}
+
+/* ── Factory window ── */
+.factory-window{position:relative;width:100%;max-height:80vh;border-radius:24px;border:3px solid rgba(255,255,255,0.85);overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5),0 0 20px rgba(0,255,65,.08);cursor:pointer;pointer-events:auto;transition:border-color .3s,box-shadow .3s}
+.factory-window:hover{border-color:rgba(0,255,65,.6);box-shadow:0 8px 40px rgba(0,0,0,.5),0 0 30px rgba(0,255,65,.35),0 0 60px rgba(0,255,65,.15)}
+.factory-window:hover .mini-sprite{animation:spriteJump .4s ease-in-out}
+@keyframes spriteJump{0%,100%{transform:translateY(0)}40%{transform:translateY(-20%)}60%{transform:translateY(-10%)}}
+.factory-window img{width:100%;display:block}
+.factory-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 35%,rgba(10,8,4,.3) 100%);pointer-events:none}
+.factory-dim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,6,0,.15) 0%,rgba(10,6,0,.05) 30%,rgba(10,6,0,.05) 60%,rgba(10,6,0,.15) 100%);pointer-events:none}
+
+/* ── Sprite layer inside factory window ── */
+#sprite-layer{position:absolute;inset:0}
+.mini-sprite{position:absolute;aspect-ratio:1;background-repeat:no-repeat;image-rendering:pixelated}
+.ms-cat{left:22.9%;top:47.3%;width:8%;background-image:url('images/Station%201%20sprite.png');background-size:1200% 100%}
+.ms-cockatoo{left:34.9%;top:45.4%;width:8%;background-image:url('images/Station%202%20sprite.png');background-size:1200% 100%;image-rendering:auto}
+.ms-bulldog{left:51.8%;top:53.4%;width:10.5%;background-image:url('images/Station%203%20sprite.png');background-size:1200% 100%}
+.ms-otter{left:63.6%;top:59.7%;width:11%;background-image:url('images/Station%204%20sprite.png');background-size:1200% 100%}
+.ms-rabbit{left:81.3%;top:53%;width:11%;background-image:url('images/Station%205%20sprite.png');background-size:1200% 100%}
+
+/* ── Station glow pads ── */
+.station-glow{position:absolute;width:14%;height:8%;border-radius:50%;opacity:0;animation:padGlow 3s ease-in-out infinite}
+.sg-1{left:3%;top:62%;background:radial-gradient(ellipse,rgba(100,180,255,.25),transparent 70%);animation-delay:0s}
+.sg-2{left:20%;top:62%;background:radial-gradient(ellipse,rgba(0,255,200,.2),transparent 70%);animation-delay:.6s}
+.sg-3{left:37%;top:62%;background:radial-gradient(ellipse,rgba(255,100,80,.2),transparent 70%);animation-delay:1.2s}
+.sg-4{left:56%;top:58%;background:radial-gradient(ellipse,rgba(100,255,100,.2),transparent 70%);animation-delay:1.8s}
+.sg-5{left:78%;top:62%;background:radial-gradient(ellipse,rgba(255,200,50,.2),transparent 70%);animation-delay:2.4s}
+@keyframes padGlow{0%,100%{opacity:0}50%{opacity:1}}
+
+/* ── Title ── */
+.title-area{pointer-events:none;flex-shrink:0}
+.title-icon{font-size:clamp(18px,3vw,32px);display:block;margin-bottom:clamp(2px,.4vh,6px);filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+.title{font-size:clamp(12px,2.8vw,32px);color:#00ff41;text-shadow:3px 3px 0 #003a10,0 0 20px rgba(0,255,65,.4);letter-spacing:clamp(1px,.3vw,4px);line-height:1.6}
+.subtitle-text{font-size:clamp(5px,1vw,10px);color:#00cc33;letter-spacing:clamp(1px,.2vw,3px);margin-top:clamp(2px,.4vh,8px);line-height:2;text-shadow:1px 1px 0 #002a0a}
+
+/* ── Card showcase: side-by-side with 3D wobble ── */
+.card-showcase{position:relative;pointer-events:auto;display:flex;gap:clamp(8px,1.5vw,20px);flex-shrink:0;perspective:900px}
+.showcase-card{width:clamp(140px,17vw,240px);aspect-ratio:1322/830;border-radius:clamp(4px,.5vw,8px);cursor:pointer;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.5);transition:transform .3s ease,box-shadow .3s ease,filter .3s ease;transform-style:preserve-3d;will-change:transform;opacity:0}
+.showcase-card img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;pointer-events:none}
+.showcase-card.visible{opacity:1}
+.showcase-card:hover{box-shadow:0 8px 40px rgba(0,255,65,.4),0 0 20px rgba(0,255,65,.25);filter:brightness(1.12)}
+
+/* ── Card backdrop ── */
+.card-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:50;opacity:0;pointer-events:none;transition:opacity .4s}
+.card-backdrop.active{opacity:1;pointer-events:auto;cursor:pointer}
+
+/* ── Focused card ── */
+.showcase-card.focused{position:fixed;z-index:60;cursor:default;filter:none!important;box-shadow:0 12px 60px rgba(0,0,0,.7),0 0 40px rgba(0,255,65,.3)!important;left:50%;top:50%;width:clamp(280px,40vw,480px);transform:translate(-50%,-50%)!important;transition:all .4s cubic-bezier(.25,.8,.25,1)}
+
+/* ── Preview buttons ── */
+.preview-btns{position:fixed;left:50%;bottom:12%;transform:translateX(-50%);z-index:62;display:flex;gap:clamp(12px,2vw,20px);opacity:0;pointer-events:none;transition:opacity .4s .15s}
+.preview-btns.show{opacity:1;pointer-events:auto}
+.preview-btn{font-family:'Press Start 2P',monospace;font-size:clamp(8px,1.4vw,13px);border:3px solid;padding:clamp(8px,1.5vh,16px) clamp(20px,3.5vw,40px);cursor:pointer;letter-spacing:1px;transition:background .12s,transform .08s;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1}
+.preview-btn:active{transform:translate(1px,1px)}
+.btn-back{background:#0a1a0a;color:#00ff41;border-color:#00cc33}
+.btn-back:hover{background:#00cc33;color:#0a1a0a}
+.btn-build{background:#0a2a0a;color:#60ff80;border-color:#3cb050}
+.btn-build:hover{background:#3cb050;color:#0a2a0a}
+
+/* ── CTA area ── */
+.cta-area{display:flex;flex-direction:column;align-items:flex-start;gap:clamp(12px,2vh,20px);pointer-events:auto;flex-shrink:0}
+.tagline{font-size:clamp(7px,1vw,12px);color:#00cc33;max-width:500px;padding:clamp(8px,1.5vh,14px) clamp(12px,2vw,24px);line-height:2.2;text-shadow:1px 1px 4px rgba(0,0,0,.8);letter-spacing:.5px;background:rgba(0,0,0,.55);border-radius:8px}
+
+/* ── Enter button ── */
+@keyframes btnPulse{0%,100%{box-shadow:0 0 8px rgba(0,255,65,.3),2px 2px 0 #003a10;text-shadow:0 0 4px #00ff41}50%{box-shadow:0 0 24px rgba(0,255,65,.7),0 0 48px rgba(0,255,65,.25),2px 2px 0 #003a10;text-shadow:0 0 16px #00ff41}}
+.start-btn{font-family:'Press Start 2P',monospace;font-size:clamp(9px,1.4vw,16px);background:#0a1a0a;color:#00ff41;border:3px solid #00cc33;padding:clamp(12px,2vh,20px) clamp(24px,4vw,48px);cursor:pointer;letter-spacing:2px;animation:btnPulse 2s ease-in-out infinite;transition:background .12s,transform .08s;pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:clamp(6px,1vw,12px);line-height:1}
+.start-btn:hover{background:#00cc33;color:#0a1a0a}
+.start-btn:active{transform:translate(2px,2px);box-shadow:none!important;animation:none}
+.skip-link{font-family:'Press Start 2P',monospace;font-size:clamp(8px,1.3vw,11.5px);color:#3ce673;text-decoration:none;letter-spacing:1px;pointer-events:auto;transition:color .15s,text-shadow .15s;margin-top:clamp(4px,1vh,10px);line-height:1.6;text-shadow:0 0 7px rgba(0,255,65,.45);display:inline-flex;align-items:center;gap:7px}
+.skip-link:hover{color:#5dff8a;text-shadow:0 0 12px rgba(0,255,65,.75)}
+.skip-arrow{flex-shrink:0;filter:drop-shadow(0 0 5px rgba(0,255,65,.5));animation:skipNudge 1.4s ease-in-out infinite}
+@keyframes skipNudge{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
+.skip-link:hover .skip-arrow{animation:none;transform:translateX(4px)}
+
+/* ── Fade ── */
+#fade{position:absolute;inset:0;z-index:200;background:#060808;opacity:1;pointer-events:all;transition:opacity .8s ease-out}
+#fade.clear{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="scene" id="scene">
+  <canvas id="star-canvas"></canvas>
+
+  <!-- Split layout -->
+  <div class="split-layout">
+    <!-- Left column: title, cards, CTA -->
+    <div class="left-col">
+      <div class="title-area">
+        <span class="title-icon">🐾</span>
+        <h1 class="title">PET LICENSE<br>FACTORY</h1>
+        <p class="subtitle-text">EST. 2026 · OFFICIAL PET ID BUREAU</p>
+      </div>
+
+      <div class="card-showcase" id="card-showcase">
+        <div class="showcase-card" id="card-0"><img src="images/preview-licences/luna-whiskers.png" alt="Luna Whiskers"/></div>
+        <div class="showcase-card" id="card-1"><img src="images/preview-licences/max-woofington.png" alt="Max Woofington"/></div>
+        <div class="showcase-card" id="card-2"><img src="images/preview-licences/oliver-pawsley.png" alt="Oliver Pawsley"/></div>
+      </div>
+
+      <div class="cta-area">
+        <p class="tagline">Turn your credit card into your fur baby's official driver's license. Custom credit card skin stickers — designed, laminated & shipped by our finest animal staff.</p>
+        <button class="start-btn" id="start-btn">🏭 ENTER THE FACTORY</button>
+        <a class="skip-link" href="/"><span>Skip the game &middot; shop direct</span><svg class="skip-arrow" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+
+    <!-- Right column: factory window -->
+    <div class="right-col">
+      <div class="factory-window">
+        <img src="images/Game%20Canvas%20Background.webp" alt="Factory"/>
+        <div class="factory-vignette"></div>
+        <div class="factory-dim"></div>
+        <div id="sprite-layer">
+          <div class="mini-sprite ms-cat" id="ms-cat"></div>
+          <div class="mini-sprite ms-cockatoo" id="ms-cockatoo"></div>
+          <div class="mini-sprite ms-bulldog" id="ms-bulldog"></div>
+          <div class="mini-sprite ms-otter" id="ms-otter"></div>
+          <div class="mini-sprite ms-rabbit" id="ms-rabbit"></div>
+          <div class="station-glow sg-1"></div>
+          <div class="station-glow sg-2"></div>
+          <div class="station-glow sg-3"></div>
+          <div class="station-glow sg-4"></div>
+          <div class="station-glow sg-5"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backdrop -->
+  <div class="card-backdrop" id="card-backdrop"></div>
+
+  <!-- Preview buttons -->
+  <div class="preview-btns" id="preview-btns">
+    <button class="preview-btn btn-back" id="btn-back">◀ BACK</button>
+    <button class="preview-btn btn-build" id="btn-build">BUILD YOURS ▶</button>
+  </div>
+
+  <div id="fade"></div>
+</div>
+
+<script src="music-toggle.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+// MULTICOLORED STAR FIELD
+// ═══════════════════════════════════════════
+const starCanvas = document.getElementById('star-canvas');
+const starCtx = starCanvas.getContext('2d');
+let stars = [];
+
+const STAR_COLORS = [
+  [255,255,255],[255,255,255],[200,220,255],[100,180,255],
+  [0,255,200],[0,255,65],[255,100,200],[255,200,80],[180,130,255],
+];
+
+function initStars() {
+  const w = starCanvas.width = window.innerWidth;
+  const h = starCanvas.height = window.innerHeight;
+  stars = [];
+  const count = Math.floor((w * h) / 400);
+  for (let i = 0; i < count; i++) {
+    const color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    const driftAngle = Math.random() * Math.PI * 2;
+    const driftSpeed = 0.04 + Math.random() * 0.15;
+    stars.push({
+      x: Math.random() * w, y: Math.random() * h,
+      dx: Math.cos(driftAngle) * driftSpeed,
+      dy: Math.sin(driftAngle) * driftSpeed,
+      size: 0.8 + Math.random() * 2.5,
+      brightness: 0.3 + Math.random() * 0.7,
+      pulseSpeed: 0.5 + Math.random() * 2.0,
+      pulsePhase: Math.random() * Math.PI * 2,
+      r: color[0], g: color[1], b: color[2],
+    });
+  }
+}
+
+let starTime = 0;
+function drawStars() {
+  const w = starCanvas.width, h = starCanvas.height;
+  starCtx.fillStyle = '#060808';
+  starCtx.fillRect(0, 0, w, h);
+  starTime += 0.016;
+
+  for (const s of stars) {
+    s.x += s.dx; s.y += s.dy;
+    if (s.x < 0) s.x += w; else if (s.x > w) s.x -= w;
+    if (s.y < 0) s.y += h; else if (s.y > h) s.y -= h;
+    const pulse = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(starTime * s.pulseSpeed + s.pulsePhase));
+    const alpha = s.brightness * pulse;
+    if (s.brightness > 0.5 && s.size > 1.5) {
+      const glowR = s.size * 4;
+      const grd = starCtx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
+      grd.addColorStop(0, `rgba(${s.r},${s.g},${s.b},${alpha * 0.25})`);
+      grd.addColorStop(1, `rgba(${s.r},${s.g},${s.b},0)`);
+      starCtx.fillStyle = grd;
+      starCtx.beginPath(); starCtx.arc(s.x, s.y, glowR, 0, Math.PI * 2); starCtx.fill();
+    }
+    starCtx.fillStyle = `rgba(${s.r},${s.g},${s.b},${alpha})`;
+    starCtx.beginPath(); starCtx.arc(s.x, s.y, s.size * 0.5, 0, Math.PI * 2); starCtx.fill();
+  }
+
+  if (Math.random() < 0.008) {
+    const sx = Math.random() * w, sy = Math.random() * h * 0.6;
+    const len = 60 + Math.random() * 100;
+    const sc = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    const grad = starCtx.createLinearGradient(sx, sy, sx + len, sy + len * 0.3);
+    grad.addColorStop(0, `rgba(${sc[0]},${sc[1]},${sc[2]},0.8)`);
+    grad.addColorStop(0.3, `rgba(${sc[0]},${sc[1]},${sc[2]},0.3)`);
+    grad.addColorStop(1, `rgba(${sc[0]},${sc[1]},${sc[2]},0)`);
+    starCtx.strokeStyle = grad; starCtx.lineWidth = 1.5;
+    starCtx.beginPath(); starCtx.moveTo(sx, sy); starCtx.lineTo(sx + len, sy + len * 0.3); starCtx.stroke();
+  }
+
+  // Mouse sparkles
+  for (let i = sparkles.length - 1; i >= 0; i--) {
+    const p = sparkles[i];
+    p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+    if (p.life <= 0) { sparkles.splice(i, 1); continue; }
+    const a = p.life * 0.8;
+    const gr = p.size * 4;
+    const grd = starCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr);
+    grd.addColorStop(0, `rgba(${p.r},${p.g},${p.b},${a * 0.4})`);
+    grd.addColorStop(1, `rgba(${p.r},${p.g},${p.b},0)`);
+    starCtx.fillStyle = grd;
+    starCtx.beginPath(); starCtx.arc(p.x, p.y, gr, 0, Math.PI * 2); starCtx.fill();
+    starCtx.fillStyle = `rgba(${p.r},${p.g},${p.b},${a})`;
+    starCtx.beginPath(); starCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); starCtx.fill();
+  }
+
+  requestAnimationFrame(drawStars);
+}
+
+let sparkles = [];
+document.addEventListener('mousemove', (e) => {
+  for (let i = 0; i < 2; i++) {
+    const color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+    sparkles.push({
+      x: e.clientX + (Math.random() - 0.5) * 20,
+      y: e.clientY + (Math.random() - 0.5) * 20,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2 - 1,
+      life: 1.0, size: 1.5 + Math.random() * 2.5,
+      r: color[0], g: color[1], b: color[2],
+    });
+  }
+  if (sparkles.length > 80) sparkles = sparkles.slice(-80);
+});
+
+initStars(); drawStars();
+window.addEventListener('resize', () => { initStars(); });
+
+// ═══════════════════════════════════════════
+// SPRITE ANIMATION
+// ═══════════════════════════════════════════
+const sprites = [
+  { el: document.getElementById('ms-cat'),      frames: 12, frame: 0 },
+  { el: document.getElementById('ms-cockatoo'),  frames: 12, frame: 0 },
+  { el: document.getElementById('ms-bulldog'),   frames: 12, frame: 0 },
+  { el: document.getElementById('ms-otter'),     frames: 12, frame: 0 },
+  { el: document.getElementById('ms-rabbit'),    frames: 12, frame: 0 },
+];
+// Sprite pause-between-loops animation
+const SPRITE_FPS = 7;
+const SPRITE_PAUSE_MIN = 3000;
+const SPRITE_PAUSE_MAX = 5000;
+
+function startSpriteLoop(s) {
+  s.frame = 0;
+  renderSpriteFrame(s);
+  s.interval = setInterval(() => {
+    s.frame++;
+    if (s.frame >= s.frames) {
+      clearInterval(s.interval);
+      s.frame = 0;
+      renderSpriteFrame(s);
+      const delay = SPRITE_PAUSE_MIN + Math.random() * (SPRITE_PAUSE_MAX - SPRITE_PAUSE_MIN);
+      s.timer = setTimeout(() => startSpriteLoop(s), delay);
+      return;
+    }
+    renderSpriteFrame(s);
+  }, 1000 / SPRITE_FPS);
+}
+
+function renderSpriteFrame(s) {
+  if (!s.el) return;
+  const w = Math.round(s.el.offsetWidth);
+  if (w === 0) return;
+  s.el.style.backgroundSize = `${w * s.frames}px auto`;
+  s.el.style.backgroundPosition = `${-s.frame * w}px 0`;
+}
+
+// Stagger initial starts
+sprites.forEach((s, i) => {
+  setTimeout(() => startSpriteLoop(s), Math.random() * 2000);
+});
+
+// ═══════════════════════════════════════════
+// CARD FOCUS
+// ═══════════════════════════════════════════
+const cards = document.querySelectorAll('.showcase-card');
+const sceneEl = document.getElementById('scene');
+const backdrop = document.getElementById('card-backdrop');
+const previewBtns = document.getElementById('preview-btns');
+const btnBack = document.getElementById('btn-back');
+const btnBuild = document.getElementById('btn-build');
+let focusedCard = null;
+let focusedCardOrigParent = null;
+let focusedCardOrigNext = null;
+
+function revealCards() {
+  cards.forEach((card, i) => {
+    setTimeout(() => card.classList.add('visible'), 300 + i * 150);
+  });
+}
+
+function unfocusCards() {
+  if (focusedCard !== null) {
+    const card = cards[focusedCard];
+    card.classList.remove('focused');
+    card.style.transform = '';
+    if (focusedCardOrigNext) {
+      focusedCardOrigParent.insertBefore(card, focusedCardOrigNext);
+    } else {
+      focusedCardOrigParent.appendChild(card);
+    }
+  }
+  focusedCard = null;
+  backdrop.classList.remove('active');
+  previewBtns.classList.remove('show');
+}
+
+function focusCard(idx) {
+  if (focusedCard === idx) { unfocusCards(); return; }
+  unfocusCards();
+  focusedCard = idx;
+  const card = cards[idx];
+  focusedCardOrigParent = card.parentNode;
+  focusedCardOrigNext = card.nextSibling;
+  sceneEl.appendChild(card);
+  card.classList.add('focused');
+  card.style.transform = '';
+  backdrop.classList.add('active');
+  previewBtns.classList.add('show');
+}
+
+cards.forEach((card, i) => {
+  card.addEventListener('mousemove', (e) => {
+    if (card.classList.contains('focused')) return;
+    const rect = card.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    card.style.transform = `rotateX(${-y * 30}deg) rotateY(${x * 35}deg) scale(1.08)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    if (!card.classList.contains('focused')) card.style.transform = '';
+  });
+  card.addEventListener('click', (e) => { e.stopPropagation(); sfxClick(); focusCard(i); });
+});
+
+backdrop.addEventListener('click', () => { sfxClick(); unfocusCards(); });
+btnBack.addEventListener('click', (e) => { e.stopPropagation(); sfxClick(); unfocusCards(); });
+btnBuild.addEventListener('click', (e) => { e.stopPropagation(); sfxClick(); goToGame(); });
+
+// ═══════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════
+function sfxClick() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'square'; o.frequency.value = 440;
+    g.gain.setValueAtTime(0.1, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+    o.start(); o.stop(ctx.currentTime + 0.05);
+    setTimeout(() => {
+      const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+      o2.connect(g2); g2.connect(ctx.destination);
+      o2.type = 'square'; o2.frequency.value = 660;
+      g2.gain.setValueAtTime(0.1, ctx.currentTime);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+      o2.start(); o2.stop(ctx.currentTime + 0.07);
+    }, 50);
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function goToGame() {
+  const fade = document.getElementById('fade');
+  const leftCol = document.querySelector('.left-col');
+  const factoryWin = document.querySelector('.factory-window');
+
+  // Step 1: Fade out left column
+  leftCol.style.transition = 'opacity 0.4s ease-out';
+  leftCol.style.opacity = '0';
+
+  // Step 2: Expand factory to match game frame (80vh, centered, white border)
+  setTimeout(() => {
+    const rect = factoryWin.getBoundingClientRect();
+    const targetW = Math.min(window.innerWidth * 0.95, window.innerHeight * 1.2);
+    const targetH = Math.min(window.innerWidth * 0.63, window.innerHeight * 0.8);
+    const scale = Math.min(targetW / rect.width, targetH / rect.height);
+    const targetCX = window.innerWidth / 2;
+    const targetCY = window.innerHeight / 2;
+    const currentCX = rect.left + rect.width / 2;
+    const currentCY = rect.top + rect.height / 2;
+    factoryWin.style.transition = 'transform 0.8s cubic-bezier(.25,.8,.25,1)';
+    factoryWin.style.transform = `translate(${targetCX - currentCX}px, ${targetCY - currentCY}px) scale(${scale})`;
+  }, 400);
+
+  // Step 3: Hold expanded for 2s, then fade to black and navigate
+  setTimeout(() => {
+    fade.classList.remove('clear');
+  }, 3200);
+
+  setTimeout(() => { window.location.href = 'game.html'; }, 4000);
+}
+
+// ═══════════════════════════════════════════
+// LOAD
+// ═══════════════════════════════════════════
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('fade').classList.add('clear'), 200);
+  setTimeout(() => revealCards(), 700);
+});
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  sfxClick();
+  goToGame();
+});
+
+document.querySelector('.factory-window').addEventListener('click', () => {
+  sfxClick();
+  goToGame();
+});
+</script>
+
+<div class="legal-footer" style="position:fixed;bottom:8px;left:50%;transform:translateX(-50%);z-index:200;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:10px;color:rgba(0,204,51,.5);letter-spacing:.5px;display:flex;gap:10px;pointer-events:auto;white-space:nowrap">
+  <a href="/privacy.html" style="color:inherit;text-decoration:none;transition:color .15s" onmouseover="this.style.color='#00ff41'" onmouseout="this.style.color=''">Privacy</a>
+  <span>·</span>
+  <a href="/terms.html" style="color:inherit;text-decoration:none" onmouseover="this.style.color='#00ff41'" onmouseout="this.style.color=''">Terms</a>
+  <span>·</span>
+  <a href="/refunds.html" style="color:inherit;text-decoration:none" onmouseover="this.style.color='#00ff41'" onmouseout="this.style.color=''">Refunds</a>
+  <span>·</span>
+  <a href="mailto:contact@creditcardart.com" style="color:inherit;text-decoration:none" onmouseover="this.style.color='#00ff41'" onmouseout="this.style.color=''">Contact</a>
+</div>
+
+<script src="affiliate-tracker.js"></script>
+<script src="pixels.js"></script>
+</body>
+</html>
