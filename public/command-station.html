@@ -4385,7 +4385,7 @@ async function openOrder(dbId) {
       ? (isAffiliateFreebie(order) ? 'None - welcome sample' : `${fmtCents(order.affiliate_commission_cents)} (${fmtPct(order.affiliate_commission_rate)})`)
       : '—'],
     ['Total',       orderAmountLabel(order)],
-    ['Discount',    order.discount_earned ? '15% Applied' : 'None'],
+    ['Discount',    orderDiscountInfo(order)],
   ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
 
   // Customer info rows
@@ -5259,6 +5259,34 @@ function renderCertificateLabel(o) {
       </div>
     </div>
   `;
+}
+
+// Discount summary for the order-details panel. Mirrors renderReceiptLabel's
+// reconciliation to the actual charged total, so a gift / 100%-off order no
+// longer reads "15% Applied". Returns a human label, or 'None'.
+function orderDiscountInfo(o) {
+  const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES)
+    || { pack1: 1395, pack2: 1999, decal: 449, stamp: 95, standard: 699, priority: 1099 };
+  const pack = parseInt(o.pack_count) || 1;
+  const listSubtotal = (pack === 2 ? PRICES.pack2 : PRICES.pack1) + (o.add_on === 'car_decal' ? PRICES.decal : 0);
+  const shipAmt = PRICES[(o.shipping_option || 'stamp').toLowerCase()] ?? PRICES.stamp;
+  const isFree = isAffiliateFreebie(o);
+  const paidCents = isFree ? 0 : Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
+  let paidSubtotal;
+  if (isFree || paidCents <= 0) paidSubtotal = 0;
+  else if (paidCents <= shipAmt) paidSubtotal = paidCents;
+  else paidSubtotal = paidCents - shipAmt;
+  const discountAmt = Math.max(0, listSubtotal - paidSubtotal);
+  if (discountAmt <= 0) return 'None';
+  const discPct = listSubtotal > 0 ? Math.round((discountAmt / listSubtotal) * 100) : 0;
+  const discountEarned = (o.discount_earned === true || o.discount_earned === 't' || o.discount_earned === 'true');
+  let label;
+  if (isFree)                       label = 'Creator freebie (100% off)';
+  else if (o.affiliate_coupon_code) label = `Gift / promo (${o.affiliate_coupon_code})`;
+  else if (discPct >= 99)           label = 'Gift / promo (100% off)';
+  else if (discountEarned)          label = 'First-time buyer discount';
+  else                              label = 'Discount';
+  return label + ' · $' + (discountAmt / 100).toFixed(2);
 }
 
 function renderReceiptLabel(o) {
