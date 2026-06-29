@@ -99,6 +99,18 @@ export async function onRequest(context) {
     ? '$' + (session.amount_total / 100).toFixed(2)
     : null;
 
+  // Idempotency: Stripe delivers webhooks at least once, so a re-delivered
+  // checkout.session.completed must not re-send the confirmation email or re-run
+  // affiliate attribution. Capture the order status BEFORE we flip it; if it was
+  // already paid (or further along), those one-time side effects already ran.
+  let wasAlreadyPaid = false;
+  try {
+    const prevRes = await db.query(`SELECT status FROM pet_orders WHERE order_id = $1`, [orderId]);
+    wasAlreadyPaid = ['paid', 'processed', 'shipped', 'complete'].includes((prevRes.rows[0]?.status || '').trim());
+  } catch (err) {
+    console.error('Prior-status read failed (treating as new):', err);
+  }
+
   // ── 1. Persist what Stripe gave us and mark the order paid ───────────────
   let orderRow;
   try {
@@ -147,6 +159,13 @@ export async function onRequest(context) {
   if (!orderRow) {
     console.warn(`No pet_orders row matched order_id=${orderId}`);
     return json(200, { received: true });
+  }
+
+  // Re-delivered webhook: the order was already paid before this event, so the
+  // capture, affiliate attribution, and confirmation email already ran. Stop
+  // here so none of them fire twice. (Re-applying the UPDATE above is harmless.)
+  if (wasAlreadyPaid) {
+    return json(200, { received: true, status: 'already_processed' });
   }
 
   // ── 2. Finalise the order ────────────────────────────────────────────────
