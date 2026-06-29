@@ -2396,7 +2396,7 @@ html, body {
             </div>
             <div class="bulk-action-bar" id="bulk-action-bar">
               <span class="bulk-count" id="bulk-count">0 selected</span>
-              <button class="btn btn-accent" onclick="printSelected()">🖨 Print Documents</button>
+              <button class="btn btn-accent" onclick="printSelected()">🖨 Print Documents & Send Shipping Confirmation Email</button>
               <button class="btn btn-ghost" onclick="bulkMarkProcessed()">✓ Mark Processed (no email)</button>
               <button class="btn btn-ghost" onclick="clearSelection()">Clear</button>
             </div>
@@ -2783,7 +2783,7 @@ html, body {
           <button class="btn btn-blue"   id="edit-photo-btn" onclick="openPhotoEditor()" style="display:none">✎ Edit Photo</button>
           <button class="btn btn-blue"   id="gen-diecut-btn" onclick="generateDieCut()" style="display:none" title="Make a die-cut sticker (white border) from this pet — uses your refined cutout if you've edited it, otherwise auto-removes the background">🎯 Die-Cut</button>
           <button class="btn btn-blue"   id="dl-btn"  onclick="downloadLicence()" style="display:none">⬇ Download PNG</button>
-          <button class="btn btn-ghost"  onclick="printSingleOrder()">🖨 Print Docs</button>
+          <button class="btn btn-ghost"  onclick="printSingleOrder()">🖨 Print Docs & Send Shipping Confirmation Email</button>
         </div>
         <!-- Photo source: download original / replace (non-destructive) / revert.
              The original upload is never overwritten, so Revert always restores it. -->
@@ -3011,7 +3011,7 @@ html, body {
     <div class="label-preview-actions">
       <div style="flex:1;font-size:11px;color:var(--muted)">4×6 label printer — each order produces an address sticker + a receipt sticker</div>
       <button class="btn btn-ghost" onclick="closeLabelPreview()">Cancel</button>
-      <button class="btn btn-green" onclick="printLabels()">🖨 Print All</button>
+      <button class="btn btn-green" onclick="printLabels()">🖨 Print All & Send Shipping Confirmation Email</button>
     </div>
   </div>
 </div>
