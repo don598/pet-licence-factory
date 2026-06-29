@@ -2920,6 +2920,11 @@ html, body {
         <span id="place-rot-label" style="font-size:11px;color:var(--muted);min-width:38px">0°</span>
       </div>
       <div class="editor-tool-group">
+        <label style="font-size:11px;color:var(--muted)" title="Soften a hard or jagged cutout edge — blurs just the outline so it fades smoothly inward, keeping the pet sharp and adding no background halo">Soften edges</label>
+        <input type="range" id="place-feather" class="editor-slider" min="0" max="15" value="0" step="0.5" oninput="onPlacementFeather(this.value)">
+        <span id="place-feather-label" style="font-size:11px;color:var(--muted);min-width:38px">0px</span>
+      </div>
+      <div class="editor-tool-group">
         <button class="btn btn-ghost editor-tool-btn" id="place-crop" onclick="startCropMode()" title="Crop the photo — trim dead space (e.g. a dark strip) or reframe to your pet. Flows into the card and decal.">✂️ Crop</button>
       </div>
       <div class="editor-tool-group">
@@ -4194,7 +4199,7 @@ function sendEditorToDieCut() {
   const cx = comp.getContext('2d');
   cx.drawImage(originalImg, 0, 0, pw, ph);
   cx.globalCompositeOperation = 'destination-in';
-  cx.drawImage(maskCanvas, 0, 0);
+  cx.drawImage(getFeatheredMask(), 0, 0);
   _editedPhotoUrl = comp.toDataURL('image/png');
   _savedMaskImageData = maskCtx.getImageData(0, 0, pw, ph);
   _dcSourceName = null;   // order-based die-cut → name from the order id
@@ -5303,7 +5308,7 @@ let _editedPhotoUrl = null;    // data URL of editor output, used by generateLic
 let _savedMaskImageData = null; // persisted mask so reopening the editor restores your work
 // How the pet photo sits inside the licence photo box. Defaults reproduce the
 // original cover-fit/centered/full-saturation behaviour exactly.
-function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1, rotation: 0, boxScale: 1 }; }
+function defaultPhotoTransform() { return { scale: 1, offsetX: 0, offsetY: 0, saturation: 1, rotation: 0, boxScale: 1, feather: 0 }; }
 // The photo box on the card, optionally shrunk by the placement "Frame size"
 // (boxScale, 0.3–1). Anchored at the box CENTRE so the photo stays where it
 // sits while taking up less of the card.
@@ -5556,7 +5561,7 @@ function renderEditorOverlay() {
   const cx = comp.getContext('2d');
   cx.drawImage(originalImg, 0, 0, pw, ph);
   cx.globalCompositeOperation = 'destination-in';
-  cx.drawImage(maskCanvas, 0, 0);
+  cx.drawImage(getFeatheredMask(), 0, 0);
   cx.globalCompositeOperation = 'source-over';
 
   // Draw the masked composite onto the photo canvas (checkerboard shows through transparent areas)
@@ -5767,7 +5772,7 @@ async function applyPhotoEdit() {
   const cx = comp.getContext('2d');
   cx.drawImage(originalImg, 0, 0, pw, ph);
   cx.globalCompositeOperation = 'destination-in';
-  cx.drawImage(maskCanvas, 0, 0);
+  cx.drawImage(getFeatheredMask(), 0, 0);
   _editedPhotoUrl = comp.toDataURL('image/png');
   // Persist mask so re-opening the editor restores the work
   _savedMaskImageData = maskCtx.getImageData(0, 0, pw, ph);
@@ -5989,6 +5994,35 @@ function setEditorMode(mode) {
   }
 }
 
+// Returns the mask to composite with. When "Soften edges" (feather) is active,
+// returns a scratch canvas holding the alpha mask with its EDGE blurred — only
+// the alpha is softened (the pet's colours stay sharp), and the blur is clipped
+// back inside the original silhouette so we soften INWARD and never bleed the old
+// background out as a halo. Radius is in source pixels; zero cost when radius 0.
+function getFeatheredMask() {
+  if (!editorState) return null;
+  const mask = editorState.maskCanvas;
+  const r = (_photoTransform && _photoTransform.feather) || 0;
+  if (r <= 0) return mask;
+  const { pw, ph } = editorState;
+  let fc = editorState.featheredMaskCanvas;
+  if (!fc) { fc = document.createElement('canvas'); editorState.featheredMaskCanvas = fc; }
+  if (fc.width !== pw) fc.width = pw;
+  if (fc.height !== ph) fc.height = ph;
+  const fx = fc.getContext('2d');
+  fx.clearRect(0, 0, pw, ph);
+  // 1) Gaussian-blur the alpha — smooths jagged edges (spreads both ways).
+  fx.filter = 'blur(' + r + 'px)';
+  fx.drawImage(mask, 0, 0);
+  fx.filter = 'none';
+  // 2) Clip the softened alpha back inside the original silhouette so the feather
+  //    only eats inward — no outward bleed that would reveal the old background.
+  fx.globalCompositeOperation = 'destination-in';
+  fx.drawImage(mask, 0, 0);
+  fx.globalCompositeOperation = 'source-over';
+  return fc;
+}
+
 // Composite original + current mask into a source canvas for the placement view.
 function buildPlacementSrc() {
   if (!editorState) return;
@@ -5998,7 +6032,7 @@ function buildPlacementSrc() {
   const cx = comp.getContext('2d');
   cx.drawImage(originalImg, 0, 0, pw, ph);
   cx.globalCompositeOperation = 'destination-in';
-  cx.drawImage(maskCanvas, 0, 0);
+  cx.drawImage(getFeatheredMask(), 0, 0);
   editorState.placementSrc = comp;
 }
 
@@ -6058,6 +6092,9 @@ function syncPlacementControls() {
   const bx = Math.round((T.boxScale || 1) * 100);
   const bxEl = document.getElementById('place-frame');
   if (bxEl) { bxEl.value = bx; document.getElementById('place-frame-label').textContent = bx + '%'; }
+  const fe = (T.feather != null) ? T.feather : 0;
+  const feEl = document.getElementById('place-feather');
+  if (feEl) { feEl.value = fe; document.getElementById('place-feather-label').textContent = fe + 'px'; }
 }
 
 function onPlacementScale(v) {
@@ -6080,6 +6117,15 @@ function onPlacementRotation(v) {
 function onPlacementFrame(v) {
   _photoTransform.boxScale = Math.max(0.4, Math.min(1, (+v || 100) / 100));
   document.getElementById('place-frame-label').textContent = Math.round(_photoTransform.boxScale * 100) + '%';
+  renderPlacement();
+}
+// "Soften edges": feather the cutout's alpha edge. Rebuilds the placement source
+// (the feathered mask flows through buildPlacementSrc → getFeatheredMask), then redraws.
+function onPlacementFeather(v) {
+  if (!editorState) return;
+  _photoTransform.feather = Math.max(0, Math.min(15, +v || 0));
+  document.getElementById('place-feather-label').textContent = _photoTransform.feather + 'px';
+  buildPlacementSrc();
   renderPlacement();
 }
 
@@ -6697,10 +6743,12 @@ async function runSAMDecoder(photoX, photoY) {
 
   // Xenova SAM decoder inputs:
   //   input_points: float32 [batch=1, point_batch=1, num_points=1, 2]
-  //   input_labels: float32 [batch=1, point_batch=1, num_points=1]   (1 = positive)
+  //   input_labels: int64   [batch=1, point_batch=1, num_points=1]   (1 = positive)
   //   image_embeddings + image_positional_embeddings from encoder
   const inputPoints = new ort.Tensor('float32', new Float32Array([samX, samY]), [1, 1, 1, 2]);
-  const inputLabels = new ort.Tensor('float32', new Float32Array([1]), [1, 1, 1]);
+  // input_labels must be int64 for the Xenova SAM decoder export — passing
+  // float32 throws: "Unexpected input data type. expected: (tensor(int64))".
+  const inputLabels = new ort.Tensor('int64', new BigInt64Array([1n]), [1, 1, 1]);
 
   // Build feeds by matching each input name to the right tensor
   const decInputs = editorState.samDecoderSession.inputNames;
