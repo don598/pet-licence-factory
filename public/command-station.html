@@ -492,6 +492,12 @@ html, body {
   color: var(--text);
   font-weight: 500;
 }
+/* Customer cell: keep the email-delivery pill visible even when the email is
+   long. The email truncates; the pill never clips. */
+.orders-table td.cust-td { max-width: 300px; }
+.cust-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.cust-cell .cust-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cust-cell .email-pill { flex: 0 0 auto; }
 .orders-table tr:hover td { background: var(--surface2); cursor: pointer; }
 .orders-table tr.empty td { text-align: center; color: var(--muted); padding: 48px; cursor: default; font-weight: 500; }
 .orders-table tr.empty td:hover { background: none; }
@@ -3563,7 +3569,7 @@ function renderTable() {
       <td class="cb-col" onclick="event.stopPropagation()"><input type="checkbox" class="order-cb" data-id="${o.id}" ${selectedOrderIds.has(o.id) ? 'checked' : ''} onclick="toggleOrderSelected(${o.id}, this.checked)"></td>
       <td data-label="Date" onclick="openOrder(${o.id})" title="${o.created_at}">${fmtDate(o.created_at)}</td>
       <td data-label="Pet" onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>
-      <td data-label="Customer" onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}">${esc(o.customer_email || '—')}${renderEmailMarker(o)}</td>
+      <td class="cust-td" data-label="Customer" onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}"><span class="cust-cell"><span class="cust-email">${esc(o.customer_email || '—')}</span>${renderEmailMarker(o)}</span></td>
       <td data-label="Shipping" onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
       <td data-label="Affiliate" onclick="openOrder(${o.id})">${renderAffiliateMarker(o)}</td>
       <td data-label="Status" onclick="openOrder(${o.id})"><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
