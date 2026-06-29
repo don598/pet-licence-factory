@@ -2921,7 +2921,7 @@ html, body {
       </div>
       <div class="editor-tool-group">
         <label style="font-size:11px;color:var(--muted)" title="Soften a hard or jagged cutout edge — blurs just the outline so it fades smoothly inward, keeping the pet sharp and adding no background halo">Soften edges</label>
-        <input type="range" id="place-feather" class="editor-slider" min="0" max="15" value="0" step="0.5" oninput="onPlacementFeather(this.value)">
+        <input type="range" id="place-feather" class="editor-slider" min="0" max="40" value="0" step="0.5" oninput="onPlacementFeather(this.value)">
         <span id="place-feather-label" style="font-size:11px;color:var(--muted);min-width:38px">0px</span>
       </div>
       <div class="editor-tool-group">
@@ -4738,7 +4738,7 @@ async function generateLicence() {
     drawTextField(ctx, F.signature, sig,                          '#1a0a00', "'Sacramento', cursive");
     drawTextField(ctx, F.height,    o.height,                     '#1a0a00');
     drawTextField(ctx, F.sex,       o.sex,                        '#1a0a00');
-    drawTextField(ctx, F.weight,    o.weight,                     '#1a0a00');
+    drawTextField(ctx, F.weight,    String(o.weight||'').replace(/[^0-9.]/g,''), '#1a0a00');
     drawTextField(ctx, F.eyes,      o.eyes,                       '#1a0a00');
     drawTextField(ctx, F.licClass,  o.lic_class  || 'A',          '#1a0a00');
     drawTextField(ctx, F.restrict,  o.restrict   || 'ALL',       '#1a0a00');
@@ -6123,7 +6123,7 @@ function onPlacementFrame(v) {
 // (the feathered mask flows through buildPlacementSrc → getFeatheredMask), then redraws.
 function onPlacementFeather(v) {
   if (!editorState) return;
-  _photoTransform.feather = Math.max(0, Math.min(15, +v || 0));
+  _photoTransform.feather = Math.max(0, Math.min(40, +v || 0));
   document.getElementById('place-feather-label').textContent = _photoTransform.feather + 'px';
   buildPlacementSrc();
   renderPlacement();

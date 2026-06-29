@@ -281,7 +281,7 @@ function refreshLicPreview() {
     { k: 'addrLine2', v: addr.l2,                         c: '#1a0a00' },
     { k: 'height',    v: petData.height || '',             c: '#1a0a00' },
     { k: 'sex',       v: petData.sex || '',                c: '#1a0a00' },
-    { k: 'weight',    v: petData.weight || '',             c: '#1a0a00' },
+    { k: 'weight',    v: String(petData.weight||'').replace(/[^0-9.]/g,''), c: '#1a0a00' },
     { k: 'eyes',      v: petData.eyeColor || '',           c: '#1a0a00' },
     { k: 'licClass',  v: petData.licenseClass || '',       c: '#1a0a00' },
     { k: 'restrict',  v: petData.restrictions || 'ALL',   c: '#1a0a00' }
