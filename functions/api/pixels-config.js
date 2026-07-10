@@ -2,8 +2,8 @@
 // GET /api/pixels-config  →  { meta: 'XXXX', tiktok: 'YYYY' }
 //
 // Lets us drive Meta + TikTok pixel IDs from env vars without rebuilding the
-// static site. Cached at the edge for an hour because pixel IDs change very
-// rarely.
+// static site. Cached briefly (5 min) so toggling an ID on/off propagates fast
+// — a longer TTL strands stale (often empty) responses on edge PoPs for an hour.
 // ---------------------------------------------------------------------------
 
 export async function onRequest(context) {
@@ -16,7 +16,7 @@ export async function onRequest(context) {
     status: 200,
     headers: {
       'Content-Type':  'application/json',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'public, max-age=300',
       'Access-Control-Allow-Origin': '*',
     },
   });
