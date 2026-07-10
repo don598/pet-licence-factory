@@ -11,6 +11,10 @@ URL = "https://petlicensefactory.com"
 # SendGrid 2026-06). From name defaults to "Pet Licence Factory"; replies route
 # to contact@creditcardart.com (see functions/_shared/email.js).
 SENDGRID_FROM_EMAIL = "hello@petlicensefactory.com"
+# TikTok Pixel "Pet Licence Factory Web" — public client-side ID, served to the
+# browser via /api/pixels-config → public/pixels.js. Not a secret. Set META_PIXEL_ID
+# here too if/when we run Meta ads.
+TIKTOK_PIXEL_ID = "D98M0S3C77UDPAPRKQT0"
 
 # Hyperdrive binding for AWS RDS PostgreSQL
 [[hyperdrive]]
