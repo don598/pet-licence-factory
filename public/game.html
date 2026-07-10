@@ -1826,6 +1826,8 @@ async function s5Checkout() {
     });
     const data = await resp.json();
     if (data.url) {
+      if (window.PLFPixels && window.PLFPixels.initiateCheckout)
+        window.PLFPixels.initiateCheckout(window.PLF_ORDER && window.PLF_ORDER.total);
       window.location.href = data.url;
     } else {
       throw new Error(data.error || 'No checkout URL returned');

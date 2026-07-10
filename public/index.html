@@ -1059,7 +1059,7 @@ function checkout(){
       })});
     })
     .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.url) window.location.href=d.url; else throw new Error(d.error||'no url'); })
+    .then(function(d){ if(d.url){ if(window.PLFPixels&&window.PLFPixels.initiateCheckout) window.PLFPixels.initiateCheckout(); window.location.href=d.url; } else throw new Error(d.error||'no url'); })
     .catch(function(err){ console.error('checkout error',err); fail(); });
   });
 }

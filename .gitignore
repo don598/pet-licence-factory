@@ -1,5 +1,6 @@
 # Secrets
 .env
+.dev.vars
 
 # Dependencies
 node_modules/
@@ -38,3 +39,12 @@ Pet license handbook*.pdf
 # Test fixtures / unused assets (keep off the public repo)
 public/images/test-pets/
 public/images/social-avatar.png
+
+# Marketing — UGC video binaries are large; keep them local, track only the docs
+marketing/**/*.mp4
+marketing/**/*.mov
+marketing/**/*.m4v
+marketing/**/*.avi
+marketing/**/*.webm
+marketing/**/*.gif
+marketing/**/*.zip

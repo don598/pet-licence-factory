@@ -23,6 +23,17 @@
     });
   };
 
+  // Fires when the customer is sent to Stripe Checkout. Mid-funnel signal used
+  // for ad optimisation; value is optional (the real amount lands on purchase()).
+  window.PLFPixels.initiateCheckout = function (valueUsd, currency) {
+    var v = Number(valueUsd);
+    var params = (v > 0) ? { value: v, currency: currency || 'USD' } : {};
+    enqueue(function () {
+      if (window.fbq) window.fbq('track', 'InitiateCheckout', params);
+      if (window.ttq) window.ttq.track('InitiateCheckout', params);
+    });
+  };
+
   function enqueue(fn) {
     if (window.PLFPixels.ready) fn();
     else window.PLFPixels.queue.push(fn);
