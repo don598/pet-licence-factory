@@ -238,7 +238,7 @@ export async function activateReservedCreator(env, db, creator, opts = {}) {
     },
     urls: {
       affiliate: `${origin}/?ref=${encodeURIComponent(coupons.affiliate.code)}`,
-      freebie: `${origin}/game.html?promo=${encodeURIComponent(coupons.freebie.code)}`,
+      freebie: `${origin}/factory.html?promo=${encodeURIComponent(coupons.freebie.code)}`,
       dashboard: `${origin}/dashboard.html?token=${encodeURIComponent(dashboardToken)}`,
     },
     email: emailResult,

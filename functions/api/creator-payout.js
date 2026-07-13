@@ -330,7 +330,7 @@ async function handleStoreCredit({ env, db, creator, payoutRow, amountCents, rec
     // Email the creator the code. Non-fatal if SendGrid hiccups — the code
     // is also visible on the dashboard payout history.
     try {
-      const link = `${siteOrigin}/game.html?promo=${encodeURIComponent(code)}`;
+      const link = `${siteOrigin}/factory.html?promo=${encodeURIComponent(code)}`;
       const subject = `Your $${(redemptionCents / 100).toFixed(2)} Pet License Factory credit (code ${code})`;
       const html = renderStoreCreditEmail({
         creatorName:    creator.name,
@@ -354,7 +354,7 @@ async function handleStoreCredit({ env, db, creator, payoutRow, amountCents, rec
       bonus_cents:      bonusCents,
       redemption_cents: redemptionCents,
       redemption_code:  code,
-      redemption_url:   `${siteOrigin}/game.html?promo=${encodeURIComponent(code)}`,
+      redemption_url:   `${siteOrigin}/factory.html?promo=${encodeURIComponent(code)}`,
       expires_at:       new Date(expiresAt * 1000).toISOString(),
       recipient_email:  recipientEmail,
       external_status:  'delivered',

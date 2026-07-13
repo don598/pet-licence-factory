@@ -454,7 +454,7 @@ export function renderCreatorOnboardingEmail(opts) {
   } = opts;
 
   const refUrl       = `${siteOrigin}/?ref=${encodeURIComponent(affiliateCode)}`;
-  const freebieUrl   = `${siteOrigin}/game.html?promo=${encodeURIComponent(freebieCode)}`;
+  const freebieUrl   = `${siteOrigin}/factory.html?promo=${encodeURIComponent(freebieCode)}`;
   const dashboardUrl = `${siteOrigin}/dashboard.html?token=${encodeURIComponent(dashboardToken)}`;
 
   const subject = `🎉 You're in — your Pet License Factory creator kit`;

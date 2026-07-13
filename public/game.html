@@ -10,6 +10,16 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&display=swap" rel="stylesheet"/>
+  <script>
+  // Redirect mobile users to dedicated mobile welcome page. Carry the query
+  // string (e.g. ?promo= / ?ref=) so a gift/affiliate link survives the gate --
+  // this runs before affiliate-tracker.js can stash them. The desktop game
+  // layout is not mobile-safe, so every /game.html?promo= link in the wild must
+  // land mobile visitors on the working mobile flow instead.
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (window.innerWidth <= 768 && 'ontouchstart' in window)) {
+    window.location.replace('mobile-welcome.html' + window.location.search);
+  }
+  </script>
   <style>
 /* ── Reset ── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}

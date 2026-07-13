@@ -3111,7 +3111,7 @@ async function createGiftCodes() {
       // friendly) and the factory game. A code typed into Stripe's own promo box
       // would only zero the sticker, not shipping, so we don't surface it.
       const code = encodeURIComponent(c.code);
-      const productLink = `${PROD_BASE}/product?promo=${code}`;
+      const productLink = `${PROD_BASE}/?promo=${code}`;
       const gameLink    = `${PROD_BASE}/game?promo=${code}`;
       const linkRow = (lbl, url, primary) => `
         <div style="display:flex;align-items:center;gap:6px;">
@@ -7631,7 +7631,7 @@ function affRenderDrawer(data) {
   }
   const refUrl     = `${origin}/?ref=${encodeURIComponent(c.coupon_code)}`;
   const dashUrl    = `${origin}/dashboard.html?token=${encodeURIComponent(c.dashboard_token)}`;
-  const freebieUrl = c.freebie_code ? `${origin}/game.html?promo=${encodeURIComponent(c.freebie_code)}` : '';
+  const freebieUrl = c.freebie_code ? `${origin}/factory.html?promo=${encodeURIComponent(c.freebie_code)}` : '';
   const reviewStatus = c.review_video_status || 'not_submitted';
   const reviewVideoUrl = c.review_video_r2_key ? `/api/affiliate-video?token=${encodeURIComponent(c.dashboard_token)}` : '';
   const reviewBonus = affFmtUsd(c.review_video_bonus_cents || 1000);
