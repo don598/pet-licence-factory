@@ -577,6 +577,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 <script src="pricing.js"></script>
 <script src="affiliate-tracker.js"></script>
 <script src="pixels.js"></script>
+<script src="plf-track.js" defer></script>
 <script>
 (function(){
 'use strict';
@@ -917,7 +918,9 @@ function renderStepper(){
 
 function panelFor(n){ return panels.filter(function(p){return parseInt(p.dataset.step)===n;})[0]; }
 
+var STEP_NAMES = {1:'step_1_photo',2:'step_2_details',3:'step_3_pack',4:'step_4_chip',5:'step_5_review'};
 function showStep(n, dir){
+  if(window.PLFTrack && STEP_NAMES[n]) PLFTrack.step(STEP_NAMES[n]);
   panels.forEach(function(p){ p.classList.remove('active'); });
   var p = panelFor(n);
   p.classList.add('active');
@@ -1065,6 +1068,7 @@ function checkout(){
     .then(function(r){ return r.json().then(function(d){ if(!r.ok) throw new Error(d.error||'save failed'); return d; }); })
     .then(function(d){
       var orderId=d.orderId;
+      if(window.PLFTrack) PLFTrack.step('order_submitted');
       try{ if(snap){ var st=JSON.parse(localStorage.getItem('plf_last_preview')); st.orderId=orderId; localStorage.setItem('plf_last_preview',JSON.stringify(st)); } }catch(e){}
       var affiliateRef=(window.PLFAffiliate&&window.PLFAffiliate.getRef&&window.PLFAffiliate.getRef())||'';
       var promoCode=(new URLSearchParams(window.location.search).get('promo')||'').trim()||(window.PLFPromo&&window.PLFPromo.getCode&&window.PLFPromo.getCode())||'';
@@ -1080,6 +1084,7 @@ function checkout(){
       if(d.url){
         // Fire InitiateCheckout with order value, THEN navigate after a short
         // delay so the TikTok/Meta beacon can flush before the page unloads.
+        if(window.PLFTrack) PLFTrack.step('checkout_clicked');
         if(window.PLFPixels&&window.PLFPixels.initiateCheckout) window.PLFPixels.initiateCheckout(orderBody.total, 'USD');
         console.log('[plf] InitiateCheckout fired ($'+orderBody.total+'), navigating to Stripe in 300ms');
         setTimeout(function(){ window.location.href=d.url; }, 300);
@@ -1136,6 +1141,7 @@ function scrollToBuilder(){
 
 // ── Go ──
 refreshPreview(); recalc(); renderStepper();
+if(window.PLFTrack) PLFTrack.step('step_1_photo');  // step 1 shows by default (no showStep call)
 })();
 </script>
 </body>

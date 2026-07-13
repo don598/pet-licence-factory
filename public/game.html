@@ -590,6 +590,7 @@ const $ = id => document.getElementById(id);
 function setBg(el, url) { el.style.backgroundImage = `url('${url}')`; }
 
 function showStation(n) {
+  if (window.PLFTrack) PLFTrack.step('station_' + n);
   document.querySelectorAll('.station').forEach(s => s.classList.remove('active'));
   $('s' + n).classList.add('active');
   // Hide license preview card when leaving checkout
@@ -1750,6 +1751,7 @@ async function s5Checkout() {
   let orderId = null;
   try {
     orderId = await submitOrder(orderData);
+    if (window.PLFTrack) PLFTrack.step('order_submitted');
     orderData.orderId = orderId;
   } catch (err) {
     console.error('Order save failed:', err);
@@ -1836,6 +1838,7 @@ async function s5Checkout() {
     });
     const data = await resp.json();
     if (data.url) {
+      if (window.PLFTrack) PLFTrack.step('checkout_clicked');
       if (window.PLFPixels && window.PLFPixels.initiateCheckout)
         window.PLFPixels.initiateCheckout(window.PLF_ORDER && window.PLF_ORDER.total);
       window.location.href = data.url;
@@ -2596,5 +2599,6 @@ $('lic-backdrop').addEventListener('click', () => {
 </script>
 <script src="affiliate-tracker.js"></script>
 <script src="pixels.js"></script>
+<script src="plf-track.js" defer></script>
 </body>
 </html>

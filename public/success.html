@@ -715,6 +715,7 @@
       setState('confirmed');
       try {
         var v = parseFloat(String(data.total || '0').replace(/[^0-9.]/g, '')) || 0;
+        if (window.PLFTrack) PLFTrack.event('purchase_success', 'purchase_success', { value: v });
         if (window.PLFPixels && window.PLFPixels.purchase) window.PLFPixels.purchase(v, 'USD');
       } catch (e) { /* never break confirmation */ }
     }
@@ -1010,5 +1011,6 @@
     }
   </script>
   <script src="pixels.js"></script>
+<script src="plf-track.js" defer></script>
 </body>
 </html>
