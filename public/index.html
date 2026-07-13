@@ -126,6 +126,17 @@ h1 .hl{color:var(--brand-dk)}
 .price-row .from{font-size:13px;color:var(--faint);font-weight:700}
 .pills{display:flex;flex-wrap:wrap;gap:8px}
 .pills .pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--ink);background:var(--good-soft);color:#177a45;padding:6px 11px;border-radius:999px}
+/* Hero primary CTA (above the fold) → scrolls to builder */
+.hero-cta{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  margin-top:18px;font-family:inherit;font-weight:900;font-size:16px;
+  background:var(--brand);color:#fff;border:none;border-radius:14px;
+  padding:15px 22px;cursor:pointer;text-decoration:none;letter-spacing:.3px;
+  box-shadow:0 6px 18px rgba(255,111,77,.4);transition:transform .08s,background .15s;
+}
+.hero-cta:hover{background:var(--brand-dk);transform:translateY(-1px)}
+.hero-cta:active{transform:translateY(0)}
+.hero-cta .pix{font-family:'Press Start 2P',monospace;font-size:11px;line-height:1}
 
 /* ── Wizard ───────────────────────────────────────── */
 .wizard{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
@@ -361,10 +372,10 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
       <img class="brand-ico" src="favicon-192.png" alt=""/>
       <span>PET&nbsp;LICENSE<br><b>FACTORY</b></span>
     </a>
-    <a class="portal-btn" href="factory.html" aria-label="Enter the factory">
+    <a class="portal-btn" href="#build" data-scroll-build aria-label="Start building your pet's license">
       <span class="portal-stars" aria-hidden="true"></span>
       <span class="portal-cat" id="portalCat" aria-hidden="true"></span>
-      <span class="portal-txt"><span class="l1">★ ENTER THE ★</span><span class="l2">FACTORY&nbsp;▸</span></span>
+      <span class="portal-txt"><span class="l1">★ START HERE ★</span><span class="l2">BUILD IT&nbsp;▸</span></span>
     </a>
   </nav>
 </header>
@@ -376,9 +387,9 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
     <!-- ── LEFT: sample license slideshow ── -->
     <div class="config-preview">
       <div class="slideshow" id="sampleShow">
-        <img class="ss-slide active" src="images/preview-licences/luna-whiskers.png" alt="Luna Whiskers sample pet license"/>
-        <img class="ss-slide" src="images/preview-licences/max-woofington.png" alt="Max Woofington sample pet license"/>
-        <img class="ss-slide" src="images/preview-licences/oliver-pawsley.png" alt="Oliver Pawsley sample pet license"/>
+        <img class="ss-slide active" src="images/preview-licences/luna-whiskers.webp" alt="Luna Whiskers sample pet license"/>
+        <img class="ss-slide" src="images/preview-licences/max-woofington.webp" alt="Max Woofington sample pet license"/>
+        <img class="ss-slide" src="images/preview-licences/oliver-pawsley.webp" alt="Oliver Pawsley sample pet license"/>
         <button class="ss-arrow ss-prev" id="ssPrev" type="button" aria-label="Previous sample">‹</button>
         <button class="ss-arrow ss-next" id="ssNext" type="button" aria-label="Next sample">›</button>
         <div class="ss-dots" id="ssDots"></div>
@@ -400,6 +411,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
           <span class="pill">✓ Fully personalised</span>
           <span class="pill">✓ Ships fast</span>
         </div>
+        <a class="hero-cta" href="#build" data-scroll-build><span class="pix">🐾</span> Make your pet's license →</a>
       </div>
 
       <div class="wizard">
@@ -862,7 +874,12 @@ $('packSave').textContent = 'SAVE '+Math.round((1-(PRICES.pack2/(PRICES.pack1*2)
 $('decalPrice').textContent = '+'+money(PRICES.decal);
 
 // ── Errors ──
-function showErr(msg){ var e=$('errBox'); e.textContent=msg; e.classList.remove('show'); void e.offsetWidth; e.classList.add('show'); }
+function showErr(msg){
+  var e=$('errBox'); e.textContent=msg; e.classList.remove('show'); void e.offsetWidth; e.classList.add('show');
+  // Make the message actually visible — on a blocked Continue the error box can
+  // sit below the fold, so bring it into view (this was the "nothing happens" bug).
+  try{ e.scrollIntoView({behavior:'smooth', block:'center'}); }catch(_){ e.scrollIntoView(); }
+}
 function clearErr(){ $('errBox').classList.remove('show'); }
 
 // ═══════════════════════════════════════════════════
@@ -1059,11 +1076,33 @@ function checkout(){
       })});
     })
     .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.url){ if(window.PLFPixels&&window.PLFPixels.initiateCheckout) window.PLFPixels.initiateCheckout(); window.location.href=d.url; } else throw new Error(d.error||'no url'); })
+    .then(function(d){
+      if(d.url){
+        // Fire InitiateCheckout with order value, THEN navigate after a short
+        // delay so the TikTok/Meta beacon can flush before the page unloads.
+        if(window.PLFPixels&&window.PLFPixels.initiateCheckout) window.PLFPixels.initiateCheckout(orderBody.total, 'USD');
+        console.log('[plf] InitiateCheckout fired ($'+orderBody.total+'), navigating to Stripe in 300ms');
+        setTimeout(function(){ window.location.href=d.url; }, 300);
+      } else throw new Error(d.error||'no url');
+    })
     .catch(function(err){ console.error('checkout error',err); fail(); });
   });
 }
 $('checkoutBtn').addEventListener('click', checkout);
+
+// ── Smooth-scroll CTAs to the builder (keeps cold visitors on-page) ──
+function scrollToBuilder(){
+  var target = document.querySelector('.wizard') || $('build');
+  if(!target) return;
+  var top = target.getBoundingClientRect().top + window.pageYOffset - 74;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  // Nudge focus toward the first action without forcing the keyboard open.
+  var dz = $('dropzone');
+  if(dz && dz.style.display !== 'none'){ dz.classList.add('drag'); setTimeout(function(){ dz.classList.remove('drag'); }, 650); }
+}
+[].forEach.call(document.querySelectorAll('[data-scroll-build]'), function(el){
+  el.addEventListener('click', function(e){ e.preventDefault(); scrollToBuilder(); });
+});
 
 // ── Animate the portal cat sprite (12 frames, 30px each) ──
 (function(){

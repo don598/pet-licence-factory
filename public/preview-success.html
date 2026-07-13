@@ -39,9 +39,9 @@
     const petKey = (qs.get('pet') || 'luna').toLowerCase();
 
     const PETS = {
-      luna:   { first: 'Luna',   last: 'Whiskers',   img: '/images/preview-licences/luna-whiskers.png'   },
-      max:    { first: 'Max',    last: 'Woofington', img: '/images/preview-licences/max-woofington.png'  },
-      oliver: { first: 'Oliver', last: 'Pawsley',    img: '/images/preview-licences/oliver-pawsley.png'  },
+      luna:   { first: 'Luna',   last: 'Whiskers',   img: '/images/preview-licences/luna-whiskers.webp'   },
+      max:    { first: 'Max',    last: 'Woofington', img: '/images/preview-licences/max-woofington.webp'  },
+      oliver: { first: 'Oliver', last: 'Pawsley',    img: '/images/preview-licences/oliver-pawsley.webp'  },
     };
     const pet = PETS[petKey] || PETS.luna;
     const orderId = qs.get('order')
