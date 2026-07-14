@@ -27,7 +27,9 @@ export function esc(v) {
 }
 
 // ── Low-level send ───────────────────────────────────────────────────────────
-export async function sendEmail(env, { to, subject, html, text, replyTo, customArgs }) {
+// `attachments` (optional): array of SendGrid attachment objects, each
+// { content (pure base64, no data: prefix), type, filename, disposition, content_id }.
+export async function sendEmail(env, { to, subject, html, text, replyTo, customArgs, attachments }) {
   const apiKey = env.SENDGRID_API_KEY;
   if (!apiKey) {
     console.warn('[SendGrid] No SENDGRID_API_KEY set — skipping email to', to);
@@ -62,6 +64,10 @@ export async function sendEmail(env, { to, subject, html, text, replyTo, customA
       { type: 'text/html', value: html },
     ],
   };
+
+  if (Array.isArray(attachments) && attachments.length) {
+    body.attachments = attachments;
+  }
 
   const resp = await fetch(SENDGRID_ENDPOINT, {
     method: 'POST',
@@ -436,6 +442,90 @@ Track it: ${trackUrl}
 — Pet License Factory`;
 
   return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'shipping' } });
+}
+
+// ── Free digital licence (email-capture freebie) ────────────────────────────
+// Sent from the homepage builder when a visitor asks for a free watermarked
+// digital version of their pet's licence. The licence image rides along as an
+// inline attachment (content_id "licence") so it renders in the body AND is
+// downloadable. Copy is warm and free of em dashes (owner's style rule).
+export async function sendFreeLicenceEmail(env, { to, petName, imageBase64, mimeType, filename }) {
+  if (!to) return { skipped: true, reason: 'no email' };
+
+  const pet = (petName || '').trim() || 'your pet';
+  const orderUrl = 'https://petlicensefactory.com/?utm_source=email&utm_medium=freebie&utm_campaign=digital_licence';
+  const subject = `🐾 ${pet}'s official licence is here`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#fbf7f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fbf7f0;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #ff6f4d;border-radius:14px;overflow:hidden;">
+
+        <tr><td style="padding:30px 32px 12px;text-align:center;background:linear-gradient(180deg,#fff1ec 0%,#ffffff 100%);">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="380" style="display:block;margin:0 auto 16px;max-width:78%;height:auto;image-rendering:pixelated;">
+          <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:15px;color:#ec5a38;letter-spacing:2px;text-transform:uppercase;line-height:1.6;">${esc(pet)}'s Licence</h1>
+          <p style="margin:12px 0 0;font-size:15px;color:#5a5148;line-height:1.6;">
+            Here it is, straight off the press. Your free digital copy is attached below. Show it off, share it, give ${esc(pet)} the recognition they deserve.
+          </p>
+        </td></tr>
+
+        <!-- The licence itself (inline attachment via cid) -->
+        <tr><td style="padding:20px 32px 8px;text-align:center;">
+          <img src="cid:licence" alt="${esc(pet)}'s pet licence" width="480" style="display:block;margin:0 auto;max-width:100%;height:auto;border-radius:10px;border:1px solid #ece7dd;">
+        </td></tr>
+
+        <tr><td style="padding:8px 32px 4px;text-align:center;">
+          <p style="margin:0;font-size:13px;color:#9aa0ab;line-height:1.5;">This one has a small "not a government document" line printed on it. Want the real thing?</p>
+        </td></tr>
+
+        <!-- Order the physical card -->
+        <tr><td style="padding:16px 32px 8px;">
+          <div style="background:#fff1ec;border:1px dashed #ff6f4d;border-radius:10px;padding:20px;text-align:center;">
+            <div style="font-size:15px;color:#ec5a38;font-weight:800;margin-bottom:8px;">🎁 Get the real card skin</div>
+            <p style="margin:0 0 14px;font-size:14px;color:#5a5148;line-height:1.6;">
+              We print ${esc(pet)}'s licence as a premium sticker that fits right over a real credit or debit card, then ship it to your door. No watermark, just the good stuff.
+            </p>
+            <a href="${esc(orderUrl)}" style="display:inline-block;padding:13px 26px;background:#ff6f4d;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:800;font-size:14px;letter-spacing:.5px;">Order ${esc(pet)}'s card →</a>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px;text-align:center;font-size:12px;color:#9aa0ab;line-height:1.6;border-top:1px solid #ece7dd;">
+          You asked us to email ${esc(pet)}'s licence, so here we are. Reply any time, a real human reads these.<br>
+          <span style="opacity:.7;">Pet License Factory · Novelty pet ID art · Not a real government document.</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text =
+`${pet}'s licence is here! 🐾
+
+Your free digital copy is attached to this email. Show it off, share it, and give ${pet} the recognition they deserve.
+
+Want the real thing? We print ${pet}'s licence as a premium sticker that fits over a real credit or debit card and ship it to your door, no watermark:
+${orderUrl}
+
+You asked us to email ${pet}'s licence, so here we are. Reply any time, a real human reads these.
+
+— Pet License Factory`;
+
+  const type = mimeType || 'image/jpeg';
+  const ext = type === 'image/webp' ? 'webp' : (type === 'image/png' ? 'png' : 'jpg');
+  const attachments = imageBase64 ? [{
+    content: imageBase64,
+    type,
+    filename: filename || `${pet.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'pet'}-licence.${ext}`,
+    disposition: 'inline',
+    content_id: 'licence',
+  }] : undefined;
+
+  return sendEmail(env, {
+    to, subject, html, text, attachments,
+    customArgs: { email_type: 'free_licence' },
+  });
 }
 
 // ── Creator onboarding (affiliate program) ──────────────────────────────────

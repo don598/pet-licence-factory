@@ -279,6 +279,22 @@ input::placeholder{color:var(--faint);font-weight:600}
 @keyframes rot{to{transform:rotate(360deg)}}
 .trust{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:13px;font-size:11.5px;color:var(--muted);font-weight:700;flex-wrap:wrap}
 .trust span{display:inline-flex;align-items:center;gap:5px}
+
+/* ── Free digital licence (secondary, subordinate to checkout) ── */
+.free-digital{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line-2);text-align:center}
+.fd-toggle{background:none;border:none;color:var(--muted);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;padding:4px 6px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line-2);transition:color .15s}
+.fd-toggle:hover{color:var(--brand-dk);text-decoration-color:var(--brand)}
+.fd-form{margin-top:12px;text-align:left;animation:previewIn .3s cubic-bezier(.2,.7,.2,1)}
+.fd-row{display:flex;gap:8px;align-items:stretch}
+.fd-row input{flex:1;min-width:0}
+.fd-send{flex-shrink:0;font-family:inherit;font-weight:800;font-size:14px;background:var(--surface-2);color:var(--brand-dk);border:1.5px solid #ffd0c4;border-radius:11px;padding:10px 15px;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,transform .08s}
+.fd-send:hover:not(:disabled){background:var(--brand-soft);border-color:var(--brand);transform:translateY(-1px)}
+.fd-send:disabled{opacity:.6;cursor:default}
+.fd-fine{margin:8px 2px 0;font-size:11.5px;color:var(--faint);font-weight:600;line-height:1.5}
+.fd-msg{margin-top:8px;font-size:13px;font-weight:700;line-height:1.5;display:none}
+.fd-msg.show{display:block}
+.fd-msg.ok{color:var(--good)}
+.fd-msg.err{color:var(--brand-dk)}
 .err{color:var(--brand-dk);background:var(--brand-soft);border:1px solid #ffd6cb;border-radius:11px;padding:11px 13px;font-size:13.5px;font-weight:700;margin-top:13px;display:none}
 .err.show{display:block;animation:stepInR .25s ease}
 
@@ -516,6 +532,19 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
             <div class="ship-note">Shipping calculated at checkout (from $0.95).</div>
             <button class="cta" id="checkoutBtn"><span class="spin"></span><span class="ico">🔒</span><span class="label">Checkout securely</span></button>
             <div class="trust"><span>🔒 Secure Stripe checkout</span><span>🇺🇸 Ships in the US</span></div>
+
+            <!-- Secondary, subordinate option: free watermarked digital licence by email -->
+            <div class="free-digital" id="freeDigital">
+              <button type="button" class="fd-toggle" id="fdToggle" aria-expanded="false" aria-controls="fdForm" data-track="free-digital-toggle">Just want a free digital version? We'll email it to you</button>
+              <div class="fd-form" id="fdForm" hidden>
+                <div class="fd-row">
+                  <input type="email" id="fdEmail" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Your email address"/>
+                  <button type="button" class="fd-send" id="fdSend" data-track="free-digital-send"><span class="fd-send-label">Send my licence</span></button>
+                </div>
+                <p class="fd-fine">We'll email your pet's licence and the occasional treat. Unsubscribe anytime.</p>
+                <div class="fd-msg" id="fdMsg" role="status" aria-live="polite"></div>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -971,20 +1000,45 @@ function go(n, dir){ cur = n; maxReached = Math.max(maxReached, n); showStep(n, 
 $('wizNext').addEventListener('click', function(){ if(validateStep(cur) && cur < TOTAL_STEPS) go(cur+1, 'f'); });
 $('wizBack').addEventListener('click', function(){ if(cur > 1) go(cur-1, 'b'); clearErr(); });
 
-// ── Composite snapshot for success page ──
-function buildSnapshot(cb){
+// ── Composite licence render (canvas) ──
+// opts: { width, quality, mime, watermark }. The watermark variant is used for
+// the free digital licence — it prints a microprint disclaimer line along the
+// bottom edge so the freebie is clearly novelty and drives traffic back to us.
+function renderLicence(opts, cb){
+  opts = opts||{};
+  var W = opts.width||660, quality = opts.quality||0.8, mime = opts.mime||'image/jpeg';
+  var watermark = !!opts.watermark;
   try{
     var tpl = new Image(); tpl.crossOrigin='anonymous';
     tpl.onload = function(){
-      var W=660, H=Math.round(W*TH/TW);
+      var H=Math.round(W*TH/TW);
       var c=document.createElement('canvas'); c.width=W; c.height=H;
       var ctx=c.getContext('2d'); ctx.drawImage(tpl,0,0,W,H);
       function box(f){ return {x:f.x/TW*W,y:f.y/TH*H,w:f.w/TW*W,h:f.h/TH*H}; }
+      function drawWatermark(){
+        if(!watermark) return;
+        var txt='ISSUED BY PETLICENSEFACTORY.COM · NOT A GOVERNMENT DOCUMENT';
+        var fs=Math.max(6, Math.round(H*0.021));
+        ctx.save();
+        ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+        ctx.font='700 '+fs+"px 'Nunito',system-ui,-apple-system,sans-serif";
+        try{ ctx.letterSpacing = Math.max(0.4, fs*0.06)+'px'; }catch(_){}
+        // shrink to fit within the card width if needed
+        var guard=0;
+        while(ctx.measureText(txt).width > W*0.94 && fs>5 && guard++<40){ fs-=0.5; ctx.font='700 '+fs+"px 'Nunito',system-ui,sans-serif"; }
+        var y=H - Math.round(H*0.014);
+        // faint light halo for legibility over any bottom-border art
+        ctx.fillStyle='rgba(255,253,248,0.55)';
+        ctx.fillText(txt, W/2+0.6, y+0.6);
+        ctx.fillStyle='rgba(38,26,12,0.78)';
+        ctx.fillText(txt, W/2, y);
+        ctx.restore();
+      }
       function drawText(){
         ctx.textBaseline='middle';
         function t(k,val,col){
           if(!val) return; var f=box(FIELDS[k]); ctx.fillStyle=col||'#1a0a00';
-          var px=Math.max(5,Math.min(f.h*0.5,f.w*0.16,11));
+          var px=Math.max(5,Math.min(f.h*0.5,f.w*0.16,11)) * (W/660);
           ctx.font=px+"px 'Press Start 2P',monospace"; ctx.textAlign='left';
           while(ctx.measureText(val).width>f.w-4 && px>4){ px-=0.4; ctx.font=px+"px 'Press Start 2P',monospace"; }
           ctx.fillText(val,f.x+2,f.y+f.h/2);
@@ -1001,20 +1055,27 @@ function buildSnapshot(cb){
         t('addrLine1',l1); t('addrLine2',l2);
         var sig=box(SIG), name=(first+' '+last).trim();
         ctx.fillStyle='#1a0a00'; ctx.textAlign='center';
-        var sp=Math.min(sig.h*0.7,16); ctx.font=sp+"px 'Sacramento',cursive";
+        var sp=Math.min(sig.h*0.7,16) * (W/660); ctx.font=sp+"px 'Sacramento',cursive";
         while(ctx.measureText(name).width>sig.w-4 && sp>6){ sp-=0.5; ctx.font=sp+"px 'Sacramento',cursive"; }
         ctx.fillText(name,sig.x+sig.w/2,sig.y+sig.h/2);
-        cb(c.toDataURL('image/jpeg',0.8));
+        drawWatermark();
+        cb(c.toDataURL(mime,quality));
       }
       if(state.photo){
         var pm=box({x:971,y:222,w:285,h:433});
         var pimg=new Image();
         pimg.onload=function(){
           ctx.save(); ctx.beginPath(); ctx.rect(pm.x,pm.y,pm.w,pm.h); ctx.clip();
-          var cover=Math.max(pm.w/pimg.width, pm.h/pimg.height), eff=cover*state.crop.zoom;
+          // Sanitise crop values — renderPhoto can leave cx/cy/zoom as NaN if it
+          // ever runs against a zero-size box, and NaN coords make drawImage a
+          // no-op (the pet silently vanishes). Fall back to a centred crop.
+          var zoom=(isFinite(state.crop.zoom)&&state.crop.zoom>0)?state.crop.zoom:1;
+          var rawCx=isFinite(state.crop.cx)?state.crop.cx:0.5;
+          var rawCy=isFinite(state.crop.cy)?state.crop.cy:0.5;
+          var cover=Math.max(pm.w/pimg.width, pm.h/pimg.height), eff=cover*zoom;
           var dw=pimg.width*eff, dh=pimg.height*eff;
-          var minCx=pm.w/(2*dw), maxCx=1-minCx, cx=(minCx>maxCx)?0.5:Math.max(minCx,Math.min(maxCx,state.crop.cx));
-          var minCy=pm.h/(2*dh), maxCy=1-minCy, cy=(minCy>maxCy)?0.5:Math.max(minCy,Math.min(maxCy,state.crop.cy));
+          var minCx=pm.w/(2*dw), maxCx=1-minCx, cx=(minCx>maxCx)?0.5:Math.max(minCx,Math.min(maxCx,rawCx));
+          var minCy=pm.h/(2*dh), maxCy=1-minCy, cy=(minCy>maxCy)?0.5:Math.max(minCy,Math.min(maxCy,rawCy));
           ctx.drawImage(pimg, pm.x + pm.w/2 - cx*dw, pm.y + pm.h/2 - cy*dh, dw, dh); ctx.restore();
           drawText();
         };
@@ -1025,6 +1086,9 @@ function buildSnapshot(cb){
     tpl.src='images/Blank Card cropped.jpeg';
   }catch(e){ cb(null); }
 }
+
+// Success-page snapshot (unchanged behaviour): 660px, no watermark.
+function buildSnapshot(cb){ renderLicence({width:660,quality:0.8}, cb); }
 
 // ── Checkout ──
 var checking=false;
@@ -1094,6 +1158,93 @@ function checkout(){
   });
 }
 $('checkoutBtn').addEventListener('click', checkout);
+
+// ── Free digital licence (email capture) ──
+// Secondary path off Step 5. Reachable only after a photo (step 1) and details
+// (step 2) exist, so a renderable preview is guaranteed. Never blocks checkout.
+(function(){
+  var toggle=$('fdToggle'), form=$('fdForm'), emailIn=$('fdEmail'),
+      sendBtn=$('fdSend'), msg=$('fdMsg'), sending=false;
+  if(!toggle) return;
+
+  function showMsg(text, kind){
+    msg.textContent=text; msg.className='fd-msg show '+(kind||'');
+  }
+  function clearMsg(){ msg.textContent=''; msg.className='fd-msg'; }
+
+  toggle.addEventListener('click', function(){
+    var open = !form.hidden;
+    form.hidden = open;
+    toggle.setAttribute('aria-expanded', String(!open));
+    if(!open){ setTimeout(function(){ try{ emailIn.focus(); }catch(e){} }, 30); }
+  });
+
+  function getAttr(){
+    var a={};
+    try{ a = JSON.parse(sessionStorage.getItem('plf_attr')||'{}')||{}; }catch(e){}
+    return a;
+  }
+
+  function send(){
+    if(sending) return;
+    var email=(emailIn.value||'').trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      showMsg('Hmm, that email doesn’t look right. Mind checking it?','err');
+      try{ emailIn.focus(); }catch(e){}
+      return;
+    }
+    if(!state.photo){ showMsg('Add a photo of your pet first so we can make the licence 📸','err'); return; }
+
+    sending=true;
+    var lbl=sendBtn.querySelector('.fd-send-label');
+    var prev=lbl.textContent; lbl.textContent='Sending…'; sendBtn.disabled=true; emailIn.disabled=true;
+    clearMsg();
+    if(window.PLFTrack) PLFTrack.step('free_digital_requested');
+
+    function fail(m){
+      sending=false; sendBtn.disabled=false; emailIn.disabled=false; lbl.textContent=prev;
+      showMsg(m||'Something went wrong. Please try again in a moment.','err');
+    }
+
+    var render = function(){
+      renderLicence({width:900,quality:0.85,mime:'image/jpeg',watermark:true}, function(img){
+        if(!img){ fail("We couldn’t build the licence image. Please try again."); return; }
+        var attr=getAttr();
+        var first=$('fFirst').value.trim();
+        fetch('/api/free-licence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+          email:email,
+          petName:first||'your pet',
+          image:img,
+          v:(window.PLFTrack&&PLFTrack.visitorId)||null,
+          s:(window.PLFTrack&&PLFTrack.sessionId)||null,
+          utm_source:attr.utm_source||null,
+          utm_campaign:attr.utm_campaign||null
+        })})
+        .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+        .then(function(res){
+          if(res.ok && res.d && res.d.ok){
+            sending=false; emailIn.disabled=false;
+            sendBtn.disabled=false; lbl.textContent=prev;
+            form.querySelector('.fd-row').style.display='none';
+            form.querySelector('.fd-fine').style.display='none';
+            showMsg('Check your inbox! '+(first?first:'Your pet')+'’s licence is on its way 🎉','ok');
+            if(window.PLFTrack) PLFTrack.event('free_digital_sent','ok');
+          } else {
+            fail((res.d&&res.d.error)||'Something went wrong. Please try again in a moment.');
+          }
+        })
+        .catch(function(err){ console.error('free-licence error',err); fail(); });
+      });
+    };
+    // Render directly. Fonts are already loaded by Step 5 (the live DOM preview
+    // uses them), and deferring the render into a microtask/promise callback
+    // makes the pet-photo Image load race and drop out of the canvas.
+    render();
+  }
+
+  sendBtn.addEventListener('click', send);
+  emailIn.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); send(); } });
+})();
 
 // ── Smooth-scroll CTAs to the builder (keeps cold visitors on-page) ──
 function scrollToBuilder(){
