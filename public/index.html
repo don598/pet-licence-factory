@@ -205,6 +205,20 @@ h1 .hl{color:var(--brand-dk)}
 .adjust input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--brand);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25);border:2px solid #fff}
 .adjust input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--brand);cursor:pointer;border:2px solid #fff}
 
+/* ── Retro D-pad photo controls (in preview modal) ── */
+.crop-ctl{display:flex;align-items:center;justify-content:center;gap:22px;margin-top:14px;flex-wrap:wrap}
+.crop-ctl .cc-lab{width:100%;text-align:center;font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:.5px;color:var(--muted);margin-bottom:4px;text-transform:uppercase}
+.dpad{display:grid;grid-template-columns:repeat(3,36px);grid-template-rows:repeat(3,36px);gap:4px;flex-shrink:0}
+.dpad .pad{font-family:inherit;font-weight:900;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;background:var(--brand-soft);color:var(--brand-dk);border:2px solid var(--brand);border-radius:6px;cursor:pointer;padding:0;image-rendering:pixelated;box-shadow:0 3px 0 var(--brand-dk);transition:transform .05s,box-shadow .05s,background .12s;-webkit-user-select:none;user-select:none;touch-action:none}
+.dpad .pad:hover{background:#ffe1d7}
+.dpad .pad:active,.dpad .pad.holding{transform:translateY(3px);box-shadow:0 0 0 var(--brand-dk);background:var(--brand);color:#fff}
+.dpad .hub{display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:2px solid var(--line-2);border-radius:6px;color:var(--faint);font-size:13px}
+.dp-up{grid-area:1/2}.dp-left{grid-area:2/1}.dp-hub{grid-area:2/2}.dp-right{grid-area:2/3}.dp-down{grid-area:3/2}
+.zoomctl{display:flex;flex-direction:column;gap:6px;align-items:center}
+.zoomctl .zbtn{font-family:'Press Start 2P',monospace;font-size:12px;width:54px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--brand-soft);color:var(--brand-dk);border:2px solid var(--brand);border-radius:6px;cursor:pointer;box-shadow:0 3px 0 var(--brand-dk);transition:transform .05s,box-shadow .05s,background .12s;-webkit-user-select:none;user-select:none;touch-action:none}
+.zoomctl .zbtn:hover{background:#ffe1d7}
+.zoomctl .zbtn:active,.zoomctl .zbtn.holding{transform:translateY(3px);box-shadow:0 0 0 var(--brand-dk);background:var(--brand);color:#fff}
+
 /* Form */
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
 .field{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
@@ -580,7 +594,21 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
       <div class="ov" id="ov-photo"><img id="petImg" alt="" draggable="false"/><span class="ph">Your<br>pet's<br>photo</span></div>
       <!-- text overlays injected by JS -->
     </div>
-    <div class="modal-hint">Drag your pet to reposition &middot; pinch, scroll, or use the slider to zoom</div>
+    <div class="modal-hint">Use the D-pad to move your pet &middot; +/&minus; to zoom &middot; or drag the photo</div>
+    <div class="crop-ctl" id="cropCtl">
+      <span class="cc-lab">Reframe your pet</span>
+      <div class="dpad" role="group" aria-label="Move photo">
+        <button type="button" class="pad dp-up"    id="dpad-up"    aria-label="Move photo up">&#9650;</button>
+        <button type="button" class="pad dp-left"  id="dpad-left"  aria-label="Move photo left">&#9664;</button>
+        <div class="hub dp-hub" aria-hidden="true">&#10011;</div>
+        <button type="button" class="pad dp-right" id="dpad-right" aria-label="Move photo right">&#9654;</button>
+        <button type="button" class="pad dp-down"  id="dpad-down"  aria-label="Move photo down">&#9660;</button>
+      </div>
+      <div class="zoomctl">
+        <button type="button" class="zbtn" id="dpad-zoom-in"  aria-label="Zoom in">+</button>
+        <button type="button" class="zbtn" id="dpad-zoom-out" aria-label="Zoom out">&minus;</button>
+      </div>
+    </div>
     <div class="adjust show" id="adjustRow">
       <span class="adjust-lab">🔍 Zoom</span>
       <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1" aria-label="Zoom photo"/>
@@ -837,6 +865,56 @@ ovPhoto.addEventListener('wheel', function(e){
 }, {passive:false});
 $('zoomRange').addEventListener('input', function(){ state.crop.zoom = parseFloat(this.value); renderPhoto(); });
 $('resetCrop').addEventListener('click', function(){ state.crop = {cx:0.5,cy:0.5,zoom:1}; $('zoomRange').value = 1; renderPhoto(); });
+
+// ── Retro D-pad: nudge + zoom, tap or press-and-hold (mouse + touch) ──
+// renderPhoto() re-clamps cx/cy/zoom into the valid window every call, so the
+// photo can never be pushed fully out of the frame (no blank window, no NaN).
+var CROP_NUDGE = 0.028;   // normalized image-space step per tick
+var ZOOM_STEP  = 0.14;
+function nudgeCrop(dx, dy){
+  if(!state.photo) return;
+  var cx = isFinite(state.crop.cx) ? state.crop.cx : 0.5;
+  var cy = isFinite(state.crop.cy) ? state.crop.cy : 0.5;
+  state.crop.cx = cx + dx;
+  state.crop.cy = cy + dy;
+  renderPhoto();
+}
+function zoomCrop(dir){
+  if(!state.photo) return;
+  var z = isFinite(state.crop.zoom) ? state.crop.zoom : 1;
+  state.crop.zoom = clamp(1, z + dir*ZOOM_STEP, 3);
+  $('zoomRange').value = state.crop.zoom;
+  renderPhoto();
+}
+// Press-and-hold: fire once immediately, then repeat ~70ms while held.
+function holdRepeat(btn, fn){
+  if(!btn) return;
+  var timer=null, delay=null;
+  function stop(){
+    if(delay){ clearTimeout(delay); delay=null; }
+    if(timer){ clearInterval(timer); timer=null; }
+    btn.classList.remove('holding');
+  }
+  function start(e){
+    if(timer||delay) return;
+    if(e && e.preventDefault) e.preventDefault();
+    fn();
+    btn.classList.add('holding');
+    delay = setTimeout(function(){ timer = setInterval(fn, 70); }, 260);
+  }
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', stop);
+  btn.addEventListener('pointerleave', stop);
+  btn.addEventListener('pointercancel', stop);
+  // Keyboard access (single nudge per keypress).
+  btn.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); fn(); } });
+}
+holdRepeat($('dpad-up'),        function(){ nudgeCrop(0, +CROP_NUDGE); });
+holdRepeat($('dpad-down'),      function(){ nudgeCrop(0, -CROP_NUDGE); });
+holdRepeat($('dpad-left'),      function(){ nudgeCrop(+CROP_NUDGE, 0); });
+holdRepeat($('dpad-right'),     function(){ nudgeCrop(-CROP_NUDGE, 0); });
+holdRepeat($('dpad-zoom-in'),   function(){ zoomCrop(+1); });
+holdRepeat($('dpad-zoom-out'),  function(){ zoomCrop(-1); });
 $('dropzone').addEventListener('click', function(){ $('fileInput').click(); });
 $('changePhoto').addEventListener('click', function(){ $('fileInput').click(); });
 $('fileInput').addEventListener('change', function(e){ if(e.target.files[0]) handleFile(e.target.files[0]); });
