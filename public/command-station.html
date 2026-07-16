@@ -3745,8 +3745,42 @@ async function openStripeContact(id) {
   try {
     const data = await adminAPI('get_stripe_contact', { id });
     m.querySelector('.ea-body').innerHTML = renderStripeContactRows(data);
+    // Wire up the resend button (if the Stripe email differs from the
+    // bounced order email — see renderStripeContactRows) after it's in the
+    // DOM, so the handler closes over the live order id + target email
+    // instead of round-tripping through an HTML attribute.
+    const btn = m.querySelector('#stripe-resend-btn');
+    if (btn) btn.addEventListener('click', () => resendConfirmationToStripeEmail(id, data.email));
   } catch (err) {
     m.querySelector('.ea-body').innerHTML = `<div class="ea-empty">Could not load Stripe contact info: ${esc(err.message || String(err))}</div>`;
+  }
+}
+
+// Bounce-recovery resend: the Stripe email differs from the one that
+// bounced — confirm, call admin-api's resend_confirmation_to (sends the
+// standard confirmation + corrects customer_email on success), then show an
+// inline result and cheaply refresh the orders list so the bounce badge
+// updates without a full page reload.
+async function resendConfirmationToStripeEmail(id, email) {
+  if (!confirm(`Email bounced. Resend confirmation to ${email}?\n\nThis will also update the order's email on file to this address.`)) return;
+
+  const btn = document.getElementById('stripe-resend-btn');
+  const status = document.getElementById('stripe-resend-status');
+  const origLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  if (status) status.innerHTML = '<span class="spinner"></span> Resending confirmation…';
+
+  try {
+    const res = await adminAPI('resend_confirmation_to', { id, email });
+    if (status) {
+      status.innerHTML = `<span style="color:var(--green)">✓ Confirmation resent to ${esc(res.newEmail)}. `
+        + `Order email updated (was ${esc(res.previousEmail)}).</span>`;
+    }
+    if (btn) btn.remove();
+    loadOrders(); // non-blocking — modal already reflects the outcome above
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = origLabel; }
+    if (status) status.innerHTML = `<span style="color:var(--red)">Could not resend: ${esc(err.message || String(err))}</span>`;
   }
 }
 function closeStripeContact() {
@@ -3780,13 +3814,24 @@ function renderStripeContactRows(data) {
     `<div class="ea-row"><div class="ea-type">${esc(label)}</div><div class="ea-right">${valueHtml}</div></div>`;
 
   let emailHtml = data.email ? esc(data.email) : empty('Not collected');
+  let resendRow = '';
   if (data.email && data.emailMatchesBounced) {
     emailHtml += ` <span style="color:var(--muted);font-size:10px;">(same as the bounced address)</span>`;
+  } else if (data.email && !data.emailMatchesBounced) {
+    // Stripe's email exists and differs from the address that bounced — offer
+    // to resend the confirmation there and correct the order's email on file.
+    // Bound to a click handler by openStripeContact (needs the live order id).
+    resendRow = `<div class="ea-row"><div class="ea-type"></div><div class="ea-right">`
+      + `<button type="button" id="stripe-resend-btn" class="stripe-contact-btn" `
+      + `style="border-style:solid;color:var(--accent);border-color:var(--accent)">`
+      + `Email bounced. Resend confirmation to ${esc(data.email)}?</button>`
+      + `</div></div><div class="ea-empty" id="stripe-resend-status" style="padding:6px 2px 0;text-align:right;"></div>`;
   }
 
   let rows = '';
   rows += row('Name', data.name ? esc(data.name) : empty('Not collected'));
   rows += row('Email', emailHtml);
+  rows += resendRow;
   rows += row('Phone', data.phone ? esc(data.phone) : empty('Not collected at checkout'));
   const a = data.address;
   if (a) {

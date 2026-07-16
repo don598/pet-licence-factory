@@ -675,6 +675,97 @@ export async function onRequest(context) {
         });
       }
 
+      // Bounce-recovery resend: the Stripe contact lookup above surfaced an
+      // email that differs from the one that bounced — send the standard
+      // order confirmation to that address and, on success, correct
+      // customer_email so future shipping/tracking emails land too. Refuses
+      // unless the order's *current* address actually has a bounce/dropped
+      // event on file, so this can't be used as a generic "change email"
+      // backdoor. Re-running it after a successful resend fails the
+      // "differs from current" check by design — that's the idempotency
+      // guard, not a bug.
+      case 'resend_confirmation_to': {
+        const { id, email } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+
+        const target = String(email || '').trim();
+        if (!target || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) {
+          return json(400, { error: 'Please provide a valid email address.' });
+        }
+
+        const res = await db.query('SELECT * FROM pet_orders WHERE id = $1', [id]);
+        const order = res.rows[0];
+        if (!order) return json(404, { error: 'Order not found' });
+
+        if (!order.customer_email) {
+          return json(400, { error: 'This order has no customer email on file to recover from.' });
+        }
+        if (target.toLowerCase() === String(order.customer_email).trim().toLowerCase()) {
+          return json(400, {
+            error: 'That email matches the order\'s current address — nothing to resend to. '
+              + '(If you already resent to this address, the order was already updated — that\'s expected.)',
+          });
+        }
+
+        // This action is only for bounce recovery, not a general "resend to
+        // whoever" tool — require an actual bounce/dropped event against the
+        // order's current email.
+        const bounced = await db.query(
+          `SELECT 1 FROM email_events
+             WHERE order_id = $1 AND event IN ('bounce', 'dropped')
+               AND lower(email) = lower($2)
+             LIMIT 1`,
+          [order.order_id, order.customer_email]
+        );
+        if (bounced.rows.length === 0) {
+          return json(400, {
+            error: 'No bounced/dropped email event on record for this order\'s current address — resend-to-new-email is only for bounce recovery.',
+          });
+        }
+
+        let sendResult;
+        try {
+          sendResult = await sendOrderConfirmationEmail(env, {
+            orderId:        order.order_id,
+            customerEmail:  target,
+            customerName:   order.customer_name,
+            petFirstName:   order.pet_first_name,
+            petLastName:    order.pet_last_name,
+            packCount:      order.pack_count,
+            addOn:          order.add_on,
+            chipSize:       order.chip_size,
+            shippingOption: order.shipping_option,
+            // Mirrors force_fulfill: order.total is the client-submitted full
+            // price, but a 100%-off creator freebie actually cost $0.
+            total:          order.affiliate_is_freebie ? 'Free' : order.total,
+            shipAddrLine1:  order.ship_addr_line1,
+            shipAddrLine2:  order.ship_addr_line2,
+            shipCity:       order.ship_city,
+            shipState:      order.ship_state,
+            shipZip:        order.ship_zip,
+            shipCountry:    order.ship_country,
+          });
+        } catch (err) {
+          console.error('resend_confirmation_to: send failed:', err);
+          return json(502, { error: 'Could not send confirmation email: ' + (err.message || err) });
+        }
+
+        if (sendResult && sendResult.skipped) {
+          return json(502, { error: 'Email send was skipped (' + (sendResult.reason || 'no SendGrid key configured') + ') — order was not updated.' });
+        }
+        if (sendResult && sendResult.success === false) {
+          return json(502, { error: 'SendGrid rejected the send: ' + (sendResult.error || 'unknown error') + ' — order was not updated.' });
+        }
+
+        const previousEmail = order.customer_email;
+        await db.query(
+          `UPDATE pet_orders SET customer_email = $1, updated_at = NOW() WHERE id = $2`,
+          [target, id]
+        );
+
+        return json(200, { success: true, previousEmail, newEmail: target, orderId: order.order_id });
+      }
+
       default:
         return json(400, { error: `Unknown action: ${action}` });
     }
