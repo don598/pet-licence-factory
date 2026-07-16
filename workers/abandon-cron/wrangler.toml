@@ -1,0 +1,15 @@
+# ── Pet Licence Factory — Card-Abandonment Cron Worker ─────────────────────
+# A standalone Worker (separate from the Pages project). Deploy manually with
+# `wrangler deploy` from this directory. See README.md.
+name = "plf-abandon-cron"
+main = "index.js"
+compatibility_date = "2024-09-23"
+
+# Run hourly, on the hour. The endpoint is idempotent (abandon_sent_at dedupe)
+# and caps sends per run, so an occasional overlap is harmless.
+[triggers]
+crons = ["0 * * * *"]
+
+# ABANDON_CRON_SECRET is a SECRET, not set here. Set it with:
+#   wrangler secret put ABANDON_CRON_SECRET
+# (and set the SAME value on the Pages project — see README.md).

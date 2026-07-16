@@ -29,7 +29,7 @@ export function esc(v) {
 // ── Low-level send ───────────────────────────────────────────────────────────
 // `attachments` (optional): array of SendGrid attachment objects, each
 // { content (pure base64, no data: prefix), type, filename, disposition, content_id }.
-export async function sendEmail(env, { to, subject, html, text, replyTo, customArgs, attachments }) {
+export async function sendEmail(env, { to, subject, html, text, replyTo, customArgs, attachments, asmGroupId, subscriptionTracking }) {
   const apiKey = env.SENDGRID_API_KEY;
   if (!apiKey) {
     console.warn('[SendGrid] No SENDGRID_API_KEY set — skipping email to', to);
@@ -67,6 +67,20 @@ export async function sendEmail(env, { to, subject, html, text, replyTo, customA
 
   if (Array.isArray(attachments) && attachments.length) {
     body.attachments = attachments;
+  }
+
+  // CAN-SPAM unsubscribe. Prefer a real ASM group (one-click, honored by
+  // SendGrid); otherwise enable subscription tracking, which swaps the
+  // "[unsubscribe]" token in the body for a working unsubscribe URL.
+  if (asmGroupId) {
+    body.asm = { group_id: asmGroupId };
+  } else if (subscriptionTracking) {
+    body.tracking_settings = {
+      subscription_tracking: {
+        enable: true,
+        substitution_tag: '[unsubscribe]',
+      },
+    };
   }
 
   const resp = await fetch(SENDGRID_ENDPOINT, {
@@ -525,6 +539,104 @@ You asked us to email ${pet}'s licence, so here we are. Reply any time, a real h
   return sendEmail(env, {
     to, subject, html, text, attachments,
     customArgs: { email_type: 'free_licence' },
+  });
+}
+
+// ── Card-abandonment nudge (2–72h after a free-licence capture) ─────────────
+// Sent by the /api/send-abandonment cron to leads who grabbed the free digital
+// licence but never bought the physical card skin. Re-attaches their own
+// rendered licence (inline via cid "licence") and offers 15% off. One send per
+// lead, ever. Copy is warm, short, and free of em dashes (owner's style rule).
+// CAN-SPAM: physical-address footer + a working unsubscribe link.
+export async function sendAbandonmentEmail(env, { to, petName, imageBase64, mimeType, filename, leadId }) {
+  if (!to) return { skipped: true, reason: 'no email' };
+
+  const pet = (petName || '').trim();
+  const petLabel = pet || 'your pet';
+  const ctaUrl = 'https://petlicensefactory.com/?disc=1&utm_source=email&utm_medium=abandon&utm_campaign=card_abandon';
+  const subject = pet
+    ? `${pet}'s licence is one click from real`
+    : `Your pet's licence is still waiting`;
+
+  // Unsubscribe: prefer a real SendGrid ASM group (one-click, honored by
+  // SendGrid) when one is configured; otherwise fall back to SendGrid's
+  // subscription-tracking [unsubscribe] substitution injected below.
+  const asmGroupId = env.SENDGRID_ASM_GROUP_ID ? parseInt(env.SENDGRID_ASM_GROUP_ID, 10) : null;
+  // ASM groups expose a raw-URL substitution tag; the subscription-tracking
+  // fallback replaces a plain "[unsubscribe]" token wherever it appears.
+  const unsubHref = asmGroupId ? '<%asm_group_unsubscribe_raw_url%>' : '[unsubscribe]';
+
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#fbf7f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fbf7f0;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #ff6f4d;border-radius:14px;overflow:hidden;">
+
+        <tr><td style="padding:30px 32px 12px;text-align:center;background:linear-gradient(180deg,#fff1ec 0%,#ffffff 100%);">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="380" style="display:block;margin:0 auto 16px;max-width:78%;height:auto;image-rendering:pixelated;">
+          <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:15px;color:#ec5a38;letter-spacing:2px;text-transform:uppercase;line-height:1.6;">${esc(petLabel)}'s Licence</h1>
+          <p style="margin:12px 0 0;font-size:15px;color:#5a5148;line-height:1.6;">
+            You built ${esc(petLabel)}'s licence the other day, here it is again. It came out great, so we saved you a spot.
+          </p>
+        </td></tr>
+
+        <!-- Their own licence (inline attachment via cid) -->
+        <tr><td style="padding:20px 32px 8px;text-align:center;">
+          <img src="cid:licence" alt="${esc(petLabel)}'s pet licence" width="480" style="display:block;margin:0 auto;max-width:100%;height:auto;border-radius:10px;border:1px solid #ece7dd;">
+        </td></tr>
+
+        <!-- Offer + CTA -->
+        <tr><td style="padding:16px 32px 8px;">
+          <div style="background:#fff1ec;border:1px dashed #ff6f4d;border-radius:10px;padding:20px;text-align:center;">
+            <div style="font-size:15px;color:#ec5a38;font-weight:800;margin-bottom:8px;">🎁 Here is 15% off your first order</div>
+            <p style="margin:0 0 14px;font-size:14px;color:#5a5148;line-height:1.6;">
+              We print ${esc(petLabel)}'s licence as a premium sticker that fits right over a real credit or debit card, then ship it to your door (no watermark, just the good stuff). Your 15% first-timer discount is ready to go.
+            </p>
+            <a href="${esc(ctaUrl)}" style="display:inline-block;padding:14px 28px;background:#ff6f4d;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;letter-spacing:.5px;">Get ${esc(petLabel)}'s real card, 15% off →</a>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px;text-align:center;font-size:12px;color:#9aa0ab;line-height:1.6;border-top:1px solid #ece7dd;">
+          You are getting this because you asked us to email ${esc(petLabel)}'s free licence. Reply any time, a real human reads these.<br>
+          <span style="opacity:.7;">Pet License Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054</span><br>
+          <a href="${unsubHref}" style="color:#9aa0ab;text-decoration:underline;">Unsubscribe</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text =
+`${petLabel}'s licence is one click from real.
+
+You built ${petLabel}'s licence the other day, here it is again (attached). It came out great, so we saved you a spot.
+
+Here is 15% off your first order: we print ${petLabel}'s licence as a premium sticker that fits over a real credit or debit card and ship it to your door, no watermark. Your 15% first-timer discount is ready:
+${ctaUrl}
+
+You are getting this because you asked us to email ${petLabel}'s free licence. Reply any time, a real human reads these.
+
+Pet License Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054
+Unsubscribe: ${unsubHref}
+
+— Pet License Factory`;
+
+  const type = mimeType || 'image/png';
+  const ext = type === 'image/webp' ? 'webp' : (type === 'image/jpeg' ? 'jpg' : 'png');
+  const attachments = imageBase64 ? [{
+    content: imageBase64,
+    type,
+    filename: filename || `${petLabel.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'pet'}-licence.${ext}`,
+    disposition: 'inline',
+    content_id: 'licence',
+  }] : undefined;
+
+  return sendEmail(env, {
+    to, subject, html, text, attachments,
+    customArgs: { email_type: 'abandon', lead_id: leadId },
+    asmGroupId,
+    subscriptionTracking: !asmGroupId,
   });
 }
 

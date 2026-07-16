@@ -1368,6 +1368,17 @@ function scrollToBuilder(){
   restart();
 })();
 
+// ── Abandonment email deep-link: ?disc=1 pre-checks the 15% first-timer box ──
+// The card-abandonment nudge links here with ?disc=1 so the discount is already
+// applied on arrival. Fire the checkbox's change handler so state.discount and
+// the total update exactly as if the visitor ticked it themselves.
+try{
+  if(new URLSearchParams(location.search).get('disc')==='1'){
+    var _dc=$('discCheck');
+    if(_dc && !_dc.checked){ _dc.checked=true; _dc.dispatchEvent(new Event('change')); }
+  }
+}catch(e){}
+
 // ── Go ──
 refreshPreview(); recalc(); renderStepper();
 if(window.PLFTrack) PLFTrack.step('step_1_photo');  // step 1 shows by default (no showStep call)

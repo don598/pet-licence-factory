@@ -81,7 +81,18 @@ For serverless functions locally, use `wrangler pages dev public` with a `.env` 
 │       ├── admin-api.js        # Admin API (JWT auth, order/task CRUD via pg)
 │       ├── create-checkout-session.js  # Stripe Checkout session creator
 │       ├── submit-order.js     # Order submission (generates order ID, validates, inserts into RDS)
-│       └── stripe-webhook.js   # Stripe webhook handler (updates RDS on payment)
+│       ├── stripe-webhook.js   # Stripe webhook handler (updates RDS on payment)
+│       ├── free-licence.js     # Free digital licence email-capture; also stashes the rendered
+│       │                       #   card PNG in R2 (abandon/lead-<id>.png) for the abandonment cron
+│       └── send-abandonment.js # Card-abandonment nudge: selects free-licence leads 2–72h old who
+│                               #   never bought, re-attaches their card, sends 15%-off email (POST,
+│                               #   x-cron-secret guarded, supports {dryRun:true})
+│
+├── workers/                    # Standalone Workers (NOT part of the Pages project, deploy by hand)
+│   └── abandon-cron/           # Hourly cron Worker that POSTs to /api/send-abandonment
+│       ├── index.js            #   with the x-cron-secret; index.js + wrangler.toml + README.md
+│       ├── wrangler.toml       #   crons = ["0 * * * *"]
+│       └── README.md           #   exact manual deploy steps (wrangler deploy, secrets, dryRun test)
 │
 ├── tools/                      # Dev tools (not deployed)
 │   ├── cat.html                # Pixel art tabby cat renderer (canvas)
@@ -137,6 +148,7 @@ For serverless functions locally, use `wrangler pages dev public` with a `.env` 
 | `functions/api/admin-api.js` | Admin API. JWT-based auth with bcrypt password verification. Handles order listing, updates, task CRUD. |
 | `functions/api/submit-order.js` | Server-side order submission. Generates order ID, validates input, inserts into RDS. Called from game/mobile pages via fetch. |
 | `functions/api/create-checkout-session.js` | Creates Stripe Checkout sessions. Handles 1-pack/2-pack pricing, decal add-on, discount calculation, shipping tiers. |
+| `functions/api/send-abandonment.js` | Card-abandonment email cron target. POST-only, `x-cron-secret` guarded. Selects `plf_leads` 2–72h old with a stored `licence_image_key`, not purchased (no `purchase_success` event, not on a paid-ish `pet_orders` row), `abandon_sent_at IS NULL`; re-attaches the card from R2 and sends the 15%-off nudge, then marks `abandon_sent_at`. `{dryRun:true}` reports candidates only. Poked hourly by `workers/abandon-cron/` (not auto-deployed). |
 | `functions/api/stripe-webhook.js` | Processes `checkout.session.completed` events. Updates RDS order with payment status and shipping address. |
 | `tools/daw.html` | PLF Music Studio. Full chiptune DAW for composing game music with sequencer, waveform selection, and export. |
 | `tools/sprite-builder.html` | Interactive sprite sheet builder/editor for creating 12-frame animation strips. |
@@ -173,6 +185,8 @@ All secrets are stored in Cloudflare Pages environment variables (dashboard or `
 | `SENDGRID_API_KEY` | SendGrid API key for transactional emails |
 | `SENDGRID_FROM_EMAIL` | Sender email address for SendGrid |
 | `SENDGRID_FROM_NAME` | Sender display name for SendGrid |
+| `ABANDON_CRON_SECRET` | Shared secret guarding `/api/send-abandonment`. Must be set on BOTH the Pages project AND the `plf-abandon-cron` Worker (same value). |
+| `SENDGRID_ASM_GROUP_ID` | Optional. Numeric SendGrid suppression-group id for the abandonment email's one-click unsubscribe. If absent, the email falls back to SendGrid subscription tracking (`[unsubscribe]` token). |
 
 Note: Cloudflare Hyperdrive is configured in `wrangler.toml` with binding `HYPERDRIVE` and handles the RDS connection pooling.
 

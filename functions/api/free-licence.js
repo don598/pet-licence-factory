@@ -64,6 +64,11 @@ async function ensureTable(db) {
           emails_sent  INT DEFAULT 1
         )`);
       await db.query(`CREATE INDEX IF NOT EXISTS idx_plf_leads_email ON plf_leads (email)`);
+      // Card-abandonment feature: the R2 key of the rendered licence image
+      // (so the follow-up cron can re-attach it), and the one-per-lead dedupe
+      // marker. Added lazily on existing deployments — safe to re-run.
+      await db.query(`ALTER TABLE plf_leads ADD COLUMN IF NOT EXISTS licence_image_key TEXT`);
+      await db.query(`ALTER TABLE plf_leads ADD COLUMN IF NOT EXISTS abandon_sent_at TIMESTAMPTZ`);
     })().then(
       () => { ensureTablePromise = true; },
       (err) => { ensureTablePromise = null; throw err; }   // allow a later retry
@@ -165,6 +170,7 @@ export async function onRequest(context) {
   }
 
   // ── Record the lead (insert new, or bump today's counter) ──
+  let leadId = null;
   try {
     if (recentRow) {
       await db.query(
@@ -176,17 +182,41 @@ export async function onRequest(context) {
           WHERE id = $1`,
         [recentRow.id, petName, utmSource, utmCampaign]
       );
+      leadId = recentRow.id;
     } else {
-      await db.query(
+      const ins = await db.query(
         `INSERT INTO plf_leads
            (email, pet_name, source, visitor_id, session_id, utm_source, utm_campaign)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7)
+         RETURNING id`,
         [email, petName, 'homepage_builder', visitorId, sessionId, utmSource, utmCampaign]
       );
+      leadId = ins.rows[0] && ins.rows[0].id;
     }
   } catch (err) {
     // Email already went out — don't fail the user over a logging miss.
     console.error('free-licence: lead upsert failed (non-fatal):', err && err.message);
+  }
+
+  // ── Persist the rendered licence image to R2 for the abandonment cron ──
+  // Non-fatal: the freebie email already shipped, so an R2 or DB miss here
+  // must never surface to the visitor. The abandonment cron only targets
+  // leads that actually have an image key, so a miss just skips that lead.
+  if (leadId && env.CREATOR_UPLOADS) {
+    try {
+      const key = `abandon/lead-${leadId}.png`;
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      await env.CREATOR_UPLOADS.put(key, bytes, {
+        httpMetadata: { contentType: mimeType },
+        customMetadata: { leadId: String(leadId), email, petName },
+      });
+      await db.query(
+        `UPDATE plf_leads SET licence_image_key = $1 WHERE id = $2`,
+        [key, leadId]
+      );
+    } catch (err) {
+      console.error('free-licence: licence image persist failed (non-fatal):', err && err.message);
+    }
   }
 
   return json(200, { ok: true });
