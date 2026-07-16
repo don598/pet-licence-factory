@@ -1838,10 +1838,13 @@ async function s5Checkout() {
     });
     const data = await resp.json();
     if (data.url) {
+      // Fire tracking THEN navigate after a short delay so the plf_events
+      // beacon + TikTok/Meta pixel can flush before the page unloads — matches
+      // the pattern already used in index.html's checkout.
       if (window.PLFTrack) PLFTrack.step('checkout_clicked');
       if (window.PLFPixels && window.PLFPixels.initiateCheckout)
         window.PLFPixels.initiateCheckout(window.PLF_ORDER && window.PLF_ORDER.total);
-      window.location.href = data.url;
+      setTimeout(function(){ window.location.href = data.url; }, 300);
     } else {
       throw new Error(data.error || 'No checkout URL returned');
     }

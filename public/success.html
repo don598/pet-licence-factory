@@ -715,8 +715,22 @@
       setState('confirmed');
       try {
         var v = parseFloat(String(data.total || '0').replace(/[^0-9.]/g, '')) || 0;
-        if (window.PLFTrack) PLFTrack.event('purchase_success', 'purchase_success', { value: v });
-        if (window.PLFPixels && window.PLFPixels.purchase) window.PLFPixels.purchase(v, 'USD');
+        // Dedupe: this branch re-runs from scratch on every /success page view
+        // (a refresh restarts pollStatus() and lands here again immediately
+        // since the order is already past pending), so without a guard a single
+        // order fires purchase_success + the TikTok/Meta pixel Purchase event
+        // once per view. Guard with localStorage (survives refresh — unlike
+        // sessionStorage in some in-app browsers) keyed by order id so it fires
+        // exactly once per order, regardless of how many times this page loads.
+        var dedupeKey = orderId ? ('plf_purchase_fired_' + orderId)
+                       : sessionId ? ('plf_purchase_fired_s_' + sessionId) : '';
+        var alreadyFired = false;
+        if (dedupeKey) { try { alreadyFired = localStorage.getItem(dedupeKey) === '1'; } catch (e) {} }
+        if (!alreadyFired) {
+          if (window.PLFTrack) PLFTrack.event('purchase_success', 'purchase_success', { value: v });
+          if (window.PLFPixels && window.PLFPixels.purchase) window.PLFPixels.purchase(v, 'USD');
+          if (dedupeKey) { try { localStorage.setItem(dedupeKey, '1'); } catch (e) {} }
+        }
       } catch (e) { /* never break confirmation */ }
     }
 

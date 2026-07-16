@@ -1381,7 +1381,14 @@ try{
 
 // ── Go ──
 refreshPreview(); recalc(); renderStepper();
-if(window.PLFTrack) PLFTrack.step('step_1_photo');  // step 1 shows by default (no showStep call)
+// Step 1 shows by default (no showStep call fires for it). plf-track.js is
+// loaded with `defer`, so it hasn't run yet when this synchronous inline
+// script executes — `window.PLFTrack` is still undefined here and the check
+// used to silently no-op for almost every visitor. DOMContentLoaded always
+// fires after deferred scripts have executed, so wait for it instead.
+document.addEventListener('DOMContentLoaded', function(){
+  if(window.PLFTrack) PLFTrack.step('step_1_photo');
+});
 })();
 </script>
 </body>
