@@ -1586,6 +1586,17 @@ html, body {
 .email-chip.email-warn { color: var(--amber, #d97706); background: rgba(217,119,6,.10); border-color: rgba(217,119,6,.30); }
 .email-chip.email-bad  { color: var(--red, #ef4444); background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.34); }
 
+/* "View Stripe contact" affordance — only shown beside a bounced email chip,
+   so an admin can pull the phone/name/address Stripe collected at checkout
+   as another way to reach the customer. Read-only, no card data. */
+.stripe-contact-btn {
+  display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto;
+  padding: 3px 8px; border-radius: 9px; border: 1px dashed var(--border);
+  background: transparent; color: var(--muted); cursor: pointer;
+  font-family: inherit; font-size: 9.5px; font-weight: 700; white-space: nowrap;
+}
+.stripe-contact-btn:hover { color: var(--accent); border-color: var(--accent); }
+
 /* Email-activity popup */
 .ea-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
 .ea-overlay.open { display: flex; }
@@ -3623,9 +3634,15 @@ function renderEmailMarker(o) {
   const meta = emailTypeMeta(latest.type);
   const v = emailStatusView(latest.d);
   const icon = v.cls === 'email-bad' ? '⚠' : meta.icon;
-  return `<button type="button" class="email-chip ${v.cls}" onclick="event.stopPropagation();openEmailActivity(${o.id})" title="View full email activity">`
+  let html = `<button type="button" class="email-chip ${v.cls}" onclick="event.stopPropagation();openEmailActivity(${o.id})" title="View full email activity">`
     + `<span class="ec-line"><span class="ec-ico">${icon}</span>${esc(v.text)}</span>`
     + `<span class="ec-sub">${esc(meta.label)}</span></button>`;
+  // Bounced/dropped/spam-reported only: offer the contact info Stripe
+  // collected at checkout as another way to reach the customer.
+  if (v.cls === 'email-bad') {
+    html += `<button type="button" class="stripe-contact-btn" onclick="event.stopPropagation();openStripeContact(${o.id})" title="View Stripe contact — the name/email/phone Stripe collected at checkout">👤 Stripe contact</button>`;
+  }
+  return html;
 }
 
 // Map a SendGrid "best event" status to a display class + short label.
@@ -3712,6 +3729,74 @@ function ensureEmailActivityModal() {
   m.querySelector('.ea-close').addEventListener('click', closeEmailActivity);
   document.body.appendChild(m);
   return m;
+}
+
+// Popup: contact info Stripe collected at checkout (name/email/phone/billing
+// address) for orders whose confirmation email bounced. Read-only — no
+// order mutation, no email sent. Reuses the email-activity modal's markup
+// (.ea-*) for a consistent look.
+async function openStripeContact(id) {
+  const o = allOrders.find(r => String(r.id) === String(id));
+  if (!o) return;
+  const m = ensureStripeContactModal();
+  m.querySelector('.ea-sub').textContent = o.customer_email || `${o.pet_first_name || ''} ${o.pet_last_name || ''}`.trim() || ('Order ' + (o.order_id || o.id));
+  m.querySelector('.ea-body').innerHTML = '<div class="ea-empty"><span class="spinner"></span> Loading Stripe contact info…</div>';
+  m.classList.add('open');
+  try {
+    const data = await adminAPI('get_stripe_contact', { id });
+    m.querySelector('.ea-body').innerHTML = renderStripeContactRows(data);
+  } catch (err) {
+    m.querySelector('.ea-body').innerHTML = `<div class="ea-empty">Could not load Stripe contact info: ${esc(err.message || String(err))}</div>`;
+  }
+}
+function closeStripeContact() {
+  const m = document.getElementById('stripe-contact-modal');
+  if (m) m.classList.remove('open');
+}
+function ensureStripeContactModal() {
+  let m = document.getElementById('stripe-contact-modal');
+  if (m) return m;
+  m = document.createElement('div');
+  m.id = 'stripe-contact-modal';
+  m.className = 'ea-overlay';
+  m.addEventListener('click', closeStripeContact);
+  m.innerHTML = '<div class="ea-card"><div class="ea-head"><div><div class="ea-title">Stripe contact info</div>'
+    + '<div class="ea-sub"></div></div><button class="ea-close" type="button">✕</button></div>'
+    + '<div class="ea-body"></div></div>';
+  m.querySelector('.ea-card').addEventListener('click', function (e) { e.stopPropagation(); });
+  m.querySelector('.ea-close').addEventListener('click', closeStripeContact);
+  document.body.appendChild(m);
+  return m;
+}
+
+// Render the {hasSession, name, email, phone, address, emailMatchesBounced}
+// response from admin-api's get_stripe_contact as .ea-row lines.
+function renderStripeContactRows(data) {
+  if (!data || data.hasSession === false) {
+    return `<div class="ea-empty">${esc((data && data.message) || 'No Stripe session on this order.')}</div>`;
+  }
+  const empty = txt => `<span style="color:var(--muted)">${esc(txt)}</span>`;
+  const row = (label, valueHtml) =>
+    `<div class="ea-row"><div class="ea-type">${esc(label)}</div><div class="ea-right">${valueHtml}</div></div>`;
+
+  let emailHtml = data.email ? esc(data.email) : empty('Not collected');
+  if (data.email && data.emailMatchesBounced) {
+    emailHtml += ` <span style="color:var(--muted);font-size:10px;">(same as the bounced address)</span>`;
+  }
+
+  let rows = '';
+  rows += row('Name', data.name ? esc(data.name) : empty('Not collected'));
+  rows += row('Email', emailHtml);
+  rows += row('Phone', data.phone ? esc(data.phone) : empty('Not collected at checkout'));
+  const a = data.address;
+  if (a) {
+    const parts = [a.line1, a.line2, [a.city, a.state, a.postal_code].filter(Boolean).join(', '), a.country].filter(Boolean);
+    rows += row('Billing address', parts.length ? esc(parts.join(', ')) : empty('Not collected'));
+  } else {
+    rows += row('Billing address', empty('Not collected'));
+  }
+  if (data.message) rows += `<div class="ea-empty" style="padding:8px 2px 0">${esc(data.message)}</div>`;
+  return rows;
 }
 
 function fmtDate(ts) {

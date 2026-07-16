@@ -591,6 +591,90 @@ export async function onRequest(context) {
         return json(200, { checked, updated, failed, changes, nextCursor: done ? null : lastId, done });
       }
 
+      // Read-only lookup of the contact info Stripe collected at checkout for
+      // this order — surfaced on the dashboard when the order-confirmation
+      // email bounces, so an admin has another way to reach the customer
+      // (phone, a corrected email, etc). Never returns card/payment details.
+      case 'get_stripe_contact': {
+        const { id } = body;
+        if (!id) return json(400, { error: 'Missing id' });
+
+        const res = await db.query(
+          `SELECT id, order_id, customer_email, stripe_session_id, stripe_payment_intent
+             FROM pet_orders WHERE id = $1`,
+          [id]
+        );
+        if (res.rows.length === 0) return json(404, { error: 'Order not found' });
+        const order = res.rows[0];
+
+        // $0 freebie/gift-code orders (and any legacy row that never reached
+        // Stripe) have neither field — nothing to look up.
+        if (!order.stripe_session_id && !order.stripe_payment_intent) {
+          return json(200, {
+            hasSession: false,
+            message: 'No Stripe session on this order — likely a $0 freebie/gift-code order, which never goes through a paid checkout.',
+          });
+        }
+
+        const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+        let cd = null;
+        try {
+          if (order.stripe_session_id) {
+            const session = await stripe.checkout.sessions.retrieve(order.stripe_session_id);
+            cd = session?.customer_details || null;
+            // Shipping name/address lives in a separate object from billing
+            // customer_details — fall back to it if billing details are thin.
+            if (session?.shipping_details) {
+              cd = cd || {};
+              if (!cd.name) cd.name = session.shipping_details.name || null;
+              if (!cd.address) cd.address = session.shipping_details.address || null;
+            }
+          }
+          if (!cd && order.stripe_payment_intent) {
+            // Fallback for the rare row with a PaymentIntent but no stored
+            // session id. Uses only the PI's own shipping/receipt fields —
+            // no charge/payment_method expansion, so no card data in reach.
+            const pi = await stripe.paymentIntents.retrieve(order.stripe_payment_intent);
+            cd = {
+              name:    pi?.shipping?.name || null,
+              email:   pi?.receipt_email || null,
+              phone:   pi?.shipping?.phone || null,
+              address: pi?.shipping?.address || null,
+            };
+          }
+        } catch (err) {
+          console.error('get_stripe_contact: Stripe retrieve failed:', err);
+          return json(502, { error: 'Could not retrieve Stripe contact info: ' + (err.message || err) });
+        }
+
+        if (!cd) {
+          return json(200, {
+            hasSession: true, name: null, email: null, phone: null, address: null,
+            message: 'Stripe has a session for this order but recorded no customer contact details.',
+          });
+        }
+
+        const email = cd.email || null;
+        const addr = cd.address || null;
+
+        return json(200, {
+          hasSession: true,
+          name:  cd.name  || null,
+          email,
+          phone: cd.phone || null,
+          address: addr ? {
+            line1:       addr.line1       || null,
+            line2:       addr.line2       || null,
+            city:        addr.city        || null,
+            state:       addr.state       || null,
+            postal_code: addr.postal_code || null,
+            country:     addr.country     || null,
+          } : null,
+          emailMatchesBounced: !!(email && order.customer_email
+            && email.trim().toLowerCase() === String(order.customer_email).trim().toLowerCase()),
+        });
+      }
+
       default:
         return json(400, { error: `Unknown action: ${action}` });
     }
