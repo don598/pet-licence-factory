@@ -1066,7 +1066,7 @@ const TW=1322, TH=830; // TH updated: cropped card removes bottom tag (1322×830
 const F={
   dlNumber:{x:439,y:197,w:257,h:61},expDate:{x:785,y:200,w:177,h:41},issDate:{x:773,y:241,w:189,h:41},
   dob:{x:472,y:263,w:189,h:60},firstName:{x:374,y:333,w:345,h:80},lastName:{x:374,y:413,w:345,h:79},
-  addrLine1:{x:374,y:531,w:325,h:41},addrLine2:{x:374,y:572,w:325,h:41},
+  addrLine1:{x:374,y:531,w:575,h:41},addrLine2:{x:374,y:572,w:575,h:41},
   signature:{x:1027,y:591,w:176,h:64},height:{x:747,y:625,w:109,h:48},
   sex:{x:435,y:626,w:65,h:48},weight:{x:496,y:683,w:53,h:47},eyes:{x:718,y:683,w:76,h:47},
   licClass:{x:476,y:737,w:62,h:48},restrict:{x:856,y:737,w:71,h:48},
@@ -1104,7 +1104,10 @@ function refreshLicPreview(){
   const tfs=[{k:'dlNumber',v:petData.dlNumber||'',c:'#1a0a00'},{k:'expDate',v:petData.expDate||'',c:'#1a0a00'},{k:'issDate',v:petData.issDate||'',c:'#1a0a00'},{k:'dob',v:petData.dob||'',c:'#c0200a'},{k:'firstName',v:petData.petFirstName||'',c:'#1a0a00'},{k:'lastName',v:petData.petLastName||'',c:'#1a0a00'},{k:'addrLine1',v:addr.l1,c:'#1a0a00'},{k:'addrLine2',v:addr.l2,c:'#1a0a00'},{k:'height',v:petData.height||'',c:'#1a0a00'},{k:'sex',v:petData.sex||'',c:'#1a0a00'},{k:'weight',v:String(petData.weight||'').replace(/[^0-9.]/g,''),c:'#1a0a00'},{k:'eyes',v:petData.eyeColor||'',c:'#1a0a00'},{k:'licClass',v:petData.licenseClass||'',c:'#1a0a00'},{k:'restrict',v:'ALL',c:'#1a0a00'}];
   licCtx.textBaseline='middle';
   const pxFloor=4*_licDPR, pxCap=9*_licDPR;
-  tfs.forEach(({k,v,c})=>{const f=sf(k);let px=Math.max(pxFloor,Math.min(f.h*.45,f.w*.12,pxCap));licCtx.fillStyle=c;licCtx.textAlign='left';licCtx.font=`${px}px 'Press Start 2P',monospace`;while(licCtx.measureText(v).width>f.w-6&&px>pxFloor){px-=.3;licCtx.font=`${px}px 'Press Start 2P',monospace`;}licCtx.fillText(v,f.x+3,f.y+f.h/2,f.w-6);});
+  // Address lines: raised floor so a long street address (form allows up to
+  // 30 chars) never collapses further than the city/zip line beneath it.
+  const pxFloorAddr=6*_licDPR;
+  tfs.forEach(({k,v,c})=>{const f=sf(k);const floor=(k==='addrLine1'||k==='addrLine2')?pxFloorAddr:pxFloor;let px=Math.max(floor,Math.min(f.h*.45,f.w*.12,pxCap));licCtx.fillStyle=c;licCtx.textAlign='left';licCtx.font=`${px}px 'Press Start 2P',monospace`;while(licCtx.measureText(v).width>f.w-6&&px>floor){px-=.3;licCtx.font=`${px}px 'Press Start 2P',monospace`;}licCtx.fillText(v,f.x+3,f.y+f.h/2,f.w-6);});
   // Draw a semi-transparent background behind signature so it's readable over photo
   const sig=sf('signature');
   licCtx.fillStyle='rgba(255,255,240,0.7)';

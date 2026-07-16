@@ -4834,8 +4834,8 @@ const F = {
   dob:        { x: 447, y: 268, w: 189, h: 60 },
   firstName:  { x: 374, y: 333, w: 345, h: 80 },
   lastName:   { x: 374, y: 413, w: 345, h: 79 },
-  addrLine1:  { x: 374, y: 531, w: 325, h: 41 },
-  addrLine2:  { x: 374, y: 572, w: 325, h: 41 },
+  addrLine1:  { x: 374, y: 531, w: 575, h: 41 },
+  addrLine2:  { x: 374, y: 572, w: 575, h: 41 },
   signature:  { x: 1029, y: 635, w: 176, h: 64 },
   height:     { x: 747, y: 625, w: 109, h: 48 },
   sex:        { x: 435, y: 626, w: 65, h: 48 },
@@ -4857,19 +4857,20 @@ function loadImg(src) {
   });
 }
 
-function drawTextField(ctx, f, text, color, fontFamily) {
+function drawTextField(ctx, f, text, color, fontFamily, minFs) {
   if (!text) return;
   ctx.save();
   ctx.beginPath(); ctx.rect(f.x, f.y, f.w, f.h); ctx.clip();
 
-  const ff   = fontFamily || "'Press Start 2P', monospace";
-  let   fs   = Math.floor(f.h * 0.6);
+  const ff    = fontFamily || "'Press Start 2P', monospace";
+  const floor = minFs || 6;
+  let   fs    = Math.floor(f.h * 0.6);
   ctx.textBaseline = 'middle';
   ctx.textAlign    = 'left';
 
   // Shrink font until text fits width
   ctx.font = `${fs}px ${ff}`;
-  while (fs > 6 && ctx.measureText(text).width > f.w - 6) {
+  while (fs > floor && ctx.measureText(text).width > f.w - 6) {
     fs--;
     ctx.font = `${fs}px ${ff}`;
   }
@@ -4914,8 +4915,12 @@ async function generateLicence() {
     drawTextField(ctx, F.dob,       o.dob,                        '#c0200a'); // red DOB
     drawTextField(ctx, F.firstName, o.pet_first_name,             '#1a0a00');
     drawTextField(ctx, F.lastName,  o.pet_last_name,              '#1a0a00');
-    drawTextField(ctx, F.addrLine1, o.addr_line1,                 '#1a0a00');
-    drawTextField(ctx, F.addrLine2, o.addr_line2,                 '#1a0a00');
+    // Address lines get a generous minimum font size (14px vs the generic 6px
+    // floor) — the form allows street addresses up to 30 chars, and the box
+    // has been widened alongside this, so a long street line never has to
+    // shrink far below the city/zip line beneath it.
+    drawTextField(ctx, F.addrLine1, o.addr_line1,                 '#1a0a00', undefined, 14);
+    drawTextField(ctx, F.addrLine2, o.addr_line2,                 '#1a0a00', undefined, 14);
     drawTextField(ctx, F.signature, sig,                          '#1a0a00', "'Sacramento', cursive");
     drawTextField(ctx, F.height,    o.height,                     '#1a0a00');
     drawTextField(ctx, F.sex,       o.sex,                        '#1a0a00');

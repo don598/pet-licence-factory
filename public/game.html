@@ -1119,8 +1119,8 @@ const F = {
   dob:        {x:472, y:263, w:189, h:60},
   firstName:  {x:374, y:333, w:345, h:80},
   lastName:   {x:374, y:413, w:345, h:79},
-  addrLine1:  {x:374, y:531, w:325, h:41},
-  addrLine2:  {x:374, y:572, w:325, h:41},
+  addrLine1:  {x:374, y:531, w:575, h:41},
+  addrLine2:  {x:374, y:572, w:575, h:41},
   signature:  {x:1027,y:591, w:176, h:64},
   height:     {x:747, y:625, w:109, h:48},
   sex:        {x:435, y:626, w:65,  h:48},
@@ -1166,13 +1166,19 @@ function refreshLicPreview(){
   // reads closer to the admin/Command Station preview instead of shrinking
   // to the same size as the tiny data fields.
   const pxCapName = 9*_licDPR;
+  // Address lines get the same generous cap as the name, plus a raised floor,
+  // so a long street address (form allows up to 30 chars) can't shrink far
+  // below the city/zip line beneath it or collapse to the tiny generic floor.
+  const pxCapAddr = 9*_licDPR, pxFloorAddr = 6*_licDPR;
   tfs.forEach(({k,v,c})=>{
     const f=sf(k);
-    const cap = (k === 'firstName' || k === 'lastName') ? pxCapName : pxCap;
-    let px=Math.max(pxFloor,Math.min(f.h*.35,f.w*.10,cap));
+    const isAddr = (k === 'addrLine1' || k === 'addrLine2');
+    const cap   = (k === 'firstName' || k === 'lastName') ? pxCapName : (isAddr ? pxCapAddr : pxCap);
+    const floor = isAddr ? pxFloorAddr : pxFloor;
+    let px=Math.max(floor,Math.min(f.h*.35,f.w*.10,cap));
     licCtx.fillStyle=c; licCtx.textAlign='left';
     licCtx.font=`${px}px 'Press Start 2P',monospace`;
-    while(licCtx.measureText(v).width > f.w-6 && px > pxFloor) { px -= 0.3; licCtx.font=`${px}px 'Press Start 2P',monospace`; }
+    while(licCtx.measureText(v).width > f.w-6 && px > floor) { px -= 0.3; licCtx.font=`${px}px 'Press Start 2P',monospace`; }
     licCtx.fillText(v, f.x+3, f.y+f.h/2, f.w-6);
   });
   const sig=sf('signature');
