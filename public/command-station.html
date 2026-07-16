@@ -2783,7 +2783,7 @@ html, body {
       <!-- Decal alert ribbon — only shown when order includes car decal -->
       <div id="decal-alert" class="decal-alert" style="display:none">
         <span class="decal-icon" id="decal-alert-icon">🎯</span>
-        <span id="decal-alert-text">This order includes the <strong>4.5×4.5" Car Decal</strong> add-on — don't forget to include it!</span>
+        <span id="decal-alert-text">This order includes the <strong>4×4" Car Decal</strong> add-on — don't forget to include it!</span>
       </div>
 
       <div id="affiliate-alert" class="affiliate-alert" style="display:none">
@@ -4454,7 +4454,7 @@ function orderQuickStatsHtml(o) {
   if (!o) return '';
   const pack = parseInt(o.pack_count) || 1;
   const items = [{ name: `Licence Sticker (${pack === 2 ? '2-Pack' : '1-Pack'})`, qty: pack }];
-  if (o.add_on === 'car_decal') items.push({ name: '4.5×4.5" Car Decal', qty: 1 });
+  if (o.add_on === 'car_decal') items.push({ name: '4×4" Car Decal', qty: 1 });
   const totalItems = items.reduce((s, i) => s + i.qty, 0);
 
   const chipRaw = (o.chip_size || '').trim();
@@ -4548,8 +4548,8 @@ async function openOrder(dbId) {
   if (hasDecal) {
     document.getElementById('decal-alert-icon').textContent = decalRefunded ? '⛔' : '🎯';
     document.getElementById('decal-alert-text').innerHTML = decalRefunded
-      ? 'The <strong>4.5×4.5" Car Decal</strong> was <strong>REFUNDED</strong> — do NOT include it in this package.'
-      : 'This order includes the <strong>4.5×4.5" Car Decal</strong> add-on — don\'t forget to include it!';
+      ? 'The <strong>4×4" Car Decal</strong> was <strong>REFUNDED</strong> — do NOT include it in this package.'
+      : 'This order includes the <strong>4×4" Car Decal</strong> add-on — don\'t forget to include it!';
   }
   // Refund checkbox — only relevant for decal orders.
   const refRow = document.getElementById('addon-refunded-row');
@@ -5509,7 +5509,7 @@ function renderReceiptLabel(o) {
       <div class="lr-items">
         <div class="lr-items-title">Items</div>
         <div class="lr-line"><span class="lr-line-name">${esc(packLabel)}${o.chip_size ? ` <span class="lr-line-meta">(${esc(o.chip_size)} chip)</span>` : ''}</span><span class="lr-line-amt">${fmt(packAmt)}</span></div>
-        ${wantsDecal ? `<div class="lr-line"${addonRefunded ? ' style="text-decoration:line-through;opacity:.5"' : ''}><span class="lr-line-name">4.5×4.5" Vinyl Car Decal${addonRefunded ? ' (refunded)' : ''}</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
+        ${wantsDecal ? `<div class="lr-line"${addonRefunded ? ' style="text-decoration:line-through;opacity:.5"' : ''}><span class="lr-line-name">4×4" Vinyl Car Decal${addonRefunded ? ' (refunded)' : ''}</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
         <div class="lr-line lr-sub"><span class="lr-line-name">Subtotal</span><span class="lr-line-amt">${fmt(listSubtotal)}</span></div>
         ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">${esc(discountLabel)}</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
         <div class="lr-line"><span class="lr-line-name">${esc(shipLabel)}</span><span class="lr-line-amt">${effShipAmt === 0 ? 'FREE' : fmt(effShipAmt)}</span></div>

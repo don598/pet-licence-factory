@@ -83,7 +83,7 @@ export async function onRequest(context) {
       price_data: {
         currency: 'usd',
         product_data: {
-          name: '4.5×4.5" Vinyl Car Decal',
+          name: '4×4" Vinyl Car Decal',
           description: discountEarned
             ? 'Weatherproof vinyl die-cut of your pet — 15% discount applied!'
             : 'Weatherproof vinyl die-cut sticker for your car',

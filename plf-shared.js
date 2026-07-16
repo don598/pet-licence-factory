@@ -398,7 +398,7 @@ function buildOrderSummaryHTML(cssPrefix) {
   const p = cssPrefix || '';
   const { base, dec, disc, ship, total } = calcOrder();
   let h = `<div class="${p}order-line"><span>${packQty}-Pack License Sticker${packQty > 1 ? 's' : ''}</span><span>$${base.toFixed(2)}</span></div>`;
-  if (wantsDecal) h += `<div class="${p}order-line"><span>4.5×4.5" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
+  if (wantsDecal) h += `<div class="${p}order-line"><span>4×4" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
   if (discountEarned) {
     const discColor = p ? 'color:#00ff41' : 'color:#4caf50';
     h += `<div class="${p}order-line" style="${discColor}"><span>Discount (15%)</span><span>-$${disc.toFixed(2)}</span></div>`;

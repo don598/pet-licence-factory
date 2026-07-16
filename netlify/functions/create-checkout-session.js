@@ -11,7 +11,7 @@ const Stripe = require('stripe');
 const PRICES = {
   pack1:    1395,   // 1-Pack Licence Sticker
   pack2:    1999,   // 2-Pack Licence Stickers
-  decal:     449,   // 4.5×4.5" Vinyl Car Decal
+  decal:     449,   // 4×4" Vinyl Car Decal
   discRate:  0.15,  // 15% discount (mini-game reward)
   stamp:      95,   // Stamp Shipping
   standard:  399,   // Standard Shipping
@@ -73,7 +73,7 @@ exports.handler = async (event) => {
       price_data: {
         currency: 'usd',
         product_data: {
-          name: '4.5×4.5" Vinyl Car Decal',
+          name: '4×4" Vinyl Car Decal',
           description: discountEarned
             ? 'Weatherproof vinyl die-cut of your pet — 15% discount applied!'
             : 'Weatherproof vinyl die-cut sticker for your car',

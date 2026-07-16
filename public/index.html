@@ -532,7 +532,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
             <div class="subhead">Add an extra</div>
             <div class="addon" id="decal">
               <span class="ai">🚗</span>
-              <div class="at"><b>4.5×4.5" Vinyl Car Decal</b><span>Weatherproof die-cut of your pet. So cute on a bumper or laptop.</span></div>
+              <div class="at"><b>4×4" Vinyl Car Decal</b><span>Weatherproof die-cut of your pet. So cute on a bumper or laptop.</span></div>
               <span class="ap" id="decalPrice">+$4.49</span>
               <span class="check">✓</span>
             </div>
@@ -961,7 +961,7 @@ function recalc(){
   var total = base + dec - disc;
   var h = '';
   h += '<div class="line"><span>'+state.packQty+'-Pack License Sticker'+(state.packQty>1?'s':'')+'</span><span>'+money(base)+'</span></div>';
-  if(state.wantsDecal) h += '<div class="line"><span>4.5×4.5" Vinyl Car Decal</span><span>+'+money(dec)+'</span></div>';
+  if(state.wantsDecal) h += '<div class="line"><span>4×4" Vinyl Car Decal</span><span>+'+money(dec)+'</span></div>';
   if(state.discount) h += '<div class="line save"><span>First-time buyer (15% off)</span><span>−'+money(disc)+'</span></div>';
   h += '<div class="line muted"><span>Shipping</span><span>at checkout</span></div>';
   h += '<hr><div class="line total"><span>Subtotal</span><span>'+money(total)+'</span></div>';
