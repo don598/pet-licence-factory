@@ -1,15 +1,17 @@
 // ── Pet Licence Factory — Stripe Webhook (Cloudflare Pages Function) ────────
 // POST /api/stripe-webhook
-// Handles: checkout.session.completed
+// Handles: checkout.session.completed, checkout.session.expired, charge.refunded
 //   Stripe Checkout uses automatic capture, so the card is charged on checkout.
 //   We record the order as paid, attribute any affiliate, ship the address
 //   Stripe collected, and send the confirmation email. There is NO USPS/
 //   deliverability gate — we ship exactly what the customer entered.
+//   checkout.session.expired = abandoned checkout: back-fill any captured
+//   email onto the pending order and send a one-time recovery nudge.
 // ---------------------------------------------------------------------------
 
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
-import { sendOrderConfirmationEmail } from '../_shared/email.js';
+import { sendOrderConfirmationEmail, sendCheckoutRecoveryEmail } from '../_shared/email.js';
 import { attributeOrder } from '../_shared/affiliate.js';
 
 function json(status, body) {
@@ -55,6 +57,11 @@ export async function onRequest(context) {
   // ── Refund handling (zero out commission on the affiliate row) ───────────
   if (stripeEvent.type === 'charge.refunded') {
     return handleChargeRefunded(stripeEvent.data.object, db);
+  }
+
+  // ── Abandoned-checkout recovery (session expired unpaid) ─────────────────
+  if (stripeEvent.type === 'checkout.session.expired') {
+    return handleSessionExpired(stripeEvent.data.object, db, env);
   }
 
   if (stripeEvent.type !== 'checkout.session.completed') {
@@ -250,6 +257,74 @@ export async function onRequest(context) {
 // (admin-api force_fulfill) can reuse the exact same logic. Imported above.
 
 
+
+// ── Abandoned-checkout recovery ────────────────────────────────────────────
+// checkout.session.expired fires when a session created with after_expiration
+// recovery expires unpaid (create-checkout-session.js sets expires_at to 2h).
+// If Stripe captured an email before the customer bailed, back-fill it onto
+// the pending pet_orders row and send a one-time finish-your-order nudge with
+// Stripe's 30-day recovery URL. The recovery_email_sent_at column is claimed
+// atomically BEFORE sending so at-least-once webhook delivery can never
+// double-email (same mark-then-send philosophy as send-abandonment.js).
+async function handleSessionExpired(session, db, env) {
+  const orderId     = session.metadata?.order_id;
+  const email       = session.customer_details?.email || '';
+  const recoveryUrl = session.after_expiration?.recovery?.url || '';
+
+  // Nothing to recover without an order, an email, or a link. $0 sessions are
+  // creator welcome freebies with their own onboarding flow — never nudge.
+  if (!orderId || !email || !recoveryUrl || session.amount_total === 0) {
+    return json(200, { received: true, recovery: 'skipped' });
+  }
+
+  // Lazy, idempotent schema self-heal (matches the plf_leads pattern).
+  try {
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS recovery_email_sent_at TIMESTAMPTZ`);
+  } catch (err) {
+    console.error('recovery: ensure column failed:', err && err.message);
+    return json(200, { received: true, recovery: 'schema_error' });
+  }
+
+  let claimed;
+  try {
+    const r = await db.query(
+      `UPDATE pet_orders SET
+         customer_email         = COALESCE(NULLIF(customer_email, ''), $1),
+         recovery_email_sent_at = NOW(),
+         updated_at             = NOW()
+       WHERE order_id = $2
+         AND status = 'pending'
+         AND recovery_email_sent_at IS NULL
+       RETURNING order_id, pet_first_name`,
+      [email, orderId]
+    );
+    claimed = r.rows[0];
+  } catch (err) {
+    console.error('recovery: claim update failed:', err && err.message);
+    return json(200, { received: true, recovery: 'db_error' });
+  }
+
+  // Already nudged, already paid, or unknown order — nothing more to do.
+  if (!claimed) {
+    return json(200, { received: true, recovery: 'not_eligible' });
+  }
+
+  try {
+    await sendCheckoutRecoveryEmail(env, {
+      to: email,
+      petName: claimed.pet_first_name,
+      recoveryUrl,
+      orderId,
+    });
+    console.log('[webhook] session.expired — recovery email sent', { orderId, email });
+  } catch (err) {
+    // Row is already marked; better to occasionally lose one nudge than to
+    // retry-storm a customer on webhook redelivery.
+    console.error('recovery: send failed (marked anyway):', err && err.message);
+  }
+
+  return json(200, { received: true, recovery: 'sent' });
+}
 
 // ── Refund handling ────────────────────────────────────────────────────────
 // charge.refunded fires whenever a refund is created on the charge. We zero

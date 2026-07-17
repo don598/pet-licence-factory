@@ -217,6 +217,19 @@ export async function onRequest(context) {
             },
           ],
       customer_creation: 'always',
+      // Abandoned-checkout recovery: expire unfinished sessions after 2 hours
+      // so Stripe fires checkout.session.expired with a 30-day recovery URL
+      // (and whatever email the customer typed before bailing). The webhook
+      // turns that into a finish-your-order nudge. allow_promotion_codes on
+      // the recovered session conflicts with a pre-applied discount, so only
+      // set it when this session takes typed promo codes too.
+      expires_at: Math.floor(Date.now() / 1000) + 2 * 60 * 60,
+      after_expiration: {
+        recovery: {
+          enabled: true,
+          ...(preAppliedPromoId ? {} : { allow_promotion_codes: true }),
+        },
+      },
       // Charge immediately on checkout. Stripe collects + lightly validates the
       // shipping address; we ship what the customer entered (no USPS gate).
       payment_intent_data: {

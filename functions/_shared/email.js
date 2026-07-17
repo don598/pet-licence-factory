@@ -640,6 +640,80 @@ Unsubscribe: ${unsubHref}
   });
 }
 
+// ── Abandoned Stripe-checkout recovery ──────────────────────────────────────
+// Sent by stripe-webhook.js when a Checkout Session expires unpaid AND Stripe
+// captured an email before the customer bailed. The recoveryUrl is Stripe's
+// own 30-day cart-recovery link (restores the exact session, promo box and
+// all). One send per order, enforced by pet_orders.recovery_email_sent_at.
+export async function sendCheckoutRecoveryEmail(env, { to, petName, recoveryUrl, orderId }) {
+  if (!to || !recoveryUrl) return { skipped: true, reason: 'missing email or url' };
+
+  const pet = (petName || '').trim();
+  const petLabel = pet || 'your pet';
+  const subject = pet
+    ? `${pet}'s licence is still in your cart`
+    : `Your pet's licence is still in your cart`;
+
+  const asmGroupId = env.SENDGRID_ASM_GROUP_ID ? parseInt(env.SENDGRID_ASM_GROUP_ID, 10) : null;
+  const unsubHref = asmGroupId ? '<%asm_group_unsubscribe_raw_url%>' : '[unsubscribe]';
+
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#fbf7f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fbf7f0;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border:2px solid #ff6f4d;border-radius:14px;overflow:hidden;">
+
+        <tr><td style="padding:30px 32px 12px;text-align:center;background:linear-gradient(180deg,#fff1ec 0%,#ffffff 100%);">
+          <img src="https://petlicensefactory.com/images/wordmark-email.png" alt="Pet License Factory" width="380" style="display:block;margin:0 auto 16px;max-width:78%;height:auto;image-rendering:pixelated;">
+          <h1 style="margin:0;font-family:'Press Start 2P','Courier New',monospace;font-size:15px;color:#ec5a38;letter-spacing:2px;text-transform:uppercase;line-height:1.6;">Almost at the printer</h1>
+          <p style="margin:12px 0 0;font-size:15px;color:#5a5148;line-height:1.6;">
+            You built ${esc(petLabel)}'s licence and made it all the way to checkout, then life happened. No worries: we saved your cart exactly as you left it.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px 8px;">
+          <div style="background:#fff1ec;border:1px dashed #ff6f4d;border-radius:10px;padding:20px;text-align:center;">
+            <p style="margin:0 0 14px;font-size:14px;color:#5a5148;line-height:1.6;">
+              One click below takes you straight back to the payment page with everything already filled in. The link works for 30 days, but ${esc(petLabel)} would prefer sooner.
+            </p>
+            <a href="${esc(recoveryUrl)}" style="display:inline-block;padding:14px 28px;background:#ff6f4d;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;letter-spacing:.5px;">Finish ${esc(petLabel)}'s order →</a>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px;text-align:center;font-size:12px;color:#9aa0ab;line-height:1.6;border-top:1px solid #ece7dd;">
+          You are getting this one-time reminder because you started an order at Pet License Factory. Reply any time, a real human reads these.<br>
+          <span style="opacity:.7;">Pet License Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054</span><br>
+          <a href="${unsubHref}" style="color:#9aa0ab;text-decoration:underline;">Unsubscribe</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text =
+`${petLabel}'s licence is still in your cart.
+
+You built ${petLabel}'s licence and made it all the way to checkout, then life happened. We saved your cart exactly as you left it.
+
+Pick up where you left off (the link works for 30 days):
+${recoveryUrl}
+
+You are getting this one-time reminder because you started an order at Pet License Factory. Reply any time, a real human reads these.
+
+Pet License Factory · 7900 Cambridge St, Apt 28-1G · Houston, TX 77054
+Unsubscribe: ${unsubHref}
+
+— Pet License Factory`;
+
+  return sendEmail(env, {
+    to, subject, html, text,
+    customArgs: { email_type: 'checkout_recovery', order_id: orderId },
+    asmGroupId,
+    subscriptionTracking: !asmGroupId,
+  });
+}
+
 // ── Creator onboarding (affiliate program) ──────────────────────────────────
 // Sent at invite time. Carries everything the creator needs in one email:
 // affiliate URL, customer-facing coupon code, magic-link to their dashboard,

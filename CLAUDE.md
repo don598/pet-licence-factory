@@ -196,7 +196,7 @@ Note: Cloudflare Hyperdrive is configured in `wrangler.toml` with binding `HYPER
 - **GitHub:** https://github.com/don598/pet-licence-factory (public)
 - **Auto-deploy:** Pushes to `main` branch trigger automatic Cloudflare Pages deploys.
 - **Stripe webhook endpoint:** Must be configured in Stripe Dashboard pointing to the Cloudflare Pages URL
-  - Events: `checkout.session.completed`
+  - Events: `checkout.session.completed`, `checkout.session.expired` (abandoned-checkout recovery email), `charge.refunded` (affiliate commission zeroing)
 
 ## Project History
 
