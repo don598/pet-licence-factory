@@ -296,8 +296,8 @@ input::placeholder{color:var(--faint);font-weight:600}
 
 /* ── Free digital licence (secondary, subordinate to checkout) ── */
 .free-digital{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line-2);text-align:center}
-.fd-toggle{background:none;border:none;color:var(--muted);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;padding:4px 6px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line-2);transition:color .15s}
-.fd-toggle:hover{color:var(--brand-dk);text-decoration-color:var(--brand)}
+.fd-toggle{display:block;width:100%;background:var(--surface-2);border:1.5px dashed #ffd0c4;border-radius:11px;color:var(--brand-dk);font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer;padding:11px 14px;transition:background .15s,border-color .15s}
+.fd-toggle:hover{background:var(--brand-soft);border-color:var(--brand)}
 .fd-form{margin-top:12px;text-align:left;animation:previewIn .3s cubic-bezier(.2,.7,.2,1)}
 .fd-row{display:flex;gap:8px;align-items:stretch}
 .fd-row input{flex:1;min-width:0}
@@ -549,7 +549,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 
             <!-- Secondary, subordinate option: free watermarked digital licence by email -->
             <div class="free-digital" id="freeDigital">
-              <button type="button" class="fd-toggle" id="fdToggle" aria-expanded="false" aria-controls="fdForm" data-track="free-digital-toggle">Just want a free digital version? We'll email it to you</button>
+              <button type="button" class="fd-toggle" id="fdToggle" aria-expanded="false" aria-controls="fdForm" data-track="free-digital-toggle">🎁 Not ready to order? Get a free digital licence by email</button>
               <div class="fd-form" id="fdForm" hidden>
                 <div class="fd-row">
                   <input type="email" id="fdEmail" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Your email address"/>
