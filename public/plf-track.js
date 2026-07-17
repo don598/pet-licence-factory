@@ -4,7 +4,9 @@
 // from our own data instead of TikTok's dashboard.
 //
 //   - visitor_id : persistent localStorage UUID
-//   - session_id : per-tab sessionStorage UUID
+//   - session_id : localStorage UUID with a rolling inactivity window, so the
+//                  identity survives the Stripe redirect round-trip and the
+//                  purchase_success event on success.html carries the campaign
 //   - page_view  : on load (with UTM / ttclid attribution captured from URL)
 //   - click      : delegated capture-phase listener on every actionable element
 //   - step       : explicit funnel instrumentation via PLFTrack.step()
@@ -31,37 +33,81 @@
     });
   }
 
-  function getStored(store, key) {
+  // Persistent visitor id (localStorage). Survives across all visits.
+  function persistentId(key) {
     try {
-      var id = store.getItem(key);
-      if (!id) { id = uuid(); store.setItem(key, id); }
+      var id = localStorage.getItem(key);
+      if (!id) { id = uuid(); localStorage.setItem(key, id); }
       return id;
     } catch (e) { return uuid(); }   // private mode / disabled storage
   }
 
-  var visitorId = getStored(window.localStorage, 'plf_vid');
-  var sessionId = getStored(window.sessionStorage, 'plf_sid');
+  // ── Session id with a rolling inactivity window ───────────────────────
+  // Persisted in localStorage (NOT sessionStorage) so the session survives
+  // the round-trip to checkout.stripe.com and back to success.html — that
+  // navigation used to mint a fresh, untagged session, orphaning every
+  // purchase_success event from its originating campaign. A gap of more than
+  // SESSION_WINDOW_MS between events starts a genuinely-new session
+  // (GA-style), so ordinary return visits still get fresh ids + attribution.
+  var SESSION_WINDOW_MS = 30 * 60 * 1000;   // 30 min of inactivity
+  var SID_KEY = 'plf_sid', SID_TS_KEY = 'plf_sid_ts';
+  var isNewSession = false;
+
+  function loadSession() {
+    var now = Date.now(), sid, last;
+    try {
+      sid = localStorage.getItem(SID_KEY);
+      last = parseInt(localStorage.getItem(SID_TS_KEY) || '0', 10);
+    } catch (e) { sid = null; last = 0; }
+    if (!sid || !last || (now - last) > SESSION_WINDOW_MS) {
+      sid = uuid();
+      isNewSession = true;
+    }
+    touchSession(sid, now);
+    return sid;
+  }
+
+  // Refresh the session's last-activity stamp so an active session never
+  // expires mid-flow (e.g. while the buyer sits on Stripe's hosted checkout).
+  function touchSession(sid, now) {
+    try {
+      localStorage.setItem(SID_KEY, sid);
+      localStorage.setItem(SID_TS_KEY, String(now || Date.now()));
+    } catch (e) {}
+  }
+
+  var visitorId = persistentId('plf_vid');
+  var sessionId = loadSession();
 
   // ── Attribution: capture UTM + ttclid once, persist for the session ──
+  // Stored in localStorage (keyed to the session's lifetime) so it survives
+  // the Stripe redirect and rides along on the purchase_success event fired
+  // from success.html. Mirrored to sessionStorage because the free-digital
+  // lead form on index.html reads plf_attr from there directly. A genuinely-
+  // new session starts clean so stale campaigns don't leak into a later visit.
   var ATTR_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'ttclid'];
   var attribution = {};
   (function captureAttribution() {
     var stored = {};
-    try { stored = JSON.parse(sessionStorage.getItem('plf_attr') || '{}') || {}; } catch (e) {}
+    if (!isNewSession) {
+      try { stored = JSON.parse(localStorage.getItem('plf_attr') || '{}') || {}; } catch (e) {}
+    }
     var params;
     try { params = new URLSearchParams(window.location.search); } catch (e) { params = null; }
-    var changed = false;
     ATTR_KEYS.forEach(function (k) {
       var fromUrl = params && params.get(k);
-      if (fromUrl) { stored[k] = ('' + fromUrl).slice(0, 120); changed = true; }
+      if (fromUrl) stored[k] = ('' + fromUrl).slice(0, 120);
     });
-    if (changed) { try { sessionStorage.setItem('plf_attr', JSON.stringify(stored)); } catch (e) {} }
     attribution = stored;
+    var json = JSON.stringify(stored);
+    try { localStorage.setItem('plf_attr', json); } catch (e) {}
+    try { sessionStorage.setItem('plf_attr', json); } catch (e) {}
   })();
 
   // ── Transport: sendBeacon, fallback to fetch keepalive. Never throws. ──
   function send(evt) {
     try {
+      touchSession(sessionId);   // keep the session alive on every event
       var payload = {
         v: visitorId,
         s: sessionId,

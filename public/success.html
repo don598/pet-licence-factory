@@ -727,7 +727,7 @@
         var alreadyFired = false;
         if (dedupeKey) { try { alreadyFired = localStorage.getItem(dedupeKey) === '1'; } catch (e) {} }
         if (!alreadyFired) {
-          if (window.PLFTrack) PLFTrack.event('purchase_success', 'purchase_success', { value: v });
+          if (window.PLFTrack) PLFTrack.event('purchase_success', 'purchase_success', { value: v, order_id: orderId });
           if (window.PLFPixels && window.PLFPixels.purchase) window.PLFPixels.purchase(v, 'USD');
           if (dedupeKey) { try { localStorage.setItem(dedupeKey, '1'); } catch (e) {} }
         }
