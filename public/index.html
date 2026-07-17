@@ -379,6 +379,16 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 .modal-close:hover{border-color:var(--brand);color:var(--brand-dk)}
 .modal-hint{font-size:12.5px;color:var(--muted);font-weight:600;text-align:center;margin-top:12px;line-height:1.5}
 
+/* ── Exit-intent free-licence modal (dashed brand card, matches .fd-toggle) ── */
+.exit-card{max-width:392px;border:2px dashed var(--brand);padding:22px 20px;text-align:center}
+.exit-title{font-family:'Press Start 2P',monospace;font-size:12px;line-height:1.7;color:var(--brand-dk);margin:0 0 12px;letter-spacing:.3px}
+.exit-body{font-size:14px;font-weight:600;color:var(--ink);line-height:1.55;margin:0 0 14px}
+.exit-card .fd-row{text-align:left}
+.exit-card .fd-msg{margin-top:10px;text-align:center}
+.exit-dismiss{display:block;margin:14px auto 0;background:none;border:none;color:var(--muted);font-family:inherit;font-weight:700;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px}
+.exit-dismiss:hover{color:var(--brand-dk)}
+@media(max-width:420px){ .exit-title{font-size:10.5px} .exit-card{padding:20px 16px} }
+
 /* ── Desktop ──────────────────────────────────────── */
 @media(min-width:920px){
   .config{grid-template-columns:0.9fr 1.1fr;gap:40px;align-items:start;padding:40px 0 46px}
@@ -583,6 +593,20 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 </main>
 
 <!-- ── Preview yours modal (live card + crop) ── -->
+<!-- Exit-intent free-licence capture (shown once/session on leave, when a photo exists) -->
+<div class="modal-overlay" id="exitModal" aria-hidden="true">
+  <div class="modal exit-card" role="dialog" aria-modal="true" aria-labelledby="exitTitle" aria-describedby="exitBody">
+    <h3 class="exit-title" id="exitTitle">WAIT, DON'T LOSE YOUR PET'S LICENCE</h3>
+    <p class="exit-body" id="exitBody">We'll email you a free digital version to keep. No purchase needed.</p>
+    <div class="fd-row">
+      <input type="email" id="exitEmail" inputmode="email" autocomplete="email" placeholder="you@email.com" aria-label="Your email address"/>
+      <button type="button" class="fd-send" id="exitSend" data-track="exit-intent-send"><span class="fd-send-label">Send my licence</span></button>
+    </div>
+    <div class="fd-msg" id="exitMsg" role="status" aria-live="polite"></div>
+    <button type="button" class="exit-dismiss" id="exitDismiss" data-track="exit-intent-dismiss">No thanks</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="previewModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-label="Your license preview">
     <div class="modal-head">
@@ -643,6 +667,13 @@ function clamp(min,v,max){ return Math.max(min, Math.min(max, v)); }
 var PRICES = (window.PLF_PRICES_USD) || { pack1:13.95, pack2:19.99, decal:4.49, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
 
 var state = { photo:null, crop:{cx:0.5,cy:0.5,zoom:1}, packQty:1, chipSize:'mini', wantsDecal:false, addrReal:false, discount:false };
+
+// Set once a free digital lead is captured (either the Step-5 form or the exit
+// modal), so the exit-intent trigger never re-fires after a successful capture.
+var freeLeadSubmitted = false;
+// Assigned by the exit-intent IIFE; called from handleFile so the mobile
+// back-button interceptor arms only after a photo (a renderable card) exists.
+var armExitIntent = function(){};
 
 // ── Stable license numbers/dates (mirrors plf-shared.js) ──
 var pad = function(n){return String(n).padStart(2,'0');};
@@ -772,6 +803,7 @@ function handleFile(file){
     $('dropzone').style.display='none';
     $('zoomRange').value = 1;
     bump(); clearErr(); revealPreviewBtn();
+    armExitIntent();
     // First upload: pop the preview so they can frame their pet right away.
     if(!photoEverAdded){ photoEverAdded = true; openPreview(); }
   });
@@ -1238,16 +1270,63 @@ function checkout(){
 $('checkoutBtn').addEventListener('click', checkout);
 
 // ── Free digital licence (email capture) ──
-// Secondary path off Step 5. Reachable only after a photo (step 1) and details
-// (step 2) exist, so a renderable preview is guaranteed. Never blocks checkout.
+// Shared submit used by BOTH the Step-5 inline form and the exit-intent modal.
+// Gated on state.photo so a renderable card is guaranteed. Never blocks checkout.
+function fdGetAttr(){
+  var a={};
+  try{ a = JSON.parse(sessionStorage.getItem('plf_attr')||'{}')||{}; }catch(e){}
+  return a;
+}
+// email: raw string. ui: { onStart, onError(msg), onSuccess(firstName) }.
+function submitFreeLicence(email, ui){
+  ui = ui || {};
+  email = (email||'').trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    if(ui.onError) ui.onError('Hmm, that email doesn’t look right. Mind checking it?', 'email');
+    return;
+  }
+  if(!state.photo){ if(ui.onError) ui.onError('Add a photo of your pet first so we can make the licence 📸'); return; }
+
+  if(ui.onStart) ui.onStart();
+  if(window.PLFTrack) PLFTrack.step('free_digital_requested');
+
+  // Render directly. Fonts are already loaded (the live DOM preview uses them),
+  // and deferring the render into a microtask/promise callback makes the
+  // pet-photo Image load race and drop out of the canvas.
+  renderLicence({width:900,quality:0.85,mime:'image/jpeg',watermark:true}, function(img){
+    if(!img){ if(ui.onError) ui.onError("We couldn’t build the licence image. Please try again."); return; }
+    var attr=fdGetAttr();
+    var first=$('fFirst').value.trim();
+    fetch('/api/free-licence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      email:email,
+      petName:first||'your pet',
+      image:img,
+      v:(window.PLFTrack&&PLFTrack.visitorId)||null,
+      s:(window.PLFTrack&&PLFTrack.sessionId)||null,
+      utm_source:attr.utm_source||null,
+      utm_campaign:attr.utm_campaign||null
+    })})
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(res){
+      if(res.ok && res.d && res.d.ok){
+        freeLeadSubmitted = true;
+        if(window.PLFTrack) PLFTrack.event('free_digital_sent','ok');
+        if(ui.onSuccess) ui.onSuccess(first);
+      } else {
+        if(ui.onError) ui.onError((res.d&&res.d.error)||'Something went wrong. Please try again in a moment.');
+      }
+    })
+    .catch(function(err){ console.error('free-licence error',err); if(ui.onError) ui.onError(); });
+  });
+}
+
+// Step-5 inline form wiring (toggle + submit via the shared function).
 (function(){
   var toggle=$('fdToggle'), form=$('fdForm'), emailIn=$('fdEmail'),
       sendBtn=$('fdSend'), msg=$('fdMsg'), sending=false;
   if(!toggle) return;
 
-  function showMsg(text, kind){
-    msg.textContent=text; msg.className='fd-msg show '+(kind||'');
-  }
+  function showMsg(text, kind){ msg.textContent=text; msg.className='fd-msg show '+(kind||''); }
   function clearMsg(){ msg.textContent=''; msg.className='fd-msg'; }
 
   toggle.addEventListener('click', function(){
@@ -1257,71 +1336,110 @@ $('checkoutBtn').addEventListener('click', checkout);
     if(!open){ setTimeout(function(){ try{ emailIn.focus(); }catch(e){} }, 30); }
   });
 
-  function getAttr(){
-    var a={};
-    try{ a = JSON.parse(sessionStorage.getItem('plf_attr')||'{}')||{}; }catch(e){}
-    return a;
-  }
-
   function send(){
     if(sending) return;
-    var email=(emailIn.value||'').trim();
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-      showMsg('Hmm, that email doesn’t look right. Mind checking it?','err');
-      try{ emailIn.focus(); }catch(e){}
-      return;
-    }
-    if(!state.photo){ showMsg('Add a photo of your pet first so we can make the licence 📸','err'); return; }
-
-    sending=true;
     var lbl=sendBtn.querySelector('.fd-send-label');
-    var prev=lbl.textContent; lbl.textContent='Sending…'; sendBtn.disabled=true; emailIn.disabled=true;
-    clearMsg();
-    if(window.PLFTrack) PLFTrack.step('free_digital_requested');
-
-    function fail(m){
-      sending=false; sendBtn.disabled=false; emailIn.disabled=false; lbl.textContent=prev;
-      showMsg(m||'Something went wrong. Please try again in a moment.','err');
-    }
-
-    var render = function(){
-      renderLicence({width:900,quality:0.85,mime:'image/jpeg',watermark:true}, function(img){
-        if(!img){ fail("We couldn’t build the licence image. Please try again."); return; }
-        var attr=getAttr();
-        var first=$('fFirst').value.trim();
-        fetch('/api/free-licence',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-          email:email,
-          petName:first||'your pet',
-          image:img,
-          v:(window.PLFTrack&&PLFTrack.visitorId)||null,
-          s:(window.PLFTrack&&PLFTrack.sessionId)||null,
-          utm_source:attr.utm_source||null,
-          utm_campaign:attr.utm_campaign||null
-        })})
-        .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
-        .then(function(res){
-          if(res.ok && res.d && res.d.ok){
-            sending=false; emailIn.disabled=false;
-            sendBtn.disabled=false; lbl.textContent=prev;
-            form.querySelector('.fd-row').style.display='none';
-            form.querySelector('.fd-fine').style.display='none';
-            showMsg('Check your inbox! '+(first?first:'Your pet')+'’s licence is on its way 🎉','ok');
-            if(window.PLFTrack) PLFTrack.event('free_digital_sent','ok');
-          } else {
-            fail((res.d&&res.d.error)||'Something went wrong. Please try again in a moment.');
-          }
-        })
-        .catch(function(err){ console.error('free-licence error',err); fail(); });
-      });
-    };
-    // Render directly. Fonts are already loaded by Step 5 (the live DOM preview
-    // uses them), and deferring the render into a microtask/promise callback
-    // makes the pet-photo Image load race and drop out of the canvas.
-    render();
+    var prev=lbl.textContent;
+    submitFreeLicence(emailIn.value, {
+      onStart:function(){ sending=true; lbl.textContent='Sending…'; sendBtn.disabled=true; emailIn.disabled=true; clearMsg(); },
+      onError:function(m, kind){
+        sending=false; sendBtn.disabled=false; emailIn.disabled=false; lbl.textContent=prev;
+        showMsg(m||'Something went wrong. Please try again in a moment.','err');
+        if(kind==='email'){ try{ emailIn.focus(); }catch(e){} }
+      },
+      onSuccess:function(first){
+        sending=false; emailIn.disabled=false; sendBtn.disabled=false; lbl.textContent=prev;
+        form.querySelector('.fd-row').style.display='none';
+        form.querySelector('.fd-fine').style.display='none';
+        showMsg('Check your inbox! '+(first?first:'Your pet')+'’s licence is on its way 🎉','ok');
+      }
+    });
   }
 
   sendBtn.addEventListener('click', send);
   emailIn.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); send(); } });
+})();
+
+// ── Exit-intent free-licence modal ──
+// 92% of ad sessions abandon before Step 5 ever renders the inline offer, so we
+// re-surface it on exit. Capped once/session; only fires when a renderable photo
+// exists, no lead is captured yet, and checkout isn't already redirecting.
+(function(){
+  var overlay=$('exitModal'); if(!overlay) return;
+  var titleEl=$('exitTitle'), emailIn=$('exitEmail'), sendBtn=$('exitSend'),
+      msg=$('exitMsg'), dismissBtn=$('exitDismiss');
+  var isOpen=false, sending=false, lastFocus=null, mobileArmed=false, shownFallback=false;
+
+  function capped(){ try{ return sessionStorage.getItem('plf_exit_shown')==='1'; }catch(e){ return shownFallback; } }
+  function markCapped(){ shownFallback=true; try{ sessionStorage.setItem('plf_exit_shown','1'); }catch(e){} }
+  function eligible(){ return !!state.photo && !freeLeadSubmitted && !checking && !isOpen && !capped(); }
+
+  function showMsg(text, kind){ msg.textContent=text; msg.className='fd-msg show '+(kind||''); }
+  function clearMsg(){ msg.textContent=''; msg.className='fd-msg'; }
+
+  function open(){
+    if(!eligible()) return;
+    markCapped(); isOpen=true;
+    var first=$('fFirst').value.trim();
+    titleEl.textContent = first
+      ? ("WAIT, DON’T LOSE "+first.toUpperCase()+"’S LICENCE")
+      : "WAIT, DON’T LOSE YOUR PET’S LICENCE";
+    lastFocus = document.activeElement;
+    overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false');
+    document.body.style.overflow='hidden';
+    if(window.PLFTrack) PLFTrack.event('exit-intent-open','open');
+    setTimeout(function(){ try{ emailIn.focus(); }catch(e){} }, 40);
+  }
+  function close(){
+    if(!isOpen) return;
+    isOpen=false;
+    overlay.classList.remove('open'); overlay.setAttribute('aria-hidden','true');
+    document.body.style.overflow='';
+    try{ if(lastFocus&&lastFocus.focus) lastFocus.focus(); }catch(e){}
+  }
+
+  function send(){
+    if(sending) return;
+    var lbl=sendBtn.querySelector('.fd-send-label');
+    var prev=lbl.textContent;
+    submitFreeLicence(emailIn.value, {
+      onStart:function(){ sending=true; lbl.textContent='Sending…'; sendBtn.disabled=true; emailIn.disabled=true; clearMsg(); },
+      onError:function(m, kind){
+        sending=false; sendBtn.disabled=false; emailIn.disabled=false; lbl.textContent=prev;
+        showMsg(m||'Something went wrong. Please try again in a moment.','err');
+        if(kind==='email'){ try{ emailIn.focus(); }catch(e){} }
+      },
+      onSuccess:function(first){
+        sending=false; lbl.textContent=prev;
+        overlay.querySelector('.fd-row').style.display='none';
+        showMsg('Check your inbox! '+(first?first:'Your pet')+'’s licence is on its way 🎉','ok');
+        setTimeout(close, 2400);
+      }
+    });
+  }
+
+  sendBtn.addEventListener('click', send);
+  emailIn.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); send(); } });
+  dismissBtn.addEventListener('click', function(){ close(); });
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) close(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape' && isOpen) close(); });
+
+  // Desktop: pointer leaves the viewport toward the top browser chrome.
+  document.addEventListener('mouseleave', function(e){ if(e.clientY<=0) open(); });
+
+  // Mobile: intercept Back. armExitIntent() pushes one history entry once a photo
+  // exists; popstate shows the modal once, then re-pushes so a 2nd Back leaves.
+  window.addEventListener('popstate', function(){
+    if(eligible()){
+      open();
+      try{ history.pushState({plfExit:1}, ''); }catch(e){}
+    }
+  });
+  armExitIntent = function(){
+    if(mobileArmed) return;
+    mobileArmed=true;
+    try{ history.pushState({plfExit:1}, ''); }catch(e){}
+  };
 })();
 
 // ── Smooth-scroll CTAs to the builder (keeps cold visitors on-page) ──
