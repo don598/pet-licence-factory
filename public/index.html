@@ -947,12 +947,20 @@ holdRepeat($('dpad-left'),      function(){ nudgeCrop(+CROP_NUDGE, 0); });
 holdRepeat($('dpad-right'),     function(){ nudgeCrop(-CROP_NUDGE, 0); });
 holdRepeat($('dpad-zoom-in'),   function(){ zoomCrop(+1); });
 holdRepeat($('dpad-zoom-out'),  function(){ zoomCrop(-1); });
-$('dropzone').addEventListener('click', function(){ $('fileInput').click(); });
-$('changePhoto').addEventListener('click', function(){ $('fileInput').click(); });
-$('fileInput').addEventListener('change', function(e){ if(e.target.files[0]) handleFile(e.target.files[0]); });
-['dragover','dragenter'].forEach(function(ev){ $('dropzone').addEventListener(ev,function(e){e.preventDefault();$('dropzone').classList.add('drag');});});
+// step_1_photo fires on GENUINE engagement with the photo station (first
+// interaction with the dropzone / an upload), NOT on page load. A load-time
+// fire tagged 100% of sessions and destroyed the funnel stage. One-shot.
+var photoStepTracked = false;
+function trackPhotoStep(){
+  if(photoStepTracked) return; photoStepTracked = true;
+  if(window.PLFTrack) PLFTrack.step('step_1_photo');
+}
+$('dropzone').addEventListener('click', function(){ trackPhotoStep(); $('fileInput').click(); });
+$('changePhoto').addEventListener('click', function(){ trackPhotoStep(); $('fileInput').click(); });
+$('fileInput').addEventListener('change', function(e){ if(e.target.files[0]){ trackPhotoStep(); handleFile(e.target.files[0]); } });
+['dragover','dragenter'].forEach(function(ev){ $('dropzone').addEventListener(ev,function(e){e.preventDefault();trackPhotoStep();$('dropzone').classList.add('drag');});});
 ['dragleave','drop'].forEach(function(ev){ $('dropzone').addEventListener(ev,function(e){e.preventDefault();$('dropzone').classList.remove('drag');});});
-$('dropzone').addEventListener('drop', function(e){ if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+$('dropzone').addEventListener('drop', function(e){ if(e.dataTransfer.files[0]){ trackPhotoStep(); handleFile(e.dataTransfer.files[0]); } });
 
 // ── Form wiring ──
 ['fFirst','fLast','fSpecies','fSex','fDob','fEyes','fHeight','fWeight','fAddr1','fAddr2'].forEach(function(id){
@@ -1387,7 +1395,12 @@ function submitFreeLicence(email, ui){
     lastFocus = document.activeElement;
     overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false');
     document.body.style.overflow='hidden';
-    if(window.PLFTrack) PLFTrack.event('exit-intent-open','open');
+    // Use step(), not event(): /api/track whitelists event_type to
+    // page_view|click|step|purchase_success|other, so PLFTrack.event('exit-intent-open')
+    // was silently re-filed as event_type='other' (label 'open') and never
+    // queryable by name. step() rides the whitelisted 'step' type and puts
+    // 'exit-intent-open' in both label + step, mirroring free_digital_requested.
+    if(window.PLFTrack) PLFTrack.step('exit-intent-open');
     setTimeout(function(){ try{ emailIn.focus(); }catch(e){} }, 40);
   }
   function close(){
@@ -1499,14 +1512,11 @@ try{
 
 // ── Go ──
 refreshPreview(); recalc(); renderStepper();
-// Step 1 shows by default (no showStep call fires for it). plf-track.js is
-// loaded with `defer`, so it hasn't run yet when this synchronous inline
-// script executes — `window.PLFTrack` is still undefined here and the check
-// used to silently no-op for almost every visitor. DOMContentLoaded always
-// fires after deferred scripts have executed, so wait for it instead.
-document.addEventListener('DOMContentLoaded', function(){
-  if(window.PLFTrack) PLFTrack.step('step_1_photo');
-});
+// Step 1 (the photo station) shows by default. Do NOT fire step_1_photo here:
+// firing on load — even deferred to DOMContentLoaded so PLFTrack is defined —
+// tags 100% of sessions and destroys the funnel stage. step_1_photo instead
+// fires on genuine engagement (dropzone interaction / upload via trackPhotoStep)
+// and on wizard navigation back to step 1 (showStep).
 })();
 </script>
 </body>
