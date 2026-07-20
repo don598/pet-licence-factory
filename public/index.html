@@ -1318,7 +1318,7 @@ function submitFreeLicence(email, ui){
     .then(function(res){
       if(res.ok && res.d && res.d.ok){
         freeLeadSubmitted = true;
-        if(window.PLFTrack) PLFTrack.event('free_digital_sent','ok');
+        if(window.PLFTrack) PLFTrack.step('free_digital_sent');
         if(ui.onSuccess) ui.onSuccess(first);
       } else {
         if(ui.onError) ui.onError((res.d&&res.d.error)||'Something went wrong. Please try again in a moment.');
