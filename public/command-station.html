@@ -4874,8 +4874,11 @@ async function removePhotoBackground(dataUrl) {
 const LIC_W = 1322, LIC_H = 957;
 const F = {
   dlNumber:   { x: 429, y: 197, w: 257, h: 61 },
-  expDate:    { x: 780, y: 200, w: 243, h: 41 },
-  issDate:    { x: 769, y: 244, w: 243, h: 41 },
+  // Exp/Iss widths are clamped so their right edge stays left of the photo box.
+  // At the old 243 they ran to x≈1023, past photoMain.x, so the last digits sat
+  // under (and were clipped by) the photo frame.
+  expDate:    { x: 780, y: 200, w: 186, h: 41 },
+  issDate:    { x: 769, y: 244, w: 197, h: 41 },
   dob:        { x: 447, y: 268, w: 189, h: 60 },
   firstName:  { x: 374, y: 333, w: 345, h: 80 },
   lastName:   { x: 374, y: 413, w: 345, h: 79 },
@@ -4888,7 +4891,9 @@ const F = {
   eyes:       { x: 718, y: 683, w: 76, h: 47 },
   licClass:   { x: 476, y: 737, w: 62, h: 48 },
   restrict:   { x: 856, y: 737, w: 71, h: 48 },
-  photoMain:  { x: 968, y: 231, w: 300, h: 400 },
+  // Photo frame at "100%". Right edge (1268) and top (231) kept; 11% narrower
+  // than the old 300×400 so it clears the Exp/Iss dates instead of crowding them.
+  photoMain:  { x: 1000, y: 231, w: 268, h: 357 },
   photoWmark: { x: 72, y: 610, w: 138, h: 120 },
 };
 
