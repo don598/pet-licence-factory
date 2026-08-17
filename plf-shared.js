@@ -50,7 +50,7 @@ async function submitOrder(orderData) {
 // truth for what Stripe charges). The literal below is a safe fallback if
 // pricing.js hasn't loaded.
 const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
-  || { pack1: 13.95, pack2: 19.99, decal: 4.49, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
+  || { pack1: 9.99, pack2: 15.99, decal: 4.49, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
 
 // ═══════════════════════════════════════════════════════════
 // GLOBAL STATE
@@ -58,7 +58,7 @@ const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
 let petData = {};
 let photoDataURL = null;
 let chipSize = 'mini';
-let packQty = 1;
+let packQty = 2;
 let wantsDecal = false;
 let shippingOption = 'stamp';
 let discountEarned = false;

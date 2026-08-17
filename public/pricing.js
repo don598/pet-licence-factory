@@ -11,8 +11,8 @@
 (function (root) {
   // Amounts in US cents.
   var CENTS = {
-    pack1:    1395,   // 1-Pack License Sticker
-    pack2:    1999,   // 2-Pack License Stickers
+    pack1:     999,   // 1-Pack License Sticker
+    pack2:    1599,   // 2-Pack License Stickers
     decal:     449,   // 4×4" Vinyl Car Decal
     stamp:      95,   // Stamp Shipping
     standard:  699,   // Standard Shipping (USPS Ground Advantage)

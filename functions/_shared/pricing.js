@@ -7,8 +7,8 @@
 //    There is no build step wiring these together, so if you change a price
 //    here, change it there too.
 export const PRICES = {
-  pack1:    1395,   // 1-Pack License Sticker
-  pack2:    1999,   // 2-Pack License Stickers
+  pack1:     999,   // 1-Pack License Sticker
+  pack2:    1599,   // 2-Pack License Stickers
   decal:     449,   // 4×4" Vinyl Car Decal
   discRate:  0.15,  // 15% discount (mini-game reward)
   stamp:      95,   // Stamp Shipping

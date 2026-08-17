@@ -423,14 +423,14 @@ html,body{width:100%;height:100%;background:#060808;display:flex;align-items:cen
       <div id="m-s5-picker">
         <p style="color:#00ff41;font-size:clamp(7px,1.1vw,12px);margin-bottom:8px;">▸ CHOOSE YOUR PACK</p>
         <div class="m-pack-row">
-          <div class="m-pack-card selected" id="pack-1" onclick="selectPack(1)">
+          <div class="m-pack-card" id="pack-1" onclick="selectPack(1)">
             <div class="m-pack-title">1-PACK</div>
-            <div class="m-pack-price" id="price-1">$13.95</div>
+            <div class="m-pack-price" id="price-1">$9.99</div>
             <div class="m-pack-sub">1 license sticker</div>
           </div>
-          <div class="m-pack-card" id="pack-2" onclick="selectPack(2)">
+          <div class="m-pack-card selected" id="pack-2" onclick="selectPack(2)">
             <div class="m-pack-title">2-PACK</div>
-            <div class="m-pack-price" id="price-2">$19.99</div>
+            <div class="m-pack-price" id="price-2">$15.99</div>
             <div class="m-pack-sub">2 license stickers</div>
           </div>
         </div>
@@ -568,7 +568,7 @@ const A = {
 // in sync with functions/_shared/pricing.js (server source of truth). Literal
 // is a safe fallback if pricing.js hasn't loaded.
 const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
-  || { pack1: 13.95, pack2: 19.99, decal: 4.49, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
+  || { pack1: 9.99, pack2: 15.99, decal: 4.49, disc: 0.15, stamp: 0.95, standard: 6.99, priority: 10.99 };
 
 // ═══════════════════════════════════════════════════════════
 // GLOBAL STATE
@@ -576,7 +576,7 @@ const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
 let petData = {};
 let photoDataURL = null;
 let chipSize = 'mini';
-let packQty = 1;
+let packQty = 2;
 let wantsDecal = false;
 let shippingOption = 'stamp';
 let discountEarned = false;
@@ -1660,8 +1660,8 @@ function startStation5() {
   setBg($('s5-bg'), A.s5bg);
   if (!spriteStates['s5']) initSpriteAnim('s5', $('s5-sprite-anim'));
   showLicPreviewCard();
-  packQty=1; wantsDecal=false; discountEarned=false; shippingOption='stamp';
-  $('pack-1').classList.add('selected'); $('pack-2').classList.remove('selected');
+  packQty=2; wantsDecal=false; discountEarned=false; shippingOption='stamp';
+  $('pack-2').classList.add('selected'); $('pack-1').classList.remove('selected');
   $('decal-row').classList.remove('active'); $('decal-check').textContent=' ';
   $('m-s5-discount').style.display='none';
   $('play-game-btn').style.display='block';

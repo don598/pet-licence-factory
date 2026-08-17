@@ -447,7 +447,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
         <p class="subtitle">A custom pet driver's license printed as a premium credit-card skin, with your furry friend's photo, name, and very official stats.</p>
         <div class="usability"><span class="ui">💳</span><span><b>Doesn't affect your card at all.</b> Swipe, insert, and tap all keep working perfectly — it's a thin printed skin that sticks on top, not a new card.</span></div>
         <div class="rating"><span class="stars">★★★★★</span><span>4.9 &middot; 1,200+ happy pets</span></div>
-        <div class="price-row"><span class="big" id="priceMain">$13.95</span><span class="from">+ shipping</span></div>
+        <div class="price-row"><span class="big" id="priceMain">$9.99</span><span class="from">+ shipping</span></div>
         <div class="pills">
           <span class="pill">✓ Premium card-skin</span>
           <span class="pill">✓ Fully personalised</span>
@@ -459,7 +459,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
       <div class="wizard">
         <div class="wiz-top">
           <span class="sc" id="stepCount">Step 1 of 5</span>
-          <span class="tot"><em>Subtotal</em><span id="wizTotal">$13.95</span></span>
+          <span class="tot"><em>Subtotal</em><span id="wizTotal">$15.99</span></span>
         </div>
 
         <div class="stepper" id="stepper"><!-- built by JS --></div>
@@ -522,8 +522,8 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
           <div class="step-panel" data-step="3">
             <div class="step-title"><h2>Choose your pack</h2></div>
             <div class="opts" id="packOpts">
-              <div class="opt-card sel" data-pack="1"><span class="check">✓</span><span class="ot">1-Pack</span><span class="od">One license sticker</span><span class="op" id="packP1">$13.95</span></div>
-              <div class="opt-card" data-pack="2"><span class="badge" id="packSave">SAVE 28%</span><span class="check">✓</span><span class="ot">2-Pack</span><span class="od">Two stickers — gift one</span><span class="op" id="packP2">$19.99</span></div>
+              <div class="opt-card" data-pack="1"><span class="check">✓</span><span class="ot">1-Pack</span><span class="od">One license sticker</span><span class="op" id="packP1">$9.99</span></div>
+              <div class="opt-card sel" data-pack="2"><span class="badge" id="packSave">SAVE 20%</span><span class="check">✓</span><span class="ot">2-Pack</span><span class="od">Two stickers — gift one</span><span class="op" id="packP2">$15.99</span></div>
             </div>
           </div>
 
@@ -667,9 +667,9 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 'use strict';
 var $ = function(id){return document.getElementById(id);};
 function clamp(min,v,max){ return Math.max(min, Math.min(max, v)); }
-var PRICES = (window.PLF_PRICES_USD) || { pack1:13.95, pack2:19.99, decal:4.49, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
+var PRICES = (window.PLF_PRICES_USD) || { pack1:9.99, pack2:15.99, decal:4.49, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
 
-var state = { photo:null, crop:{cx:0.5,cy:0.5,zoom:1}, packQty:1, chipSize:'mini', wantsDecal:false, addrReal:false, discount:false };
+var state = { photo:null, crop:{cx:0.5,cy:0.5,zoom:1}, packQty:2, chipSize:'mini', wantsDecal:false, addrReal:false, discount:false };
 
 // Set once a free digital lead is captured (either the Step-5 form or the exit
 // modal), so the exit-intent trigger never re-fires after a successful capture.

@@ -5423,7 +5423,7 @@ function renderCertificateLabel(o) {
 // longer reads "15% Applied". Returns a human label, or 'None'.
 function orderDiscountInfo(o) {
   const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES)
-    || { pack1: 1395, pack2: 1999, decal: 449, stamp: 95, standard: 699, priority: 1099 };
+    || { pack1: 999, pack2: 1599, decal: 449, stamp: 95, standard: 699, priority: 1099 };
   const pack = parseInt(o.pack_count) || 1;
   const listSubtotal = (pack === 2 ? PRICES.pack2 : PRICES.pack1) + (o.add_on === 'car_decal' ? PRICES.decal : 0);
   const shipAmt = PRICES[(o.shipping_option || 'stamp').toLowerCase()] ?? PRICES.stamp;
@@ -5454,7 +5454,7 @@ function renderReceiptLabel(o) {
   // Canonical prices come from /pricing.js (window.PLF_PRICES); literal is a
   // safe fallback if that script hasn't loaded.
   const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES)
-    || { pack1: 1395, pack2: 1999, decal: 449, stamp: 95, standard: 699, priority: 1099 };
+    || { pack1: 999, pack2: 1599, decal: 449, stamp: 95, standard: 699, priority: 1099 };
   const fmt = (cents) => '$' + (cents / 100).toFixed(2);
   const pack       = parseInt(o.pack_count) || 1;
   const packLabel  = pack === 2 ? 'Pet Licence Sticker (2-Pack)' : 'Pet Licence Sticker (1-Pack)';
