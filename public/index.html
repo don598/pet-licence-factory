@@ -459,7 +459,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
       <div class="wizard">
         <div class="wiz-top">
           <span class="sc" id="stepCount">Step 1 of 5</span>
-          <span class="tot"><em>Subtotal</em><span id="wizTotal">$15.99</span></span>
+          <span class="tot"><em>Subtotal</em><span id="wizTotal">from $9.99</span></span>
         </div>
 
         <div class="stepper" id="stepper"><!-- built by JS --></div>
@@ -1009,7 +1009,9 @@ function recalc(){
   h += '<div class="line muted"><span>Shipping</span><span>at checkout</span></div>';
   h += '<hr><div class="line total"><span>Subtotal</span><span>'+money(total)+'</span></div>';
   $('summaryLines').innerHTML = h;
-  $('wizTotal').textContent = money(total);
+  // Don't claim a subtotal before the visitor has seen the pack choice that
+  // produces it (2-pack is pre-selected, which reads as bait if shown early).
+  $('wizTotal').textContent = (maxReached >= 3) ? money(total) : 'from '+money(PRICES.pack1);
 }
 $('discCheck').addEventListener('change', function(){
   state.discount = this.checked;
@@ -1083,7 +1085,8 @@ function showStep(n, dir){
   else { next.classList.remove('hidden'); next.innerHTML = (n===TOTAL_STEPS-1 ? 'Review order →' : 'Continue →'); }
   $('stepCount').textContent = 'Step '+n+' of '+TOTAL_STEPS;
   renderStepper();
-  if(n===TOTAL_STEPS){ recalc(); updateRecap(); }
+  recalc();
+  if(n===TOTAL_STEPS){ updateRecap(); }
   // On small screens, bring the wizard (stepper) top into view for the new step
   if(window.innerWidth < 920){
     var wz = document.querySelector('.wizard');
