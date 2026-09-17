@@ -1461,18 +1461,16 @@ function wireStatic(){
   // grants the Right of Nomination with a mini Council ceremony (seal slam +
   // gold confetti). Copy comes from GOOFY_QR so print and web stay in sync.
   // Headline priority: ?name= preview override → order lookup via ?o=
-  // (per-print licence QRs) → batch callout (?src=frat-batch-1) → generic.
-  // Once per session per src — the tier selection, recipient + address, and
-  // $4.95 checkout flow is unchanged.
+  // (per-print licence QRs) → plain Congratulations. Every ?src= load plays;
+  // the tier selection, recipient + address, and $4.95 checkout flow follow.
   (function qrWelcome(){
     var m = $('qrModal');
     if (!m) return;
     var urlSrc = '';
     try { urlSrc = (qs.get('src') || '').trim().slice(0, 120); } catch (e) {}
     if (!urlSrc) return;
-    var seen = '';
-    try { seen = sessionStorage.getItem('goofy_qr_seen') || ''; } catch (e) {}
-    if (seen === urlSrc) return;
+    // No seen-flag: every ?src= load plays the ceremony, so the page can be
+    // re-shown to someone straight from the same link, any time.
     var Q = window.GOOFY_QR || {};
     var urlName = '';
     try { urlName = (qs.get('name') || '').trim().slice(0, 40); } catch (e) {}
@@ -1534,7 +1532,6 @@ function wireStatic(){
     function hide(action){
       m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
-      try { sessionStorage.setItem('goofy_qr_seen', urlSrc); } catch (e) {}
       if (window.PLFTrack) PLFTrack.step(action || 'goofy_qr_modal_dismissed', { src:urlSrc });
     }
     // Star Wars-style proclamation crawl: perspective text rising into the
