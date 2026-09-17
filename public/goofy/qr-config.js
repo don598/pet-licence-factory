@@ -33,8 +33,19 @@
   };
 
   // Licence-card URL (its own tracker, separate from nomination-card scans).
-  QR.licenceUrl = function () {
-    return QR.CANONICAL_ORIGIN + QR.LINE_PATH + '?src=' + encodeURIComponent(QR.LICENCE_SRC);
+  // Pass the order id for per-print personalization: the landing page greets
+  // that order's recipient by name (?src=license-qr&o=GOOFY-...).
+  QR.licenceUrl = function (orderId) {
+    var u = QR.CANONICAL_ORIGIN + QR.LINE_PATH + '?src=' + encodeURIComponent(QR.LICENCE_SRC);
+    if (orderId && String(orderId).trim()) u += '&o=' + encodeURIComponent(String(orderId).trim());
+    return u;
+  };
+
+  // "frat-batch-1" → "Frat Batch 1" for the scan-modal callout.
+  QR.prettySrc = function (src) {
+    return String(src || '').replace(/[-_]+/g, ' ').trim()
+      .replace(/\w\S*/g, function (w) { return w.charAt(0).toUpperCase() + w.slice(1); })
+      .slice(0, 60);
   };
 
   root.GOOFY_QR = QR;

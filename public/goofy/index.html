@@ -6,7 +6,7 @@
 <title>Goofy Licenses — Nominate a GOAT</title>
 <meta name="description" content="Nominate someone for an official G.O.A.T. license. Watch it render live, then file it with the Council."/>
 <link rel="canonical" href="https://goofylicenses.com/goat/"/>
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐐</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Pinyon+Script&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
@@ -287,6 +287,13 @@ button{ -webkit-tap-highlight-color:transparent; }
 .modal-head h3{font-size:15px}
 .modal-close{background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer}
 .modal-hint{text-align:center;font-size:12px;color:var(--muted);margin:10px 0}
+/* ── QR scan celebration: seal slam + modal shake (motion-safe) ── */
+.qr-seal{font-size:58px;text-align:center;line-height:1.2;filter:drop-shadow(0 6px 14px rgba(168,110,10,.35))}
+#qrModal.open .qr-seal{animation:qrslam .5s cubic-bezier(.2,1.5,.3,1) both}
+@keyframes qrslam{0%{opacity:0;transform:scale(2.4) rotate(-10deg)}60%{opacity:1;transform:scale(.94) rotate(2deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+#qrModal.open .modal{animation:qrshake .4s ease .1s}
+@keyframes qrshake{0%,100%{transform:none}25%{transform:translate(-4px,2px) rotate(-.4deg)}50%{transform:translate(4px,-2px) rotate(.4deg)}75%{transform:translate(-2px,-1px)}}
+@media (prefers-reduced-motion:reduce){#qrModal.open .qr-seal,#qrModal.open .modal{animation:none}}
 .crop-ctl{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap}
 .dpad{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:3px}
 .pad{background:var(--bg2);border:1px solid var(--line);color:var(--gold);border-radius:8px;font-size:15px;cursor:pointer;touch-action:none}
@@ -480,6 +487,7 @@ footer a{color:var(--gold)}
 <!-- ── QR scan welcome (Right of Nomination — shown on ?src= landings) ── -->
 <div class="modal-overlay" id="qrModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-label="Right of Nomination">
+    <div class="qr-seal" aria-hidden="true">🐐</div>
     <div class="modal-head">
       <h3 id="qrTitle">🐐 Right of Nomination Granted</h3>
       <button class="modal-close" id="qrClose" type="button" aria-label="Close">✕</button>
@@ -1418,9 +1426,12 @@ function wireStatic(){
     setTimeout(dismiss, 1550);
   })();
   // QR scan welcome: a ?src= landing (printed QR on the kit / licence card)
-  // grants the Right of Nomination. Copy comes from GOOFY_QR so the print
-  // and web wording stay in sync. Once per session per src — the tier
-  // selection, recipient + address, and $4.95 checkout flow is unchanged.
+  // grants the Right of Nomination with a mini Council ceremony (seal slam +
+  // gold confetti). Copy comes from GOOFY_QR so print and web stay in sync.
+  // Headline priority: ?name= preview override → order lookup via ?o=
+  // (per-print licence QRs) → batch callout (?src=frat-batch-1) → generic.
+  // Once per session per src — the tier selection, recipient + address, and
+  // $4.95 checkout flow is unchanged.
   (function qrWelcome(){
     var m = $('qrModal');
     if (!m) return;
@@ -1431,9 +1442,66 @@ function wireStatic(){
     try { seen = sessionStorage.getItem('goofy_qr_seen') || ''; } catch (e) {}
     if (seen === urlSrc) return;
     var Q = window.GOOFY_QR || {};
-    if (Q.MODAL_TITLE) $('qrTitle').textContent = Q.MODAL_TITLE;
+    var licSrc = Q.LICENCE_SRC || 'license-qr';
+    var urlName = '';
+    try { urlName = (qs.get('name') || '').trim().slice(0, 40); } catch (e) {}
+    var urlOrder = '';
+    try { urlOrder = (qs.get('o') || '').trim().slice(0, 40); } catch (e) {}
     if (Q.MODAL_BODY) $('qrBody').textContent = Q.MODAL_BODY;
     if (Q.MODAL_CTA) $('qrCta').textContent = Q.MODAL_CTA;
+    function headline(orderName){
+      var n = urlName || orderName;
+      if (n) return 'Congratulations, ' + n + '! 🎉';
+      if (urlSrc !== licSrc) {
+        var pretty = (Q.prettySrc ? Q.prettySrc(urlSrc) : urlSrc);
+        if (pretty) return 'Congratulations, Fellow GOAT of ' + pretty + '!';
+      }
+      return Q.MODAL_TITLE || '🐐 Right of Nomination Granted';
+    }
+    var orderName = null;
+    function paint(){ $('qrTitle').textContent = headline(orderName); }
+    paint();
+    if (!urlName && urlOrder) {
+      fetch('/api/goofy-recipient?o=' + encodeURIComponent(urlOrder), { credentials:'omit' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if (d && d.name) { orderName = String(d.name).slice(0, 40); paint(); } })
+        .catch(function(){});
+    }
+    function confetti(){
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      try {
+        var c = document.createElement('canvas');
+        c.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:300;pointer-events:none';
+        document.body.appendChild(c);
+        var x = c.getContext('2d');
+        var W = c.width = window.innerWidth, H = c.height = window.innerHeight;
+        var colors = ['#f5c542', '#a86e0a', '#0e7a4f', '#fffdf7', '#e9d8a6'];
+        var ps = [];
+        for (var i = 0; i < 90; i++) {
+          ps.push({ x:W / 2 + (Math.random() - .5) * 120, y:H * 0.32,
+            vx:(Math.random() - .5) * 11, vy:-Math.random() * 11 - 3,
+            s:Math.random() * 7 + 4, r:Math.random() * Math.PI, vr:(Math.random() - .5) * .3,
+            col:colors[i % colors.length], life:1 });
+        }
+        var frames = 0;
+        (function tick(){
+          x.clearRect(0, 0, W, H);
+          var alive = false;
+          for (var j = 0; j < ps.length; j++) {
+            var p = ps[j];
+            p.vy += .32; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life -= .008;
+            if (p.y > H + 20 || p.life <= 0) continue;
+            alive = true;
+            x.save(); x.translate(p.x, p.y); x.rotate(p.r);
+            x.globalAlpha = Math.max(0, Math.min(1, p.life * 1.4));
+            x.fillStyle = p.col; x.fillRect(-p.s / 2, -p.s / 3, p.s, p.s * .66);
+            x.restore();
+          }
+          if (alive && ++frames < 240) requestAnimationFrame(tick);
+          else if (c.parentNode) c.parentNode.removeChild(c);
+        })();
+      } catch (e) {}
+    }
     function hide(action){
       m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
@@ -1442,8 +1510,10 @@ function wireStatic(){
     }
     // Delay past the Council sting (~1.6s) so the two never stack.
     setTimeout(function(){
+      paint();
       m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
+      confetti();
       if (window.PLFTrack) PLFTrack.step('goofy_qr_modal_shown', { src:urlSrc });
     }, 1750);
     $('qrCta').addEventListener('click', function(){

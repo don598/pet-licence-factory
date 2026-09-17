@@ -6,7 +6,7 @@
 <title>GOAT QR Press — Goofy Licenses</title>
 <meta name="description" content="Generate print-ready QR codes for GOAT kit nomination cards (per-batch) and licence cards."/>
 <meta name="robots" content="noindex, nofollow"/>
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐐</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
@@ -60,6 +60,8 @@ button.ghost{background:#f0e9d8;color:var(--cream);border:1px solid var(--line)}
   <div class="card">
     <h2>🪪 Licence card QR</h2>
     <p class="hint">Baked onto the licence art itself. Fixed tracker (<span id="licSrcLbl"></span>), attributed separately from nomination-card scans.</p>
+    <div class="field"><label>Order ID — per-print personalization <span style="text-transform:none;letter-spacing:0">(optional · landing greets that order's recipient by name)</span></label><input id="fOrder" type="text" maxlength="40" placeholder="GOOFY-…"/></div>
+    <div class="field"><label>Preview name <span style="text-transform:none;letter-spacing:0">(optional · testing only, overrides the lookup)</span></label><input id="fName" type="text" maxlength="40" placeholder="e.g. Greg"/></div>
     <div class="urlrow"><code id="urlLic">…</code><button class="btn ghost" id="copyLic" type="button">Copy</button></div>
     <div class="qrbox"><img id="imgLic" alt="Licence card QR code"/><span class="btnrow"><a class="btn" id="dlLic" download="goat-licence-qr.png">⬇ Download PNG</a></span></div>
   </div>
@@ -77,7 +79,14 @@ function $(id){ return document.getElementById(id); }
 function origin(){ return ($('fOrigin').value.trim().replace(/\/+$/,'') || Q.CANONICAL_ORIGIN); }
 function line(){ var l = $('fLine').value.trim() || Q.LINE_PATH; return l.charAt(0) === '/' ? l : '/' + l; }
 function nomUrl(){ var b = $('fBatch').value.trim() || 'frat-batch-1'; return origin() + line() + '?src=' + encodeURIComponent(b); }
-function licUrl(){ return origin() + line() + '?src=' + encodeURIComponent(Q.LICENCE_SRC); }
+function licUrl(){
+  var u = origin() + line() + '?src=' + encodeURIComponent(Q.LICENCE_SRC);
+  var o = $('fOrder').value.trim();
+  if (o) u += '&o=' + encodeURIComponent(o);
+  var n = $('fName').value.trim();
+  if (n) u += '&name=' + encodeURIComponent(n);
+  return u;
+}
 function draw(url, img, dl, name){
   try {
     var qr = qrcode(0, 'M');
@@ -102,7 +111,7 @@ function copy(t, btn){
 $('fOrigin').value = Q.CANONICAL_ORIGIN;
 $('fLine').value = Q.LINE_PATH;
 $('licSrcLbl').textContent = '?src=' + Q.LICENCE_SRC;
-['fOrigin','fLine','fBatch'].forEach(function(id){ $(id).addEventListener('input', refresh); });
+['fOrigin','fLine','fBatch','fOrder','fName'].forEach(function(id){ $(id).addEventListener('input', refresh); });
 $('copyNom').addEventListener('click', function(){ copy($('urlNom').textContent, $('copyNom')); });
 $('copyLic').addEventListener('click', function(){ copy($('urlLic').textContent, $('copyLic')); });
 refresh();
