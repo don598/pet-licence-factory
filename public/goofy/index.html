@@ -513,7 +513,7 @@ footer a{color:var(--gold)}
     <p>Bestow it upon one worthy legend. Name them, and the Council itself shall deliver their certification.</p>
     <p>Should you know of someone who you would like to nominate into the council, this is now your right and it cannot be taken away. Congratulations and welcome.</p>
   </div></div>
-  <p class="crawl-hint">drag to speed up</p>
+  <p class="crawl-hint">drag to scroll · up or down</p>
   <button class="crawl-skip" id="qrSkip" type="button">Skip →</button>
 </div>
 
@@ -1562,8 +1562,9 @@ function wireStatic(){
       var viewH = window.innerHeight || 800;
       var bodyH = body.offsetHeight || 600;
       var DUR = 36000, total = bodyH + viewH + 80;
-      // Open on ~2.5s of starfield before the first words rise into view.
-      var y = viewH + total * (2.5 / (DUR / 1000)), last = 0, dragging = false, lastY = 0;
+      // Open on ~2s of starfield before the first words rise into view.
+      var yStart = viewH + total * (2.0 / (DUR / 1000));
+      var y = yStart, last = 0, dragging = false, lastY = 0;
       function finish(skipped){
         if (finished) return; finished = true;
         try { cancelAnimationFrame(raf); } catch (e) {}
@@ -1573,12 +1574,15 @@ function wireStatic(){
       ov.addEventListener('pointerdown', function(e){ dragging = true; lastY = e.clientY; });
       window.addEventListener('pointerup', function(){ dragging = false; });
       window.addEventListener('pointercancel', function(){ dragging = false; });
+      // Drag scrubs both ways (up = forward, down = back); wheel the same.
+      // While held, your finger drives and the auto-roll pauses.
       ov.addEventListener('pointermove', function(e){
         if (!dragging || finished) return;
         var dy = lastY - e.clientY; lastY = e.clientY;
-        y -= Math.abs(dy) * 2.2;
+        y -= dy * 2.2;
+        if (y > yStart) y = yStart;
       });
-      ov.addEventListener('wheel', function(e){ if (!finished) y -= Math.abs(e.deltaY || 0) * 1.4; }, { passive:true });
+      ov.addEventListener('wheel', function(e){ if (!finished) y -= (e.deltaY || 0) * 1.4; }, { passive:true });
       $('qrSkip').addEventListener('click', function(){ finish(true); });
       function place(){ body.style.transform = 'translateX(-50%) rotateX(24deg) translateY(' + y + 'px)'; }
       place();
@@ -1586,9 +1590,8 @@ function wireStatic(){
       function frame(t){
         if (finished) return;
         var dt = Math.min(100, t - last); last = t;
-        var sp = total / DUR;
-        if (dragging) sp *= 4;
-        y -= sp * dt;
+        if (!dragging) y -= (total / DUR) * dt; // your finger drives while held
+        if (y > yStart) y = yStart;
         if (y <= -(bodyH + 60)) { finish(false); return; }
         place();
         raf = requestAnimationFrame(frame);
