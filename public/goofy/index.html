@@ -511,7 +511,8 @@ footer a{color:var(--gold)}
     <p>Your legend has been certified. Your license is official. You are GOAT.</p>
     <p>And with legend status comes duty. By rubber stamp and unanimous hoof, the RIGHT OF NOMINATION is hereby granted to you.</p>
     <p>Bestow it upon one worthy legend. Name them, and the Council itself shall deliver their certification.</p>
-    <p>A small processing fee of $4.95 applies. The Council forbids drip pricing…</p>
+    <p>A small processing fee of $4.95 applies. The Council forbids drip pricing.</p>
+    <p>Your move, Fellow GOAT…</p>
   </div></div>
   <p class="crawl-hint">drag to speed up</p>
   <button class="crawl-skip" id="qrSkip" type="button">Skip →</button>
@@ -1561,8 +1562,8 @@ function wireStatic(){
       var finished = false, raf = 0;
       var viewH = window.innerHeight || 800;
       var bodyH = body.offsetHeight || 600;
-      var y = viewH + 40, last = 0, dragging = false, lastY = 0;
-      var DUR = 30000, total = bodyH + viewH + 80;
+      var y = viewH * 0.7, last = 0, dragging = false, lastY = 0;
+      var DUR = 36000, total = bodyH + viewH + 80;
       function finish(skipped){
         if (finished) return; finished = true;
         try { cancelAnimationFrame(raf); } catch (e) {}
