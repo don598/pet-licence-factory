@@ -1562,8 +1562,8 @@ function wireStatic(){
       var viewH = window.innerHeight || 800;
       var bodyH = body.offsetHeight || 600;
       var DUR = 36000, total = bodyH + viewH + 80;
-      // Open on ~2s of starfield before the first words rise into view.
-      var yStart = viewH + total * (2.0 / (DUR / 1000));
+      // Open on ~1s of starfield before the first words rise into view.
+      var yStart = viewH + total * (1.0 / (DUR / 1000));
       var y = yStart, last = 0, dragging = false, lastY = 0;
       function finish(skipped){
         if (finished) return; finished = true;
