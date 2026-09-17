@@ -14,6 +14,14 @@
 /command-station.html
   X-Robots-Tag: noindex, nofollow
 
+# QR landing iterates fast — never serve it stale from edge or browser cache.
+/goofy/*
+  Cache-Control: no-store
+/goat
+  Cache-Control: no-store
+/goat/*
+  Cache-Control: no-store
+
 /test-bg.html
   Content-Security-Policy:
 
