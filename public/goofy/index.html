@@ -307,6 +307,9 @@ button{ -webkit-tap-highlight-color:transparent; }
 .crawl-hint{position:absolute;bottom:78px;width:100%;text-align:center;font-size:11px;letter-spacing:2px;color:rgba(233,216,166,.6)}
 .crawl-skip{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:transparent;border:1.5px solid rgba(245,197,66,.6);color:#f5c542;font-weight:800;font-size:14px;padding:10px 26px;border-radius:999px;cursor:pointer;font-family:inherit}
 @media (prefers-reduced-motion:reduce){.crawl{display:none !important}}
+/* QR modal type: bigger than the standard modal type for the celebration */
+#qrTitle{font-size:20px}
+#qrBody{font-size:15.5px;line-height:1.7}
 .crop-ctl{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap}
 .dpad{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:3px}
 .pad{background:var(--bg2);border:1px solid var(--line);color:var(--gold);border-radius:8px;font-size:15px;cursor:pointer;touch-action:none}
@@ -517,9 +520,8 @@ footer a{color:var(--gold)}
 <div class="modal-overlay" id="qrModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-label="Right of Nomination">
     <div class="qr-seal" aria-hidden="true">🐐</div>
-    <div class="modal-head">
+    <div class="modal-head" style="justify-content:center;text-align:center">
       <h3 id="qrTitle">🐐 Right of Nomination Granted</h3>
-      <button class="modal-close" id="qrClose" type="button" aria-label="Close">✕</button>
     </div>
     <p class="step-help" id="qrBody" style="margin-bottom:4px">Congratulations, Fellow GOAT. The Council has granted you the Right of Nomination. Choose the honor below and we will deliver the certification upon submission. A small processing fee of $4.95 applies.</p>
     <button class="cta" id="qrCta" type="button">Choose the honor →</button>
@@ -1559,7 +1561,7 @@ function wireStatic(){
       var viewH = window.innerHeight || 800;
       var bodyH = body.offsetHeight || 600;
       var y = viewH + 40, last = 0, dragging = false, lastY = 0;
-      var DUR = 17000, total = bodyH + viewH + 80;
+      var DUR = 30000, total = bodyH + viewH + 80;
       function finish(skipped){
         if (finished) return; finished = true;
         try { cancelAnimationFrame(raf); } catch (e) {}
@@ -1612,7 +1614,6 @@ function wireStatic(){
       var target = $('optionsBlock').style.display === 'none' ? $('wizardBlock') : $('optionsBlock');
       try { target.scrollIntoView({ behavior:'smooth', block:'start' }); } catch (e) {}
     });
-    $('qrClose').addEventListener('click', function(){ hide('goofy_qr_modal_dismissed'); });
     m.addEventListener('click', function(e){ if (e.target === m) hide('goofy_qr_modal_dismissed'); });
   })();
   // No wizard on page load — just the carousel + options. A ?variant= deep
