@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Nomination Filed! — Goofy Licenses</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4efe3; --bg2:#fffdf7; --card:#ffffff;
+  --gold:#a86e0a; --gold2:#8a5f06; --purple:#5b21b6;
+  --cream:#2b2118; --muted:#7c7264; --green:#0e7a4f; --red:#c0392b;
+  --line:rgba(120,90,20,.28);
+}
+body{background:var(--bg);color:var(--cream);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:radial-gradient(rgba(120,90,20,.10) 1px,transparent 1px);background-size:26px 26px}
+.wrap{max-width:640px;margin:0 auto;padding:0 20px 60px;position:relative;z-index:1}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+.brand{font-family:'Cinzel',serif;font-weight:700;font-size:13px;line-height:1.5;letter-spacing:2px;color:var(--gold);text-decoration:none}
+.brand small{display:block;font-family:'Inter',sans-serif;font-size:10px;letter-spacing:3px;color:var(--muted);font-weight:600}
+.card{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:36px 30px;margin-top:26px;text-align:center;box-shadow:0 10px 30px rgba(90,65,10,.10)}
+.seal{font-size:64px}
+h1{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(20px,3.6vw,26px);line-height:1.4;letter-spacing:2px;color:var(--gold);margin-top:14px}
+.sub{color:var(--muted);font-size:14.5px;line-height:1.7;margin-top:14px}
+.sub b{color:var(--cream)}
+.filing{margin:20px auto 0;background:#faf5ea;border:1px solid var(--line);border-radius:10px;padding:13px 16px;max-width:420px}
+.filing .k{font-size:10px;letter-spacing:2px;color:var(--muted);font-weight:700}
+.filing .v{font-family:'Courier New',monospace;font-size:14px;color:var(--gold);margin-top:4px;word-break:break-all}
+.preview-img{margin:20px auto 0;max-width:420px;border-radius:12px;border:2px solid var(--gold);display:none;width:100%}
+.next{margin-top:22px;text-align:left}
+.next h2{font-size:12px;letter-spacing:2px;color:var(--gold);font-weight:800;margin-bottom:10px}
+.next ol{margin:0;padding-left:20px;font-size:14px;color:var(--muted);line-height:2}
+.next ol b{color:var(--cream)}
+.btn{display:inline-block;margin-top:24px;font-weight:800;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none;background:#f5c542;color:#2a1a05;box-shadow:0 4px 0 #c8920f}
+/* states */
+[data-state="verifying"] .st-verifying{display:block}
+[data-state="confirmed"] .st-confirmed{display:block}
+[data-state="address-fix"] .st-address-fix{display:block}
+[data-state="locked"] .st-locked{display:block}
+.st-verifying,.st-confirmed,.st-address-fix,.st-locked{display:none}
+.spin{display:inline-block;width:34px;height:34px;border:4px solid rgba(245,197,66,.25);border-top-color:var(--gold);border-radius:50%;animation:sp 1s linear infinite;margin-bottom:14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* address fix form */
+.field{margin-top:12px;text-align:left}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;background:var(--bg2);border:2px solid var(--line);border-radius:10px;color:var(--cream);font-size:15px;padding:12px 13px;font-family:inherit}
+.field input:focus{outline:none;border-color:var(--gold)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}}
+.fix-err{display:none;margin-top:12px;background:rgba(255,60,60,.12);border:1px solid var(--red);color:#ffd9d9;font-size:13.5px;padding:11px 14px;border-radius:10px}
+.fix-err.show{display:block}
+footer{text-align:center;margin-top:36px}
+footer .fine{font-size:12px;color:var(--muted);opacity:.75;line-height:1.7}
+</style>
+</head>
+<body data-state="verifying">
+<div class="wrap">
+
+  <nav class="nav">
+    <a class="brand" href="/goofy/">🐐 GOOFY LICENSES<small>THE COUNCIL OF G.O.A.T. AFFAIRS</small></a>
+  </nav>
+
+  <div class="card">
+    <!-- verifying -->
+    <div class="st-verifying">
+      <div class="spin"></div>
+      <h1>FILING WITH<br/>THE COUNCIL…</h1>
+      <p class="sub">The clerks are stamping your nomination. One moment.</p>
+    </div>
+
+    <!-- confirmed -->
+    <div class="st-confirmed">
+      <div class="seal">🐐</div>
+      <h1>NOMINATION<br/>FILED! ★</h1>
+      <p class="sub" id="confirmedCopy">The Council has accepted your nomination. The certified <b>G.O.A.T. license kit</b> will be printed, sealed, and mailed to your nominee. Watch that mailbox.</p>
+      <img class="preview-img" id="previewImg" alt="Nomination preview"/>
+      <div class="filing">
+        <div class="k">COUNCIL FILING NUMBER</div>
+        <div class="v" id="order-id-display">—</div>
+      </div>
+      <div class="next">
+        <h2>⚡ WHAT HAPPENS NEXT</h2>
+        <ol>
+          <li>🖨️ The Council prints the certified license <b>(2–3 business days)</b>.</li>
+          <li>📮 The kit is sealed, stamped, and mailed to <b>your nominee</b>.</li>
+          <li>🐐 Confusion, then delight. Then they nominate someone. <b>The loop continues.</b></li>
+        </ol>
+      </div>
+      <a class="btn" href="/goofy/">🐐 Nominate another GOAT →</a>
+    </div>
+
+    <!-- address fix -->
+    <div class="st-address-fix">
+      <div class="seal">📮</div>
+      <h1>THE COUNCIL NEEDS<br/>A BETTER ADDRESS</h1>
+      <p class="sub" id="fix-reason">The mailing address on this nomination needs a second look before the kit ships.</p>
+      <form id="fix-form" style="margin-top:18px">
+        <div class="field"><label>Street address</label><input id="fix-line1" autocomplete="address-line1" required/></div>
+        <div class="field"><label>Apt / unit (optional)</label><input id="fix-line2" autocomplete="address-line2"/></div>
+        <div class="grid2">
+          <div class="field"><label>City</label><input id="fix-city" autocomplete="address-level2" required/></div>
+          <div class="field"><label>State</label><input id="fix-state" autocomplete="address-level1" maxlength="2" required/></div>
+        </div>
+        <div class="field"><label>ZIP</label><input id="fix-zip" autocomplete="postal-code" required/></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px" id="fix-attempts"></div>
+        <button class="btn" type="submit" id="fix-submit" style="border:0;cursor:pointer">📮 Re-file with the Council →</button>
+        <div class="fix-err" id="fix-error"></div>
+      </form>
+    </div>
+
+    <!-- locked -->
+    <div class="st-locked">
+      <div class="seal">🔒</div>
+      <h1>FILE UNDER<br/>REVIEW</h1>
+      <p class="sub">This nomination needs a human clerk. Email <a href="mailto:contact@creditcardart.com" style="color:var(--gold)">contact@creditcardart.com</a> with filing number <b id="locked-order-id">—</b> and the Council will sort it out.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p class="fine">Goofy Licenses makes novelty gag licenses for entertainment. Not a real government document.</p>
+  </footer>
+
+</div>
+
+<script src="/affiliate-tracker.js"></script>
+<script src="/pixels.js"></script>
+<script src="/plf-track.js" defer></script>
+<script>
+(function(){
+'use strict';
+// ═════════════════════════════════════════════════════════════
+//  GOOFY STATE ROUTER — same mechanics as the PLC success page,
+//  Council copy only. A nominator must never land on pet copy.
+//  Polls /api/order-status (brand-agnostic: keyed by session_id).
+// ═════════════════════════════════════════════════════════════
+var params    = new URLSearchParams(window.location.search);
+var orderId   = params.get('order_id') || '';
+var sessionId = params.get('session_id') || '';
+
+if (orderId) {
+  document.getElementById('order-id-display').textContent = orderId;
+  document.getElementById('locked-order-id').textContent  = orderId;
+}
+document.title = orderId ? ('Nomination ' + orderId + ' — Goofy Licenses') : 'Goofy Licenses';
+
+function setState(name) {
+  if (document.body.dataset.state === name) return;
+  document.body.dataset.state = name;
+  if (name === 'confirmed') loadStashedPreview();
+}
+
+function loadStashedPreview() {
+  try {
+    var raw = localStorage.getItem('goofy_last_preview');
+    if (!raw) return;
+    var st = JSON.parse(raw);
+    // Fresh (<1h) or matches this order — never show a stale card.
+    var fresh = st.ts && (Date.now() - st.ts) < 3600 * 1000;
+    var match = st.orderId && orderId && st.orderId === orderId;
+    if ((fresh || match) && st.cardDataUrl) {
+      var img = document.getElementById('previewImg');
+      img.src = st.cardDataUrl; img.style.display = 'block';
+    }
+  } catch (e) {}
+}
+
+function applyAddressForm(addr) {
+  if (!addr) return;
+  document.getElementById('fix-line1').value = addr.line1 || '';
+  document.getElementById('fix-line2').value = addr.line2 || '';
+  document.getElementById('fix-city').value  = addr.city  || '';
+  document.getElementById('fix-state').value = addr.state || '';
+  document.getElementById('fix-zip').value   = addr.zip   || '';
+}
+
+var pollAttempts = 0;
+var POLL_INTERVAL_MS = 1500;
+var POLL_MAX_ATTEMPTS = 30;
+var PENDING_STATES = { 'pending': 1, 'address_pending_verification': 1 };
+
+function pollStatus() {
+  if (!sessionId) { setState('confirmed'); return; }
+  pollAttempts++;
+  fetch('/api/order-status?session_id=' + encodeURIComponent(sessionId), { method: 'GET', headers: { 'Accept': 'application/json' } })
+    .then(function (resp) {
+      if (!resp.ok) throw new Error('bad status');
+      return resp.json();
+    })
+    .then(function (data) {
+      if (data.status === 'address_invalid') {
+        if (data.error) document.getElementById('fix-reason').textContent = data.error;
+        applyAddressForm(data.address);
+        var remaining = (data.attemptsRemaining != null ? data.attemptsRemaining : 5);
+        document.getElementById('fix-attempts').textContent =
+          (remaining >= 5 || remaining <= 0) ? '' : (remaining === 1 ? '1 attempt left.' : remaining + ' attempts left.');
+        setState(remaining <= 0 ? 'locked' : 'address-fix');
+        return;
+      }
+      if (PENDING_STATES[data.status]) {
+        if (pollAttempts < POLL_MAX_ATTEMPTS) setTimeout(pollStatus, POLL_INTERVAL_MS);
+        else setState('confirmed');
+        return;
+      }
+      setState('confirmed');
+      try {
+        var v = parseFloat(String(data.total || '0').replace(/[^0-9.]/g, '')) || 0;
+        var dedupeKey = orderId ? ('goofy_purchase_fired_' + orderId)
+                      : sessionId ? ('goofy_purchase_fired_s_' + sessionId) : '';
+        var alreadyFired = false;
+        if (dedupeKey) { try { alreadyFired = localStorage.getItem(dedupeKey) === '1'; } catch (e) {} }
+        if (!alreadyFired) {
+          if (window.PLFTrack) PLFTrack.event('goofy_purchase_success', 'goofy_purchase_success', { value: v, order_id: orderId });
+          if (window.PLFPixels && window.PLFPixels.purchase) window.PLFPixels.purchase(v, 'USD');
+          if (dedupeKey) { try { localStorage.setItem(dedupeKey, '1'); } catch (e) {} }
+        }
+      } catch (e) {}
+    })
+    .catch(function () {
+      if (pollAttempts < POLL_MAX_ATTEMPTS) setTimeout(pollStatus, POLL_INTERVAL_MS);
+      else setState('confirmed');
+    });
+}
+pollStatus();
+
+// ── Address-fix form → shared /api/update-address (keyed by session_id,
+// brand-agnostic; the endpoint sends the Goofy email for goofy orders). ──
+document.getElementById('fix-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var submitBtn = document.getElementById('fix-submit');
+  var errBox = document.getElementById('fix-error');
+  errBox.classList.remove('show');
+  submitBtn.disabled = true;
+  fetch('/api/update-address', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId,
+      line1:   document.getElementById('fix-line1').value.trim(),
+      line2:   document.getElementById('fix-line2').value.trim(),
+      city:    document.getElementById('fix-city').value.trim(),
+      state:   document.getElementById('fix-state').value.trim().toUpperCase(),
+      zip:     document.getElementById('fix-zip').value.trim(),
+      country: 'US'
+    })
+  })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      submitBtn.disabled = false;
+      if (res.ok && res.d.ok) { setState('confirmed'); return; }
+      if (res.d && res.d.status && !PENDING_STATES[res.d.status] && res.d.status !== 'address_invalid') { setState('confirmed'); return; }
+      errBox.textContent = (res.d && res.d.error) || 'The Council could not file that address. Check it and try again.';
+      errBox.classList.add('show');
+    })
+    .catch(function () {
+      submitBtn.disabled = false;
+      errBox.textContent = 'Connection hiccup — try again.';
+      errBox.classList.add('show');
+    });
+});
+})();
+</script>
+</body>
+</html>

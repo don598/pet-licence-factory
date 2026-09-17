@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>GOAT QR Press — Goofy Licenses</title>
+<meta name="description" content="Generate print-ready QR codes for GOAT kit nomination cards (per-batch) and licence cards."/>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f4efe3;--card:#fff;--gold:#a86e0a;--cream:#2b2118;--muted:#7c7264;--line:rgba(120,90,20,.28);--radius:14px}
+body{background:var(--bg);color:var(--cream);font-family:'Inter',-apple-system,sans-serif;padding:0 20px 60px}
+.wrap{max-width:760px;margin:0 auto}
+.nav{padding:18px 0}
+.nav a{font-family:'Cinzel',serif;font-weight:700;font-size:13px;letter-spacing:2px;color:var(--gold);text-decoration:none}
+h1{font-family:'Cinzel',serif;font-size:clamp(22px,4.5vw,30px);letter-spacing:1px;margin:10px 0 6px}
+.sub{color:var(--muted);font-size:14px;line-height:1.6;margin-bottom:18px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.card h2{font-size:15px;margin-bottom:4px}
+.card p.hint{font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:12px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;border:2px solid var(--line);border-radius:10px;font-size:15px;padding:11px 13px;font-family:inherit;background:#fffdf7;color:var(--cream)}
+.field input:focus{outline:none;border-color:var(--gold)}
+.urlrow{display:flex;gap:8px;align-items:center;background:#faf5ea;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:13px;word-break:break-all;margin:12px 0}
+.urlrow code{flex:1}
+.qrbox{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.qrbox img{width:180px;height:180px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+a.btn,button.btn{display:inline-block;background:#f5c542;color:#2a1a05;font-weight:800;font-size:14px;padding:12px 18px;border-radius:10px;border:0;cursor:pointer;text-decoration:none;font-family:inherit}
+button.ghost{background:#f0e9d8;color:var(--cream);border:1px solid var(--line)}
+.fine{font-size:12px;color:var(--muted);line-height:1.7;text-align:center;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav"><a href="/goofy/">🐐 GOOFY LICENSES</a></nav>
+  <h1>GOAT QR Press</h1>
+  <p class="sub">Print QRs for the kit. Both placements open the same nomination landing page — the <b>?src= tracker</b> is what tells nomination-card scans apart from licence-card scans. Destinations come from <b>/goofy/qr-config.js</b> (edit the domain/line there, never here).</p>
+
+  <div class="card">
+    <h2>⚙️ Destination config</h2>
+    <p class="hint">Defaults pulled from qr-config.js. Override for a future line (e.g. /clown) without touching code.</p>
+    <div class="field"><label>Origin</label><input id="fOrigin" type="text" maxlength="80"/></div>
+    <div class="field"><label>Line path</label><input id="fLine" type="text" maxlength="40" placeholder="/goat"/></div>
+  </div>
+
+  <div class="card">
+    <h2>📜 Nomination card QR (per batch)</h2>
+    <p class="hint">One per print drop. The batch name rides along as ?src= and lands on the order + funnel tracking.</p>
+    <div class="field"><label>Batch name (?src=)</label><input id="fBatch" type="text" maxlength="120" value="frat-batch-1"/></div>
+    <div class="urlrow"><code id="urlNom">…</code><button class="btn ghost" id="copyNom" type="button">Copy</button></div>
+    <div class="qrbox"><img id="imgNom" alt="Nomination card QR code"/><span class="btnrow"><a class="btn" id="dlNom" download="goat-nomination-qr.png">⬇ Download PNG</a></span></div>
+  </div>
+
+  <div class="card">
+    <h2>🪪 Licence card QR</h2>
+    <p class="hint">Baked onto the licence art itself. Fixed tracker (<span id="licSrcLbl"></span>), attributed separately from nomination-card scans.</p>
+    <div class="urlrow"><code id="urlLic">…</code><button class="btn ghost" id="copyLic" type="button">Copy</button></div>
+    <div class="qrbox"><img id="imgLic" alt="Licence card QR code"/><span class="btnrow"><a class="btn" id="dlLic" download="goat-licence-qr.png">⬇ Download PNG</a></span></div>
+  </div>
+
+  <p class="fine">Tip: download at full size and scale <b>down</b> in print layout — never up. Test-scan a proof on iOS + Android before the run.</p>
+</div>
+
+<script src="/goofy/qr-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+(function(){
+'use strict';
+var Q = window.GOOFY_QR || { CANONICAL_ORIGIN:'https://goofylicenses.com', LINE_PATH:'/goat', LICENCE_SRC:'license-qr' };
+function $(id){ return document.getElementById(id); }
+function origin(){ return ($('fOrigin').value.trim().replace(/\/+$/,'') || Q.CANONICAL_ORIGIN); }
+function line(){ var l = $('fLine').value.trim() || Q.LINE_PATH; return l.charAt(0) === '/' ? l : '/' + l; }
+function nomUrl(){ var b = $('fBatch').value.trim() || 'frat-batch-1'; return origin() + line() + '?src=' + encodeURIComponent(b); }
+function licUrl(){ return origin() + line() + '?src=' + encodeURIComponent(Q.LICENCE_SRC); }
+function draw(url, img, dl, name){
+  try {
+    var qr = qrcode(0, 'M');
+    qr.addData(url); qr.make();
+    var data = qr.createDataURL(8, 2);
+    img.src = data; dl.href = data;
+    dl.setAttribute('download', name + '.png');
+  } catch (e) { img.alt = 'QR render failed — check connection (CDN lib).'; }
+}
+function refresh(){
+  var nu = nomUrl(), lu = licUrl();
+  $('urlNom').textContent = nu; $('urlLic').textContent = lu;
+  var b = ($('fBatch').value.trim() || 'frat-batch-1').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'batch';
+  draw(nu, $('imgNom'), $('dlNom'), 'goat-nomination-' + b);
+  draw(lu, $('imgLic'), $('dlLic'), 'goat-licence-qr');
+}
+function copy(t, btn){
+  function done(){ var o = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(function(){ btn.textContent = o; }, 1200); }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, done);
+  else { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.parentNode.removeChild(ta); done(); }
+}
+$('fOrigin').value = Q.CANONICAL_ORIGIN;
+$('fLine').value = Q.LINE_PATH;
+$('licSrcLbl').textContent = '?src=' + Q.LICENCE_SRC;
+['fOrigin','fLine','fBatch'].forEach(function(id){ $(id).addEventListener('input', refresh); });
+$('copyNom').addEventListener('click', function(){ copy($('urlNom').textContent, $('copyNom')); });
+$('copyLic').addEventListener('click', function(){ copy($('urlLic').textContent, $('copyLic')); });
+refresh();
+})();
+</script>
+</body>
+</html>

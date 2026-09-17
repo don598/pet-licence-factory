@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Goofy Licenses — Nominate a GOAT</title>
+<meta name="description" content="Nominate someone for an official G.O.A.T. license. Watch it render live, then file it with the Council."/>
+<link rel="canonical" href="https://goofylicenses.com/goat/"/>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Pinyon+Script&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4efe3; --bg2:#fffdf7; --card:#ffffff; --panel:#fffdf7; --surface:#fdf9f0;
+  --gold:#a86e0a; --gold2:#8a5f06; --purple:#5b21b6;
+  --cream:#2b2118; --muted:#7c7264; --green:#0e7a4f; --red:#c0392b;
+  --ink:#202030; --radius:16px; --line:rgba(120,90,20,.28);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--cream);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:none}
+/* ── Ambient mountain scene (card-art ridges, subtle) ── */
+.scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.scene::after{content:'';position:absolute;inset:0;z-index:4;background:linear-gradient(180deg,var(--bg) 0%,rgba(244,239,227,0) 40%)}
+.sun{position:absolute;top:5%;right:9%;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,66,.32),rgba(245,197,66,0) 70%);z-index:1}
+/* Full-bleed ridge canvas: 120vw wide, centred with -10vw offset, so
+   horizontal scroll-parallax never exposes an edge, even on ultrawide.
+   (SVG is replaced content — left+right alone won't stretch it, so the
+   width must be explicit.) */
+.ridges{position:absolute;left:-10vw;bottom:0;width:120vw;max-width:none;height:48vh;min-height:300px;z-index:3}
+/* Scroll motion: layers drift apart vertically AND slide horizontally in
+   opposite directions as you scroll. Nothing moves on its own. */
+.layer{transform-box:fill-box;transform-origin:50% 100%;will-change:transform}
+.layer.l1{fill:#e9e2d1;opacity:.9}
+.layer.l2{fill:#dcd2bb;opacity:.85}
+.layer.l3{fill:#cdc0a4;opacity:.7}
+/* ── Drifting clouds (ambient only — pure CSS, no JS) ── */
+.cloud-drift{position:absolute;left:0;z-index:2;will-change:transform}
+.cloud-drift.d1{top:8%}
+.cloud-drift.d2{top:19%}
+/* Low clouds that cross the mountain band (in front of the ridges). */
+/* Bottom-anchored so they stay glued to the peaks on any screen height. */
+.cloud-drift.d3{top:auto;bottom:27vh;z-index:5}
+.cloud-drift.d4{top:auto;bottom:17vh;z-index:5}
+.cloud{position:relative;width:170px;height:52px;background:rgba(255,253,247,.9);border-radius:999px;opacity:.75;filter:blur(.3px);animation:clouddrift linear infinite;will-change:transform}
+.cloud::before,.cloud::after{content:'';position:absolute;background:inherit;border-radius:50%}
+.cloud::before{width:68px;height:68px;top:-32px;left:28px}
+.cloud::after{width:48px;height:48px;top:-20px;left:84px}
+.cloud.c1{animation-duration:110s;animation-delay:-35s}
+.cloud.c2{width:118px;height:38px;opacity:.6;animation-duration:150s;animation-delay:-95s}
+.cloud.c2::before{width:48px;height:48px;top:-23px;left:20px}
+.cloud.c2::after{width:34px;height:34px;top:-14px;left:60px}
+/* Mountain-band clouds: brighter + sharper so they read against the ridges. */
+.cloud.c3{width:140px;height:42px;opacity:.92;animation-duration:85s;animation-delay:-20s}
+.cloud.c3::before{width:56px;height:56px;top:-27px;left:24px}
+.cloud.c3::after{width:40px;height:40px;top:-17px;left:70px}
+.cloud.c4{width:96px;height:30px;opacity:.85;animation-duration:68s;animation-delay:-52s}
+.cloud.c4::before{width:38px;height:38px;top:-18px;left:16px}
+.cloud.c4::after{width:28px;height:28px;top:-11px;left:48px}
+@keyframes clouddrift{
+  from{transform:translate3d(-22vw,0,0)}
+  to{transform:translate3d(122vw,0,0)}
+}
+.bird{position:absolute;left:0;width:38px;opacity:0;transform:translateX(-8vw);animation:birdfly 36s linear infinite;will-change:transform}
+.bird.b1{top:13%;animation-delay:-13s}
+.bird.b2{top:21%;width:26px;animation-delay:-25s}
+.bird svg{width:100%;height:auto;fill:none;stroke:#6b6257;stroke-width:2.4;stroke-linecap:round}
+@keyframes birdfly{
+  0%{transform:translateX(-8vw) translateY(0);opacity:0}
+  40%{transform:translateX(32vw) translateY(-10px);opacity:0}
+  44%{opacity:.55}
+  55%{transform:translateX(58vw) translateY(4px)}
+  66%{transform:translateX(78vw) translateY(-8px);opacity:.55}
+  72%{transform:translateX(100vw) translateY(0);opacity:0}
+  100%{transform:translateX(112vw) translateY(0);opacity:0}
+}
+@media (prefers-reduced-motion:reduce){.bird{display:none}.cloud-drift{display:none}}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px 40px;position:relative;z-index:1}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+.brand{font-family:'Cinzel',serif;font-weight:700;font-size:13px;line-height:1.5;color:var(--gold);text-decoration:none;letter-spacing:2px;display:flex;align-items:center;gap:10px}
+.brand-goat{font-size:26px;line-height:1}
+.brand-txt{font-size:15px}
+.brand-txt small{display:block;font-family:'Inter',sans-serif;font-size:9px;letter-spacing:4px;color:var(--muted);font-weight:700}
+/* ── Config grid (mirrors PLC index) ── */
+.config{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:14px;align-items:start}
+@media(max-width:920px){.config{grid-template-columns:1fr}}
+.config-preview{display:flex;flex-direction:column;gap:12px}
+@media(max-width:920px){.config-preview{order:-1}}
+.card-shell{background:var(--card);border:2px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:0 18px 50px rgba(90,65,10,.18)}
+.card-frame{position:relative;width:100%;aspect-ratio:1010/638;border-radius:10px;overflow:hidden;container-type:inline-size;background:#fff;box-shadow:0 6px 22px rgba(0,0,0,.4)}
+.card-frame img.tpl{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* overlay system (PLC mechanics, G.O.A.T. geometry on 1010×638) */
+.gov{position:absolute;display:flex;align-items:center;overflow:hidden;white-space:nowrap;line-height:1;pointer-events:none;color:var(--ink)}
+#ov-photo{overflow:hidden;background:rgba(255,255,255,.0);border-radius:15px;display:flex;align-items:center;justify-content:center}
+#ov-photo .ph{font-family:'Inter',sans-serif;font-weight:800;color:rgba(32,32,48,.35);font-size:3.2cqw;text-align:center;line-height:1.3;letter-spacing:1px;text-transform:uppercase}
+#petImg{position:absolute;top:0;left:0;max-width:none;display:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
+#ov-photo.has-photo{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+#ov-photo.has-photo.dragging{cursor:grabbing}
+.gov-script{justify-content:center;align-items:flex-end;padding-bottom:1%;font-family:'Pinyon Script',cursive;color:var(--ink)}
+/* per-variant overlay visibility (JS also drives display — belt & suspenders) */
+.card-frame[data-variant="standard"] .gov,.card-frame[data-variant="standard"] #ov-photo{display:none !important}
+.card-frame[data-variant="custom-anon"] #ov-giver{display:none !important}
+.card-frame.bump{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.97)}60%{transform:scale(1.012)}100%{transform:scale(1)}}
+/* per-variant overlay visibility */
+.card-frame[data-variant="standard"] .gov{display:none}
+.card-frame[data-variant="custom-anon"] #ov-giver{display:none}
+.card-caption{margin-top:11px;text-align:center;font-size:12.5px;color:var(--muted);font-weight:700}
+/* ── Carousel (images only, no CTAs) ── */
+.carousel{position:relative;width:100%;aspect-ratio:1010/638;border-radius:14px;overflow:hidden;background:#fff;border:2px solid var(--line);box-shadow:0 18px 50px rgba(90,65,10,.18)}
+.cslide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s ease}
+.cslide.active{opacity:1}
+.c-arrow{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,253,247,.9);color:var(--cream);font-size:20px;cursor:pointer;z-index:2;line-height:1}
+.c-prev{left:10px}.c-next{right:10px}
+.c-dots{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.c-dot{width:9px;height:9px;border-radius:50%;border:0;background:#d8cdae;cursor:pointer;padding:0}
+.c-dot.active{background:var(--gold)}
+/* ── Wizard reveal ── */
+#wizardBlock{display:none}
+#wizardBlock.open{display:block;animation:wizardIn .45s cubic-bezier(.2,.7,.2,1)}
+@keyframes wizardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.reframe-btn{width:100%;margin-top:10px;font-weight:700;font-size:13px;background:transparent;color:var(--gold);border:1.5px solid var(--line);border-radius:10px;padding:9px;cursor:pointer;display:none}
+.reframe-btn.show{display:block}
+.reframe-btn:hover{border-color:var(--gold)}
+/* ── Pitch + wizard ── */
+.eyebrow{display:inline-flex;align-items:center;font-size:11px;font-weight:800;letter-spacing:2.5px;color:#2a1a05;background:#f5c542;padding:6px 14px;border-radius:999px}
+.live-dot{width:9px;height:9px;border-radius:50%;background:#0e7a4f;margin-right:9px;position:relative;flex:0 0 auto}
+.live-dot::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid #0e7a4f;animation:liveping 1.6s ease-out infinite}
+@keyframes liveping{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.25);opacity:0}}
+/* ── Council intro sting ── */
+#councilIntro{position:fixed;inset:0;z-index:200;background:#f4efe3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:opacity .4s ease}
+#councilIntro.done{opacity:0;pointer-events:none}
+.ci-seal{font-size:64px;animation:cislam .55s cubic-bezier(.2,1.4,.3,1) both}
+.ci-line{font-size:11px;font-weight:800;letter-spacing:5px;color:#7c7264;animation:cifade .5s ease .15s both}
+.ci-main{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(22px,5.5vw,38px);letter-spacing:3px;color:#a86e0a;line-height:1.4;text-align:center;animation:cislam .55s cubic-bezier(.2,1.4,.3,1) .1s both}
+.ci-stamp{margin-top:10px;font-size:12px;font-weight:800;letter-spacing:3px;color:#0e7a4f;border:2px solid #0e7a4f;border-radius:8px;padding:7px 16px;transform:rotate(-6deg);animation:cislam .45s cubic-bezier(.2,1.6,.3,1) .45s both}
+@keyframes cislam{0%{opacity:0;transform:scale(2.1)}100%{opacity:1;transform:scale(1)}}
+.ci-stamp{animation-name:cislamr}
+@keyframes cislamr{0%{opacity:0;transform:scale(2.1) rotate(-6deg)}100%{opacity:1;transform:scale(1) rotate(-6deg)}}
+@keyframes cifade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  #councilIntro{display:none}
+  .live-dot::after{animation:none}
+}
+h1{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(24px,4.6vw,36px);line-height:1.28;letter-spacing:1px;margin:14px 0 8px}
+h1 .hl{color:var(--gold)}
+.subtitle{color:var(--muted);font-size:14.5px;line-height:1.65}
+.subtitle b{color:var(--cream)}
+.wizard{background:var(--card);border:2px solid var(--line);border-radius:var(--radius);padding:20px;margin-top:18px;box-shadow:0 10px 30px rgba(90,65,10,.10)}
+.wiz-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.sc{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px}
+.tot em{font-style:normal;font-size:11px;color:var(--muted);display:block;text-align:right}
+.tot span{font-family:'Cinzel',serif;font-weight:700;font-size:15px;color:var(--gold)}
+.stepper{display:flex;gap:6px;margin-bottom:16px}
+.st{flex:1;text-align:center;cursor:default}
+.st .dot{width:26px;height:26px;margin:0 auto;border-radius:50%;background:#e9e1cf;color:var(--muted);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid transparent}
+.st .lab{font-size:9px;color:var(--muted);margin-top:5px;letter-spacing:.5px}
+.st.active .dot{background:var(--gold);color:#fff}
+.st.active .lab{color:var(--gold)}
+.st.done .dot{background:var(--green);color:#fff}
+.st.clickable{cursor:pointer}
+.step-panel{display:none}
+.step-panel.active{display:block;animation:stepIn .35s ease}
+@keyframes stepIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes stepInR{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+@keyframes stepInL{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+.step-title{margin-bottom:12px}
+.step-title h2{font-size:17px;font-weight:800}
+.step-title .hint{font-size:12px;color:var(--gold);font-weight:700;margin-left:8px}
+.step-help{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px}
+/* variant cards */
+.vopt{display:flex;gap:12px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:11px 12px;cursor:pointer;margin-bottom:10px;transition:border-color .15s,background .15s;background:#fff}
+.vopt.sel{border-color:var(--gold);background:#fdf6e3}
+.vopt input{accent-color:var(--gold);flex:0 0 auto}
+.vopt img{width:86px;height:54px;object-fit:cover;border-radius:8px;border:1px solid rgba(245,197,66,.35);flex:0 0 auto}
+.vopt .vt b{display:block;font-size:14.5px}
+.vopt .vt span{display:block;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+.vopt .vp{margin-left:auto;font-family:'Cinzel',serif;font-weight:700;font-size:14px;color:var(--gold);white-space:nowrap;text-align:right}
+.vopt .vp small{display:block;font-family:'Inter',sans-serif;font-size:8.5px;color:var(--green);letter-spacing:1px;margin-top:4px;font-weight:700}
+/* fields */
+/* option cards (product choice, pre-wizard) */
+.opt-card{display:flex;gap:12px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:11px 12px;cursor:pointer;margin-bottom:10px;transition:border-color .15s,background .15s,transform .1s;background:#fff}
+.opt-card:hover{border-color:var(--gold);transform:translateY(-1px)}
+.opt-card img{width:86px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:0 0 auto}
+.opt-card .vt b{display:block;font-size:14.5px}
+.opt-card .vt span{display:block;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+.opt-card .vp{margin-left:auto;font-family:'Cinzel',serif;font-weight:700;font-size:14px;color:var(--gold);white-space:nowrap;text-align:right}
+.opt-card .vp small{display:block;font-family:'Inter',sans-serif;font-size:8.5px;color:var(--green);letter-spacing:1px;margin-top:4px;font-weight:700}
+#optionsBlock{margin-top:18px}
+/* ── Button feel: 90% at rest, 100% on hover, bubble on press ── */
+button{ -webkit-tap-highlight-color:transparent; }
+.c-arrow{opacity:.9;transition:opacity .18s ease,transform .18s ease,background .18s ease}
+.c-arrow:hover{opacity:1;transform:translateY(-50%) scale(1.08)}
+.c-arrow:active{transform:translateY(-50%) scale(1.2)}
+.c-dot{opacity:.9;transition:opacity .18s ease,transform .18s ease}
+.c-dot:hover{opacity:1;transform:scale(1.25)}
+.c-dot:active{transform:scale(1.55)}
+.opt-card{opacity:.9;transition:opacity .18s ease,transform .1s ease,border-color .15s ease,background .15s ease}
+.opt-card:hover{opacity:1}
+.opt-card:active{transform:translateY(-1px) scale(1.015)}
+.cta{opacity:.9;transition:opacity .18s ease,transform .12s ease,box-shadow .12s ease}
+.cta:hover:not(:disabled){opacity:1}
+.cta:not(:disabled):active{transform:translateY(3px) scale(1.03)}
+.nav-btn{opacity:.9;transition:opacity .18s ease,transform .12s ease}
+.nav-btn:hover{opacity:1}
+.nav-btn:active{transform:scale(1.06)}
+.add-btn,.reframe-btn{opacity:.9;transition:opacity .18s ease,transform .12s ease,border-color .15s ease}
+.add-btn:hover,.reframe-btn:hover{opacity:1}
+.add-btn:active,.reframe-btn:active{transform:scale(1.03)}
+.link-btn{opacity:.9;transition:opacity .18s ease,transform .12s ease}
+.link-btn:hover{opacity:1}
+.link-btn:active{transform:scale(1.12)}
+.pad,.zbtn{opacity:.9;transition:opacity .18s ease,transform .12s ease}
+.pad:hover,.zbtn:hover{opacity:1}
+.pad:active,.zbtn:active{transform:scale(1.18)}
+.nom-head .mini{opacity:.9;transition:opacity .18s ease,transform .12s ease}
+.nom-head .mini:hover{opacity:1}
+.nom-head .mini:active{transform:scale(1.15)}
+.modal-close{opacity:.9;transition:opacity .18s ease,transform .12s ease}
+.modal-close:hover{opacity:1}
+.modal-close:active{transform:scale(1.25)}
+/* product showcase + nominee list */
+.showcase{display:flex;flex-direction:column;gap:10px}
+.sc-card{display:flex;gap:12px;align-items:center;border:2px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+.sc-card img{width:120px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:0 0 auto}
+.sc-card .sc-t b{display:block;font-size:14.5px}
+.sc-card .sc-t span{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.nom-card{border:2px solid var(--line);border-radius:12px;padding:12px;background:#fff;margin-bottom:10px}
+.nom-card.active{border-color:var(--gold)}
+.nom-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.nom-head b{font-size:13.5px}
+.nom-head .mini{background:none;border:0;color:var(--gold);font-size:12.5px;cursor:pointer;font-weight:700;margin-left:8px}
+.nom-head .mini.rm{color:var(--red)}
+.nom-drop{padding:16px 12px;margin-top:8px}
+.nom-drop .uico{font-size:24px}
+.nom-thumb-row{display:none;align-items:center;gap:10px;margin-top:8px}
+.nom-thumb-row.show{display:flex}
+.add-btn{width:100%;background:none;border:2px dashed var(--line);color:var(--gold);font-weight:800;font-size:14px;padding:11px;border-radius:12px;cursor:pointer;margin:2px 0 6px;font-family:inherit}
+.add-btn:hover{border-color:var(--gold)}
+.self-row{display:flex;gap:10px;align-items:flex-start;margin:12px 0 2px;font-size:13.5px;cursor:pointer;line-height:1.5;user-select:none}
+.self-row input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.cbox{width:24px;height:24px;flex:0 0 auto;border-radius:8px;border:2px solid var(--line);background:#fff;display:inline-flex;align-items:center;justify-content:center;transition:background .18s ease,border-color .18s ease,transform .18s ease;margin-top:1px}
+.cbox svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:30;stroke-dashoffset:30;transition:stroke-dashoffset .25s ease .05s}
+.self-row input:checked + .cbox{background:var(--gold);border-color:var(--gold);animation:pop .3s ease}
+.self-row input:checked + .cbox svg{stroke-dashoffset:0}
+.self-row input:focus-visible + .cbox{outline:2px solid var(--gold);outline-offset:2px}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;background:var(--bg2);border:2px solid var(--line);border-radius:10px;color:var(--cream);font-size:15px;padding:12px 13px;font-family:inherit}
+.field input:focus{outline:none;border-color:var(--gold)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}}
+.req{color:var(--gold)}
+.opt{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
+/* dropzone */
+.dropzone{border:2px dashed var(--line);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;color:var(--muted);font-size:14px;margin-top:4px;background:#fff}
+.dropzone:hover{border-color:var(--gold);color:var(--cream)}
+.dropzone .uico{font-size:32px}
+.upload-row{display:none;align-items:center;gap:12px;margin-top:10px}
+.upload-row.show{display:flex}
+.upload-thumb{width:60px;height:60px;object-fit:cover;border-radius:10px;border:2px solid var(--gold)}
+.link-btn{background:none;border:0;color:var(--gold);font-size:13px;cursor:pointer;text-decoration:underline}
+.std-note{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.4);border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.6;color:var(--cream)}
+/* summary / checkout */
+.summary{background:#faf5ea;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:6px;font-size:14px}
+.summary .line{display:flex;justify-content:space-between;gap:10px;padding:5px 0}
+.summary .line.total{font-weight:800;font-size:16px;color:var(--gold);border-top:1px dashed rgba(245,197,66,.4);margin-top:8px;padding-top:10px}
+.summary .muted{color:var(--muted);font-size:12.5px}
+.summary .save{color:var(--green)}
+.ship-note{font-size:12px;color:var(--muted);margin-top:8px}
+.cta{width:100%;margin-top:14px;background:#f5c542;color:#2a1a05;font-weight:800;font-size:16px;padding:15px;border-radius:12px;border:0;cursor:pointer;box-shadow:0 5px 0 #c8920f;font-family:inherit}
+.cta:disabled{opacity:.6;cursor:wait}
+.cta:not(:disabled):active{transform:translateY(3px);box-shadow:0 2px 0 #c8920f}
+.trust{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.wiz-nav{display:flex;justify-content:space-between;margin-top:16px}
+.nav-btn{background:#f0e9d8;color:var(--cream);border:1px solid var(--line);font-weight:700;font-size:14px;padding:12px 20px;border-radius:10px;cursor:pointer;font-family:inherit}
+.nav-btn.next{background:#f5c542;color:#2a1a05;border:0}
+.nav-btn.hidden{visibility:hidden}
+.err{display:none;margin-top:12px;background:rgba(255,60,60,.12);border:1px solid var(--red);color:#ffd9d9;font-size:13.5px;padding:11px 14px;border-radius:10px;line-height:1.5}
+.err.show{display:block}
+/* modal (reframe studio) */
+.modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(10,6,20,.78);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:18px;overflow-y:auto}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:2px solid rgba(245,197,66,.35);border-radius:var(--radius);width:100%;max-width:560px;padding:18px;margin:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.modal-head h3{font-size:15px}
+.modal-close{background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer}
+.modal-hint{text-align:center;font-size:12px;color:var(--muted);margin:10px 0}
+.crop-ctl{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap}
+.dpad{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:3px}
+.pad{background:var(--bg2);border:1px solid var(--line);color:var(--gold);border-radius:8px;font-size:15px;cursor:pointer;touch-action:none}
+.dp-up{grid-column:2}.dp-left{grid-column:1;grid-row:2}.dp-hub{grid-column:2;grid-row:2;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px}.dp-right{grid-column:3;grid-row:2}.dp-down{grid-column:2;grid-row:3}
+.zoomctl{display:flex;gap:8px}
+.zbtn{width:44px;height:44px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);color:var(--gold);font-size:20px;cursor:pointer}
+.adjust{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--muted)}
+.adjust input[type=range]{flex:1;accent-color:var(--gold)}
+.faq{max-width:680px;margin:26px auto 0;display:flex;flex-direction:column;gap:10px}
+.faq details{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 16px;font-size:13.5px}
+.faq summary{cursor:pointer;font-weight:700;color:var(--gold)}
+.faq p{margin-top:8px;color:var(--muted);line-height:1.6}
+footer{border-top:1px solid rgba(245,197,66,.2);margin-top:36px;padding:24px 0 34px;text-align:center}
+footer .fine{font-size:12px;color:var(--muted);opacity:.8;line-height:1.7;max-width:640px;margin:0 auto}
+footer a{color:var(--gold)}
+</style>
+</head>
+<body>
+
+<!-- ── Council session sting (brief page-load animation, click to skip) ── -->
+<div id="councilIntro" aria-hidden="true">
+  <div class="ci-seal">🐐</div>
+  <div class="ci-line">THE COUNCIL</div>
+  <div class="ci-main">NOW IN SESSION</div>
+  <div class="ci-stamp">★ CERTIFIED ★</div>
+</div>
+
+<!-- ── Ambient scene: card-art ridges + drifting clouds + occasional bird (subtle) ── -->
+<div class="scene" aria-hidden="true">
+  <div class="sun"></div>
+  <div class="cloud-drift d1"><div class="cloud c1"></div></div>
+  <div class="cloud-drift d2"><div class="cloud c2"></div></div>
+  <svg class="ridges" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice">
+    <g class="layer l1"><path d="M-200,300 L90,230 L160,265 L240,185 L310,245 L390,165 L470,235 L550,190 L640,250 L720,175 L810,245 L890,200 L980,250 L1060,190 L1150,245 L1220,205 L1310,250 L1380,215 L1440,300 L1640,300 L1640,420 L-200,420 Z"/></g>
+    <g class="layer l2"><path d="M-200,340 L110,260 L200,310 L310,235 L400,300 L500,245 L610,305 L720,250 L830,310 L930,255 L1040,305 L1150,260 L1240,308 L1330,265 L1440,340 L1640,340 L1640,420 L-200,420 Z"/></g>
+    <g class="layer l3"><path d="M-200,380 L140,300 L260,355 L390,290 L520,355 L650,300 L780,358 L910,305 L1040,358 L1170,310 L1300,358 L1440,380 L1640,380 L1640,420 L-200,420 Z"/></g>
+  </svg>
+  <div class="cloud-drift d3"><div class="cloud c3"></div></div>
+  <div class="cloud-drift d4"><div class="cloud c4"></div></div>
+  <div class="bird b1" id="bird1"><svg viewBox="0 0 40 14"><path d="M1,10 Q10,2 20,9 Q30,2 39,10"/></svg></div>
+  <div class="bird b2" id="bird2"><svg viewBox="0 0 40 14"><path d="M1,10 Q10,2 20,9 Q30,2 39,10"/></svg></div>
+</div>
+
+<div class="wrap">
+  <nav class="nav">
+    <a class="brand" href="/goofy/"><span class="brand-goat">🐐</span><span class="brand-txt">GOOFY LICENSES<small>THE COUNCIL OF G.O.A.T. AFFAIRS</small></span></a>
+  </nav>
+
+  <section class="config" id="build">
+    <!-- ── LEFT: stage (carousel ↔ live preview) ── -->
+    <div class="config-preview">
+      <div id="carouselBlock">
+        <div class="carousel" id="carousel">
+          <img class="cslide active" src="/goofy/images/product-standard.png" alt="Standard G.O.A.T. license kit"/>
+          <img class="cslide" src="/goofy/images/product-custom-giver.png" alt="Custom G.O.A.T. license with giver credit"/>
+          <img class="cslide" src="/goofy/images/product-custom-anon.png" alt="Custom anonymous G.O.A.T. license example"/>
+          <img class="cslide" src="/goofy/images/product-template-giver.png" alt="Custom G.O.A.T. license template — your image here"/>
+          <img class="cslide" src="/goofy/images/product-template-anon.png" alt="Anonymous G.O.A.T. license template — your image here"/>
+          <button class="c-arrow c-prev" id="cPrev" type="button" aria-label="Previous license">‹</button>
+          <button class="c-arrow c-next" id="cNext" type="button" aria-label="Next license">›</button>
+        </div>
+        <div class="c-dots" id="cDots"></div>
+        <div class="card-caption">★ The lineup — pick your honor on the right.</div>
+      </div>
+      <div id="previewBlock" hidden>
+      <div class="card-shell" id="cardShell">
+        <div class="card-frame" id="cardFrame" data-variant="standard">
+          <img class="tpl" id="cardTpl" src="/goofy/images/product-standard.png" alt="G.O.A.T. license"/>
+          <div class="gov" id="ov-photo"><img id="petImg" alt="" draggable="false"/><span class="ph" id="ovPhotoPh">Nominee<br/>photo</span></div>
+        </div>
+      </div>
+      <div class="card-caption" id="cardCaption">★ Live preview — the Standard kit, certified &amp; generic.</div>
+      <button type="button" class="reframe-btn" id="reframeBtn">🖼 Reframe photo</button>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: pitch + wizard ── -->
+    <div class="config-main">
+      <div class="pitch">
+        <span class="eyebrow"><span class="live-dot" aria-hidden="true"></span>★ THE COUNCIL IS NOW IN SESSION ★</span>
+        <h1>Someone you know is a <span class="hl">G.O.A.T.</span> Make it official.</h1>
+        <p class="subtitle">Pick a licence below, add your nominee, watch it render live. You pay the <b>nomination processing fee</b> — the price IS the fee, no fees on top of fees. <b>Every price below is the fee.</b></p>
+      </div>
+
+      <div id="optionsBlock">
+        <div class="opt-card" data-variant="standard" role="button" tabindex="0">
+          <img src="/goofy/images/product-standard.png" alt="Standard G.O.A.T. license kit"/>
+          <span class="vt"><b>📜 Standard</b><span>Generic certified kit. No photo, no names — pure bureaucracy.</span></span>
+          <span class="vp">$4.95<small>PROCESSING FEE</small></span>
+        </div>
+        <div class="opt-card" data-variant="custom-giver" role="button" tabindex="0">
+          <img src="/goofy/images/product-custom-giver.png" alt="Custom G.O.A.T. license with giver credit"/>
+          <span class="vt"><b>🌟 Custom, with giver credit</b><span>Their photo &amp; name on the licence. Presented by you.</span></span>
+          <span class="vp">$8.95<small>PROCESSING FEE</small></span>
+        </div>
+        <div class="opt-card" data-variant="custom-anon" role="button" tabindex="0">
+          <img src="/goofy/images/product-custom-anon.png" alt="Custom anonymous G.O.A.T. license"/>
+          <span class="vt"><b>🕵️ Custom, anonymous</b><span>Their photo &amp; name on the licence. No giver named.</span></span>
+          <span class="vp">$8.95<small>PROCESSING FEE</small></span>
+        </div>
+      </div>
+
+      <div id="wizardBlock">
+      <div class="wizard">
+        <div class="wiz-top">
+          <span class="sc" id="stepCount">Step 1 of 2</span>
+          <span class="tot"><em>Processing fee</em><span id="wizTotal">$4.95</span></span>
+        </div>
+        <div class="stepper" id="stepper"></div>
+        <div class="wiz-body" id="wizBody">
+
+          <!-- Nominees (custom path): names + photos + giver -->
+          <div class="step-panel" data-stepkey="nominees">
+            <div class="step-title"><h2>The nominees</h2><span class="hint">one kit each · same address</span></div>
+            <div id="nomineeListCust"></div>
+            <button type="button" class="add-btn" data-add>＋ Add another recipient</button>
+            <div class="field" id="giverField">
+              <label>Presented by <span class="req">your name, printed on the licence</span></label>
+              <input id="fGiver" type="text" placeholder="e.g. Dave from Accounting" maxlength="40"/>
+            </div>
+            <label class="self-row"><input type="checkbox" class="selfNom"/><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></span><span>🎯 <b>Nominate myself</b> — mail the kit to me</span></label>
+          </div>
+          <input type="file" id="fileInput" accept="image/*" hidden/>
+
+          <!-- Recipient (standard path): names + address in one step -->
+          <div class="step-panel" data-stepkey="recipient">
+            <div class="step-title"><h2>The recipient</h2><span class="hint">mandatory — every nomination is a new file</span></div>
+            <div id="nomineeListStd"></div>
+            <button type="button" class="add-btn" data-add>＋ Add another recipient</button>
+            <label class="self-row"><input type="checkbox" class="selfNom"/><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></span><span>🎯 <b>Nominate myself</b> — mail the kit to me</span></label>
+            <div id="addressSlotStd"></div>
+          </div>
+
+          <!-- Address (custom path): one shipment for all nominees -->
+          <div class="step-panel" data-stepkey="address">
+            <div class="step-title"><h2>Mailing address</h2><span class="hint">one shipment for all nominees</span></div>
+            <div id="addressSlotCustom"><div id="addressFields">
+            <div class="field">
+              <label>Street address <span class="req">required · where the kits are mailed</span></label>
+              <input id="fAddr1" type="text" placeholder="123 Maple St" maxlength="100" autocomplete="address-line1"/>
+            </div>
+            <div class="field">
+              <label>Apt / unit <span class="opt">optional</span></label>
+              <input id="fAddr2" type="text" placeholder="Apt 4B" maxlength="100" autocomplete="address-line2"/>
+            </div>
+            <div class="grid2">
+              <div class="field"><label>City <span class="req">required</span></label><input id="fCity" type="text" placeholder="Springfield" maxlength="60"/></div>
+              <div class="field"><label>State <span class="req">required</span></label><input id="fState" type="text" placeholder="IL" maxlength="2" style="text-transform:uppercase"/></div>
+            </div>
+            <div class="field">
+              <label>ZIP <span class="req">required</span></label>
+              <input id="fZip" type="text" placeholder="62701" maxlength="10" inputmode="numeric"/>
+            </div>
+            </div></div>
+          </div>
+
+          <!-- Review -->
+          <div class="step-panel" data-stepkey="review">
+            <div class="step-title"><h2>File it with the Council</h2></div>
+            <div class="summary"><div id="summaryLines"></div></div>
+            <div class="ship-note">Delivery calculated at checkout. The processing fee above is all-in.</div>
+            <button class="cta" id="checkoutBtn">🐐 Pay the processing fee →</button>
+            <div class="trust"><span>🔒 Secure Stripe checkout</span><span>🇺🇸 Ships in the US</span></div>
+          </div>
+
+        </div>
+        <div class="wiz-nav">
+          <button class="nav-btn back" id="wizBack">← Back</button>
+          <button class="nav-btn next" id="wizNext">Continue →</button>
+        </div>
+        <div class="err" id="errBox"></div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="faq">
+    <details><summary>What does the processing fee cover?</summary><p>The fee IS the price — $4.95 Standard, $8.95 Custom, plus delivery chosen at checkout. No additional fees, ever. The Council forbids drip pricing.</p></details>
+    <details><summary>Who gets the kit — me or them?</summary><p>Them. You pay the fee and enter the recipient's name and mailing address. The kit is mailed to your nominee.</p></details>
+    <details><summary>Can I nominate my boss?</summary><p>The Council does not ask about workplace dynamics. The Council only asks for a mailing address.</p></details>
+    <details><summary>Is the goat on the seal a specific goat?</summary><p>Yes. His name is Gerald. He has seniority and cannot be reached for comment.</p></details>
+    <details><summary>How long does Council processing take?</summary><p>2–3 business days of printing, plus 3–5 days of mail, plus a centuries-old tradition of moving exactly this fast.</p></details>
+    <details><summary>Can I nominate myself?</summary><p>Absolutely. Nominating yourself is true GOAT behavior. Tick the box.</p></details>
+  </section>
+
+  <footer>
+    <p class="fine">Goofy Licenses makes novelty gag licences for entertainment. Not a real government document. Questions? <a href="mailto:contact@creditcardart.com">Contact the Council</a>.</p>
+  </footer>
+</div>
+
+<!-- ── QR scan welcome (Right of Nomination — shown on ?src= landings) ── -->
+<div class="modal-overlay" id="qrModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Right of Nomination">
+    <div class="modal-head">
+      <h3 id="qrTitle">🐐 Right of Nomination Granted</h3>
+      <button class="modal-close" id="qrClose" type="button" aria-label="Close">✕</button>
+    </div>
+    <p class="step-help" id="qrBody" style="margin-bottom:4px">Congratulations, Fellow GOAT. The Council has granted you the Right of Nomination. Choose the honor below and we will deliver the certification upon submission. A small processing fee of $4.95 applies.</p>
+    <button class="cta" id="qrCta" type="button">Choose the honor →</button>
+  </div>
+</div>
+
+<!-- ── Reframe studio (the live card is re-parented in here) ── -->
+<div class="modal-overlay" id="previewModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Reframe nominee photo">
+    <div class="modal-head">
+      <h3>🖼 Reframe the nominee</h3>
+      <button class="modal-close" id="previewClose" type="button" aria-label="Close">✕</button>
+    </div>
+    <div id="modalSlot"></div>
+    <div class="modal-hint">Drag the photo to move · +/− to zoom · or use the pad</div>
+    <div class="crop-ctl" id="cropCtl">
+      <div class="dpad" role="group" aria-label="Move photo">
+        <button type="button" class="pad dp-up" id="dpad-up" aria-label="Move photo up">▲</button>
+        <button type="button" class="pad dp-left" id="dpad-left" aria-label="Move photo left">◀</button>
+        <div class="hub dp-hub" aria-hidden="true">✛</div>
+        <button type="button" class="pad dp-right" id="dpad-right" aria-label="Move photo right">▶</button>
+        <button type="button" class="pad dp-down" id="dpad-down" aria-label="Move photo down">▼</button>
+      </div>
+      <div class="zoomctl">
+        <button type="button" class="zbtn" id="dpad-zoom-in" aria-label="Zoom in">+</button>
+        <button type="button" class="zbtn" id="dpad-zoom-out" aria-label="Zoom out">−</button>
+      </div>
+    </div>
+    <div class="adjust">
+      <span>🔍 Zoom</span>
+      <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1" aria-label="Zoom photo"/>
+      <button type="button" class="link-btn" id="resetCrop">Reset</button>
+    </div>
+    <button class="cta" id="previewDone" type="button" style="margin-top:14px">✓ Looks great</button>
+  </div>
+</div>
+
+<script src="/goofy/qr-config.js"></script>
+<script src="/goofy/pricing.js"></script>
+<script src="/affiliate-tracker.js"></script>
+<script src="/pixels.js"></script>
+<script src="/plf-track.js" defer></script>
+<script>
+(function(){
+'use strict';
+/* ═══════════════════════════════════════════════════════════════
+   GOOFY BUILDER — PLC preview mechanics, Council artwork.
+   Overlay geometry measured off the 1010×638 card art (see
+   bg-custom-*.png): photo box, signature-line names, ID number.
+   ALL state writes + init calls live at the bottom (init order!).
+   ═══════════════════════════════════════════════════════════════ */
+var $ = function(id){ return document.getElementById(id); };
+function clamp(min, v, max){ return Math.max(min, Math.min(max, v)); }
+function esc(s){ return String(s == null ? '' : s); }
+function money(n){ return '$' + n.toFixed(2); }
+
+var PRICES = (window.GOOFY_PRICES_USD) || { standard:4.95, custom:8.95, stamp:0.95 };
+
+var qs = new URLSearchParams(window.location.search);
+var srcParam = (qs.get('src') || '').trim().slice(0, 120);
+if (!srcParam) {
+  try {
+    var _attr = JSON.parse(sessionStorage.getItem('plf_attr') || localStorage.getItem('plf_attr') || '{}') || {};
+    if (_attr.src) srcParam = String(_attr.src).slice(0, 120);
+  } catch (e) {}
+}
+
+/* ── Card geometry (measured, px on 1010×638) ── */
+var TW = 1010, TH = 638;
+var PHOTO_BOX = { x:41, y:90, w:303, h:407 };
+/* Name boxes hug the measured script extents on the card art (the printed
+   GOAT-0001 ID number is left exactly as printed — no overlay). */
+var FIELDS = {
+  recipient: { x:30,  y:488, w:336, h:82, fs:6.7, script:true },
+  giver:     { x:372, y:488, w:260, h:82, fs:6.7, script:true }
+};
+var TPL = {
+  'standard':     '/goofy/images/product-standard.png',
+  'custom-giver': '/goofy/images/bg-custom-giver.png',
+  'custom-anon':  '/goofy/images/bg-custom-anon.png'
+};
+var VALID = { 'standard':1, 'custom-giver':1, 'custom-anon':1 };
+var VARIANT_LABEL = {
+  'standard': 'G.O.A.T. Licence — Standard nomination',
+  'custom-giver': 'G.O.A.T. Licence — Custom nomination (with giver credit)',
+  'custom-anon': 'G.O.A.T. Licence — Custom nomination (anonymous)'
+};
+var CAPTIONS = {
+  'standard': '★ Live preview — the Standard kit, certified & generic.',
+  'custom-giver': '★ Live preview — their photo, their name, presented by you.',
+  'custom-anon': '★ Live preview — their photo, their name, presented by no one.'
+};
+
+var state = { variant:'standard', activeIdx:0, selfNominate:false, nominees:[newNominee()] };
+/* The printed ID number (GOAT-0001) is part of the card art and never
+   overlaid — every nomination files under it. */
+var LICENCE_NO = 'GOAT-0001';
+function newNominee(){ return { name:'', photo:null, crop:{ cx:0.5, cy:0.5, zoom:1 } }; }
+function activeNom(){ return state.nominees[state.activeIdx] || state.nominees[0]; }
+function escHtml(s){
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+var frame = $('cardFrame');
+var ovPhoto = $('ov-photo'), petImg = $('petImg');
+
+function pct(v, total){ return (v / total * 100) + '%'; }
+
+function buildOverlays(){
+  ovPhoto.style.left = pct(PHOTO_BOX.x, TW);
+  ovPhoto.style.top = pct(PHOTO_BOX.y, TH);
+  ovPhoto.style.width = pct(PHOTO_BOX.w, TW);
+  ovPhoto.style.height = pct(PHOTO_BOX.h, TH);
+  Object.keys(FIELDS).forEach(function(k){
+    var f = FIELDS[k];
+    var el = document.createElement('div');
+    el.className = 'gov' + (f.script ? ' gov-script' : '');
+    el.id = 'ov-' + k;
+    el.style.left = pct(f.x, TW);
+    el.style.top = pct(f.y, TH);
+    el.style.width = pct(f.w, TW);
+    el.style.height = pct(f.h, TH);
+    el.dataset.fs = f.fs;
+    frame.appendChild(el);
+  });
+}
+
+function fitOne(el){
+  var fw = frame.clientWidth; if (!fw) return;
+  var px = (parseFloat(el.dataset.fs) / 100) * fw;
+  el.style.fontSize = px + 'px';
+  var guard = 0;
+  while (el.scrollWidth > el.clientWidth + 0.5 && px > 4 && guard++ < 60) { px -= 0.5; el.style.fontSize = px + 'px'; }
+}
+function layout(){
+  var nodes = [ovPhoto.querySelector('.ph')];
+  ['ov-recipient', 'ov-giver'].forEach(function(id){
+    var el = document.getElementById(id); if (el) nodes.push(el);
+  });
+  nodes.forEach(function(el){ if (el && el.dataset.fs) fitOne(el); });
+  renderPhoto();
+}
+function bump(){ frame.classList.remove('bump'); void frame.offsetWidth; frame.classList.add('bump'); }
+
+function feeTotal(){ return state.variant === 'standard' ? PRICES.standard : PRICES.custom; }
+
+function refreshPreview(){
+  var isCustom = state.variant !== 'standard';
+  var nom = activeNom();
+  var giver = $('fGiver').value.trim();
+  var rEl = $('ov-recipient'), gEl = $('ov-giver');
+  if (rEl) rEl.textContent = isCustom ? (nom.name.trim() || 'Their Name') : '';
+  if (gEl) gEl.textContent = (state.variant === 'custom-giver') ? (giver || 'Your Name') : '';
+  var ph = $('ovPhotoPh');
+  if (ph) ph.style.display = nom.photo ? 'none' : '';
+  layout();
+}
+
+/* ── Photo handling (PLC downscale + crop mechanics) ── */
+function downscalePhoto(file, cb){
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var img = new Image();
+    img.onload = function(){
+      var max = 760, scale = Math.min(1, max / Math.max(img.width, img.height));
+      var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      var q = 0.85, url = c.toDataURL('image/jpeg', q);
+      while (url.length > 720 * 1024 && q > 0.4) { q -= 0.1; url = c.toDataURL('image/jpeg', q); }
+      cb(url);
+    };
+    img.onerror = function(){ cb(null); };
+    img.src = ev.target.result;
+  };
+  reader.onerror = function(){ cb(null); };
+  reader.readAsDataURL(file);
+}
+var photoEverAdded = false;
+var uploadIdx = 0;
+function handleFile(file, idx){
+  if (!file || !/^image\//.test(file.type)) return;
+  if (idx == null || !state.nominees[idx]) idx = state.activeIdx;
+  downscalePhoto(file, function(url){
+    if (!url) { showErr('That photo could not be read. Try a JPG or PNG.'); return; }
+    var nom = state.nominees[idx];
+    nom.photo = url;
+    nom.crop = { cx:0.5, cy:0.5, zoom:1 };
+    state.activeIdx = idx;
+    if (petImg.src !== url) {
+      petImg.onload = function(){ renderPhoto(); };
+      petImg.src = url;
+    }
+    petImg.style.display = 'block';
+    ovPhoto.classList.add('has-photo');
+    updateReframeBtn();
+    buildNominees();
+    $('zoomRange').value = 1;
+    bump(); clearErr(); refreshPreview();
+    if (window.PLFTrack) PLFTrack.step('goofy_photo_added');
+    if (!photoEverAdded) { photoEverAdded = true; openPreview(); }
+  });
+}
+function renderPhoto(){
+  var nom = activeNom();
+  if (!nom.photo || !petImg.naturalWidth) {
+    if (!nom.photo) { petImg.style.display = 'none'; ovPhoto.classList.remove('has-photo'); }
+    return;
+  }
+  if (petImg.style.display !== 'block') petImg.style.display = 'block';
+  if (!ovPhoto.classList.contains('has-photo')) ovPhoto.classList.add('has-photo');
+  var boxW = ovPhoto.clientWidth, boxH = ovPhoto.clientHeight;
+  if (!boxW || !boxH) return;
+  var iw = petImg.naturalWidth, ih = petImg.naturalHeight;
+  var cover = Math.max(boxW / iw, boxH / ih);
+  var eff = cover * nom.crop.zoom;
+  var dW = iw * eff, dH = ih * eff;
+  var minCx = boxW / (2 * dW), maxCx = 1 - minCx;
+  nom.crop.cx = (minCx > maxCx) ? 0.5 : clamp(minCx, nom.crop.cx, maxCx);
+  var minCy = boxH / (2 * dH), maxCy = 1 - minCy;
+  nom.crop.cy = (minCy > maxCy) ? 0.5 : clamp(minCy, nom.crop.cy, maxCy);
+  petImg.style.width = dW + 'px'; petImg.style.height = dH + 'px';
+  petImg.style.left = (boxW / 2 - nom.crop.cx * dW) + 'px';
+  petImg.style.top = (boxH / 2 - nom.crop.cy * dH) + 'px';
+}
+
+/* ── Reframe modal (re-parents the live card; single source of truth) ── */
+var cardShell = $('cardShell'), previewHome = null;
+function openPreview(){
+  if (!activeNom().photo) return;
+  refreshPreview();
+  previewHome = cardShell.parentNode;
+  $('modalSlot').appendChild(cardShell);
+  var m = $('previewModal');
+  m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(function(){ refreshPreview(); renderPhoto(); });
+}
+function closePreview(){
+  if (previewHome && cardShell.parentNode !== previewHome) previewHome.appendChild(cardShell);
+  if (previewHome && previewHome.id === 'modalSlot') previewHome = null;
+  var m = $('previewModal');
+  m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  refreshPreview();
+}
+
+/* ── Crop gestures (PLC mechanics) ── */
+var ptrs = {}, ptrCount = 0, dragLast = null, pinchBase = null;
+function ptrList(){ var a = []; for (var k in ptrs) a.push(ptrs[k]); return a; }
+function nudgeCrop(dx, dy){
+  if (!activeNom().photo) return;
+  var cr = activeNom().crop;
+  var cx = isFinite(cr.cx) ? cr.cx : 0.5;
+  var cy = isFinite(cr.cy) ? cr.cy : 0.5;
+  cr.cx = cx + dx; cr.cy = cy + dy;
+  renderPhoto();
+}
+function zoomCrop(dir){
+  if (!activeNom().photo) return;
+  var cr = activeNom().crop;
+  var z = isFinite(cr.zoom) ? cr.zoom : 1;
+  cr.zoom = clamp(1, z + dir * 0.14, 3);
+  $('zoomRange').value = cr.zoom;
+  renderPhoto();
+}
+function wireCrop(){
+  ovPhoto.addEventListener('dragstart', function(e){ e.preventDefault(); });
+  ovPhoto.addEventListener('pointerdown', function(e){
+    if (!activeNom().photo) return;
+    e.preventDefault();
+    try { ovPhoto.setPointerCapture(e.pointerId); } catch (_) {}
+    ptrs[e.pointerId] = { x:e.clientX, y:e.clientY }; ptrCount++;
+    if (ptrCount === 2) {
+      var p = ptrList();
+      pinchBase = { dist:Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), zoom:activeNom().crop.zoom };
+      dragLast = null; ovPhoto.classList.remove('dragging');
+    } else {
+      dragLast = { x:e.clientX, y:e.clientY }; ovPhoto.classList.add('dragging');
+    }
+  });
+  ovPhoto.addEventListener('pointermove', function(e){
+    if (!ptrs[e.pointerId]) return;
+    ptrs[e.pointerId] = { x:e.clientX, y:e.clientY };
+    if (pinchBase && ptrCount >= 2) {
+      var p = ptrList();
+      var d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+      activeNom().crop.zoom = clamp(1, pinchBase.zoom * (d / pinchBase.dist), 3);
+      $('zoomRange').value = activeNom().crop.zoom; renderPhoto();
+    } else if (dragLast) {
+      var boxW = ovPhoto.clientWidth, boxH = ovPhoto.clientHeight;
+      var eff = Math.max(boxW / petImg.naturalWidth, boxH / petImg.naturalHeight) * activeNom().crop.zoom;
+      var dW = petImg.naturalWidth * eff, dH = petImg.naturalHeight * eff;
+      activeNom().crop.cx -= (e.clientX - dragLast.x) / dW;
+      activeNom().crop.cy -= (e.clientY - dragLast.y) / dH;
+      dragLast = { x:e.clientX, y:e.clientY };
+      renderPhoto();
+    }
+  });
+  function endPtr(e){
+    if (ptrs[e.pointerId]) { delete ptrs[e.pointerId]; ptrCount = Math.max(0, ptrCount - 1); }
+    if (ptrCount < 2) pinchBase = null;
+    if (ptrCount === 0) { dragLast = null; ovPhoto.classList.remove('dragging'); }
+    try { ovPhoto.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+  ovPhoto.addEventListener('pointerup', endPtr);
+  ovPhoto.addEventListener('pointercancel', endPtr);
+  ovPhoto.addEventListener('wheel', function(e){
+    if (!activeNom().photo) return;
+    e.preventDefault();
+    activeNom().crop.zoom = clamp(1, activeNom().crop.zoom + (e.deltaY < 0 ? 0.12 : -0.12), 3);
+    $('zoomRange').value = activeNom().crop.zoom; renderPhoto();
+  }, { passive:false });
+  function holdRepeat(btn, fn){
+    if (!btn) return;
+    var timer = null, delay = null;
+    function stop(){
+      if (delay) { clearTimeout(delay); delay = null; }
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+    function start(e){
+      if (timer || delay) return;
+      if (e && e.preventDefault) e.preventDefault();
+      fn();
+      delay = setTimeout(function(){ timer = setInterval(fn, 70); }, 260);
+    }
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointerleave', stop);
+    btn.addEventListener('pointercancel', stop);
+  }
+  holdRepeat($('dpad-up'),        function(){ nudgeCrop(0, 0.028); });
+  holdRepeat($('dpad-down'),      function(){ nudgeCrop(0, -0.028); });
+  holdRepeat($('dpad-left'),      function(){ nudgeCrop(0.028, 0); });
+  holdRepeat($('dpad-right'),     function(){ nudgeCrop(-0.028, 0); });
+  holdRepeat($('dpad-zoom-in'),   function(){ zoomCrop(1); });
+  holdRepeat($('dpad-zoom-out'),  function(){ zoomCrop(-1); });
+  $('zoomRange').addEventListener('input', function(){ activeNom().crop.zoom = parseFloat(this.value); renderPhoto(); });
+  $('resetCrop').addEventListener('click', function(){ activeNom().crop = { cx:0.5, cy:0.5, zoom:1 }; $('zoomRange').value = 1; renderPhoto(); });
+}
+
+/* ── Variant + dynamic steps ──
+   Standard skips the photo/nominee step entirely: Product → Honor →
+   Recipient → Review. Custom: Product → Honor → Nominees → Address → Review.
+   The stepper renumbers honestly per path — Standard never shows a Photo step. */
+function stepsFor(){
+  // No product/honor steps — the choice happened on the option cards.
+  // Standard is two steps; Custom is three. Nothing inapplicable ever shows.
+  return state.variant === 'standard'
+    ? [{ key:'recipient', label:'Recipient' }, { key:'review', label:'Review' }]
+    : [{ key:'nominees', label:'Nominees' }, { key:'address', label:'Address' },
+       { key:'review', label:'Review' }];
+}
+var STEP_TRACK = {
+  nominees:'goofy_step_nominees', recipient:'goofy_step_recipient',
+  address:'goofy_step_address', review:'goofy_step_review'
+};
+var cur = 1, maxReached = 1;
+function curKey(){ return stepsFor()[cur - 1].key; }
+
+function updateReframeBtn(){
+  var nom = activeNom();
+  var show = state.variant !== 'standard' && !!(nom && nom.photo);
+  var btn = $('reframeBtn');
+  if (btn) btn.classList.toggle('show', show);
+}
+
+function setVariant(v){
+  if (!VALID[v]) v = 'standard';
+  state.variant = v;
+  frame.dataset.variant = v;
+  $('cardTpl').src = TPL[v];
+  $('cardCaption').textContent = CAPTIONS[v];
+  var isCustom = v !== 'standard';
+  // Deterministic overlay visibility: Standard shows the finished kit only.
+  ovPhoto.style.display = isCustom ? '' : 'none';
+  var rEl = $('ov-recipient'), gEl = $('ov-giver');
+  if (rEl) rEl.style.display = isCustom ? '' : 'none';
+  if (gEl) gEl.style.display = (v === 'custom-giver') ? '' : 'none';
+  // The shared address fieldset lives in whichever panel this path uses.
+  var home = (v === 'standard') ? $('addressSlotStd') : $('addressSlotCustom');
+  var fields = $('addressFields');
+  if (home && fields && fields.parentNode !== home) home.appendChild(fields);
+  // Self-nominate boxes mirror one state.
+  Array.prototype.forEach.call(document.querySelectorAll('.selfNom'), function(cb){ cb.checked = state.selfNominate; });
+  $('giverField').style.display = (v === 'custom-giver') ? '' : 'none';
+  if (window.PLFTrack) PLFTrack.step('goofy_variant_' + v.replace(/-/g, '_'));
+  buildStepper();
+  buildNominees();
+  // Clamp the wizard position into the new path (switching variant mid-flow
+  // can strand the cursor past the end of a shorter path).
+  var len = stepsFor().length;
+  if (cur > len) cur = len;
+  maxReached = Math.min(Math.max(maxReached, 1), len);
+  updateReframeBtn();
+  showStep(cur, 'f');
+  bump(); refreshPreview(); recalc();
+}
+
+/* ── Selection: options ↔ animated wizard, carousel ↔ live preview ── */
+var selected = false;
+var carouselIdx = 0, carouselTimer = null;
+function carouselSlides(){ return [].slice.call(document.querySelectorAll('#carousel .cslide')); }
+function showSlide(i){
+  var slides = carouselSlides();
+  if (!slides.length) return;
+  carouselIdx = (i + slides.length) % slides.length;
+  slides.forEach(function(s, k){ s.classList.toggle('active', k === carouselIdx); });
+  var dots = document.querySelectorAll('#cDots .c-dot');
+  Array.prototype.forEach.call(dots, function(d, k){ d.classList.toggle('active', k === carouselIdx); });
+}
+function restartCarousel(){
+  if (carouselTimer) clearInterval(carouselTimer);
+  carouselTimer = setInterval(function(){
+    if ($('carouselBlock').hidden) return;   // live preview showing — rest
+    showSlide(carouselIdx + 1);
+  }, 4500);
+}
+function selectVariant(v, scroll){
+  setVariant(v);
+  selected = true;
+  cur = 1; maxReached = 1;
+  $('optionsBlock').style.display = 'none';
+  var wb = $('wizardBlock');
+  wb.classList.remove('open'); void wb.offsetWidth; wb.classList.add('open');
+  wb.style.display = 'block';
+  $('carouselBlock').hidden = true;
+  $('previewBlock').hidden = false;
+  buildStepper();
+  showStep(1, 'f');
+  refreshPreview(); recalc();
+  if (window.PLFTrack) PLFTrack.step('goofy_option_select_' + v.replace(/-/g, '_'));
+  if (scroll !== false) {
+    try { wb.scrollIntoView({ behavior:'smooth', block:'nearest' }); } catch (e) {}
+  }
+}
+function collapseToOptions(){
+  selected = false;
+  $('wizardBlock').style.display = 'none';
+  $('wizardBlock').classList.remove('open');
+  $('optionsBlock').style.display = '';
+  $('previewBlock').hidden = true;
+  $('carouselBlock').hidden = false;
+  restartCarousel();
+  try { $('build').scrollIntoView({ behavior:'smooth', block:'start' }); } catch (e) {}
+}
+
+/* ── Nominees (one kit each, same variant + address) ── */
+function nomTitle(nom, i){
+  if (state.selfNominate && i === 0) return 'You (the nominator)';
+  return nom.name.trim() || ('Nominee ' + (i + 1));
+}
+function buildNominees(){
+  var isCustom = state.variant !== 'standard';
+  var box = $(isCustom ? 'nomineeListCust' : 'nomineeListStd');
+  if (!box) return;
+  box.innerHTML = '';
+  state.nominees.forEach(function(nom, i){
+    var card = document.createElement('div');
+    card.className = 'nom-card' + (i === state.activeIdx ? ' active' : '');
+    card.dataset.idx = i;
+    var head = document.createElement('div');
+    head.className = 'nom-head';
+    var title = document.createElement('b');
+    title.textContent = (i + 1) + ' · ' + nomTitle(nom, i);
+    var tools = document.createElement('span');
+    // No per-nominee Preview on Standard — the finished kit is the preview.
+    if (isCustom) {
+      var view = document.createElement('button');
+      view.type = 'button'; view.className = 'mini'; view.dataset.act = 'view'; view.textContent = '👁 Preview';
+      tools.appendChild(view);
+    }
+    if (state.nominees.length > 1) {
+      var rm = document.createElement('button');
+      rm.type = 'button'; rm.className = 'mini rm'; rm.dataset.act = 'rm'; rm.textContent = '✕ Remove';
+      tools.appendChild(rm);
+    }
+    head.appendChild(title); head.appendChild(tools);
+    card.appendChild(head);
+    var f = document.createElement('div');
+    f.className = 'field';
+    var lab = document.createElement('label');
+    lab.innerHTML = isCustom ? 'Name <span class="req">required · printed on the licence</span>'
+                             : 'Name <span class="req">required</span>';
+    var inp = document.createElement('input');
+    inp.type = 'text'; inp.maxLength = 40; inp.className = 'nom-name';
+    inp.placeholder = 'e.g. Greg'; inp.value = nom.name;
+    inp.addEventListener('input', function(){ nom.name = inp.value; setActive(i, false); refreshPreview(); });
+    inp.addEventListener('focus', function(){ setActive(i, false); });
+    f.appendChild(lab); f.appendChild(inp);
+    card.appendChild(f);
+    if (isCustom) {
+      if (nom.photo) {
+        var row = document.createElement('div');
+        row.className = 'nom-thumb-row show';
+        var th = document.createElement('img');
+        th.className = 'upload-thumb'; th.alt = 'Nominee photo'; th.src = nom.photo;
+        var tx = document.createElement('div');
+        tx.style.fontSize = '13px'; tx.innerHTML = '<b>Photo added ✓</b>';
+        var ch = document.createElement('button');
+        ch.type = 'button'; ch.className = 'link-btn'; ch.dataset.act = 'change'; ch.textContent = 'Change';
+        row.appendChild(th); row.appendChild(tx); row.appendChild(ch);
+        card.appendChild(row);
+      } else {
+        var dz = document.createElement('div');
+        dz.className = 'dropzone nom-drop'; dz.dataset.act = 'drop';
+        dz.innerHTML = '<div class="uico">📸</div><div><b>Upload photo for ' +
+          escHtml(nomTitle(nom, i)) + '</b></div><div style="font-size:12px;margin-top:4px">Clear &amp; front-facing · JPG or PNG</div>';
+        card.appendChild(dz);
+      }
+    }
+    box.appendChild(card);
+  });
+  var addBtns = document.querySelectorAll('[data-add]');
+  Array.prototype.forEach.call(addBtns, function(b){
+    b.style.display = state.nominees.length >= 5 ? 'none' : '';
+  });
+  syncActivePhoto();
+}
+function setActive(i, scroll){
+  if (i < 0 || i >= state.nominees.length) return;
+  state.activeIdx = i;
+  Array.prototype.forEach.call(document.querySelectorAll('.nom-card'), function(el){
+    el.classList.toggle('active', parseInt(el.dataset.idx) === i);
+  });
+  syncActivePhoto();
+  updateReframeBtn();
+  refreshPreview();
+  if (scroll) {
+    try { $('cardShell').scrollIntoView({ behavior:'smooth', block:'center' }); } catch (e) {}
+  }
+}
+/* Point the shared preview <img> at the active nominee (or park it empty). */
+function syncActivePhoto(){
+  var nom = activeNom();
+  if (nom.photo) {
+    if (petImg.getAttribute('src') !== nom.photo) {
+      petImg.onload = function(){ renderPhoto(); };
+      petImg.setAttribute('src', nom.photo);
+    }
+    petImg.style.display = 'block';
+    ovPhoto.classList.add('has-photo');
+  } else {
+    petImg.removeAttribute('src');
+    petImg.style.display = 'none';
+    ovPhoto.classList.remove('has-photo');
+  }
+  $('zoomRange').value = nom.crop.zoom || 1;
+  renderPhoto();
+}
+
+/* ── Wizard (key-based, path-aware) ── */
+function renderStepper(){
+  var steps = stepsFor();
+  var nodes = [].slice.call($('stepper').children);
+  nodes.forEach(function(st, i){
+    var n = i + 1;
+    st.classList.remove('done', 'active', 'clickable');
+    if (n < cur) st.classList.add('done');
+    else if (n === cur) st.classList.add('active');
+    if (n <= maxReached) st.classList.add('clickable');
+    var dot = st.querySelector('.dot');
+    if (dot) dot.textContent = (n < cur) ? '✓' : n;
+  });
+}
+function buildStepper(){
+  var steps = stepsFor();
+  var sp = $('stepper');
+  sp.innerHTML = '';
+  steps.forEach(function(s, i){
+    var n = i + 1;
+    var st = document.createElement('div');
+    st.className = 'st'; st.dataset.pos = n;
+    var dot = document.createElement('div'); dot.className = 'dot'; dot.textContent = n;
+    var lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = s.label;
+    st.appendChild(dot); st.appendChild(lab);
+    st.addEventListener('click', function(){
+      if (n <= maxReached && n !== cur) go(n, n < cur ? 'b' : 'f');
+    });
+    sp.appendChild(st);
+  });
+  renderStepper();
+}
+function panelForKey(key){
+  var ps = document.querySelectorAll('.step-panel');
+  for (var i = 0; i < ps.length; i++) if (ps[i].dataset.stepkey === key) return ps[i];
+  return null;
+}
+function showStep(n, dir){
+  var steps = stepsFor();
+  if (n < 1) n = 1;
+  if (n > steps.length) n = steps.length;
+  cur = n;
+  var key = steps[n - 1].key;
+  if (window.PLFTrack && STEP_TRACK[key]) PLFTrack.step(STEP_TRACK[key]);
+  var ps = document.querySelectorAll('.step-panel');
+  for (var i = 0; i < ps.length; i++) ps[i].classList.remove('active');
+  var p = panelForKey(key);
+  if (p) {
+    p.classList.add('active');
+    p.style.animation = 'none'; void p.offsetWidth;
+    p.style.animation = (dir === 'b' ? 'stepInL' : 'stepInR') + ' .35s cubic-bezier(.2,.7,.2,1)';
+  }
+  // Back is always visible: on the first step it collapses to the lineup.
+  var next = $('wizNext');
+  if (n === steps.length) next.classList.add('hidden');
+  else { next.classList.remove('hidden'); next.textContent = (n === steps.length - 1 ? 'Review nomination →' : 'Continue →'); }
+  $('stepCount').textContent = 'Step ' + n + ' of ' + steps.length;
+  renderStepper(); recalc();
+}
+function go(n, dir){ maxReached = Math.max(maxReached, n); showStep(n, dir); }
+
+/* ── Validation ── */
+function showErr(msg){
+  var e = $('errBox'); e.textContent = msg; e.classList.remove('show'); void e.offsetWidth; e.classList.add('show');
+  try { e.scrollIntoView({ behavior:'smooth', block:'center' }); } catch (_) { try { e.scrollIntoView(); } catch (_) {} }
+}
+function clearErr(){ $('errBox').classList.remove('show'); }
+function namesValid(){
+  return state.nominees.length > 0 && state.nominees.every(function(nom){ return !!nom.name.trim(); });
+}
+function photosValid(){
+  return state.nominees.every(function(nom){ return !!nom.photo; });
+}
+function addressValid(){
+  return $('fAddr1').value.trim() && $('fCity').value.trim()
+      && $('fState').value.trim() && $('fZip').value.trim();
+}
+function validateStep(n){
+  clearErr();
+  var key = stepsFor()[n - 1].key;
+  if (key === 'nominees') {
+    if (!namesValid()) { showErr('Every nominee needs a name — one kit each. 📁'); return false; }
+    if (!photosValid()) { showErr('Every Custom nominee needs a photo 📸 (or switch to Standard).'); return false; }
+    if (state.variant === 'custom-giver' && !$('fGiver').value.trim()) { showErr('“Presented by” needs your name — or switch to Anonymous. 🕵️'); return false; }
+  }
+  if (key === 'recipient') {
+    if (!namesValid()) { showErr('Every nominee needs a name — every nomination is a new file. 📁'); return false; }
+    if (!addressValid()) { showErr('The kit needs somewhere to go — complete the mailing address. 📬'); return false; }
+  }
+  if (key === 'address' && !addressValid()) { showErr('The kits need somewhere to go — complete the mailing address. 📬'); return false; }
+  return true;
+}
+
+/* ── Summary ── */
+function recalc(){
+  var per = feeTotal(), n = state.nominees.length, total = per * n;
+  var h = '';
+  if (state.variant === 'standard') {
+    h += '<div class="line"><span>G.O.A.T. Licence — Standard nomination × ' + n + '</span><span>' + money(total) + '</span></div>';
+  } else {
+    state.nominees.forEach(function(nom, i){
+      var nm = nom.name.trim() || ('Nominee ' + (i + 1));
+      h += '<div class="line"><span>' + VARIANT_LABEL[state.variant] + ' (' + escHtml(nm) + ')</span><span>' + money(per) + '</span></div>';
+    });
+  }
+  h += '<div class="line muted"><span>Nomination processing fee</span><span>all-in ✓</span></div>';
+  if (state.selfNominate) h += '<div class="line muted"><span>🎯 Self-nomination</span><span>kit mailed to you</span></div>';
+  h += '<div class="line muted"><span>Delivery</span><span>calculated at checkout</span></div>';
+  h += '<div class="line total"><span>Due today</span><span>' + money(total) + ' + delivery</span></div>';
+  $('summaryLines').innerHTML = h;
+  $('wizTotal').textContent = money(total);
+  $('checkoutBtn').textContent = '🐐 Pay ' + money(total) + ' processing fee →';
+}
+
+/* ── Snapshot (Council card composite for the success page) ── */
+function buildSnapshot(cb){
+  try {
+    var W = TW, H = TH;
+    var c = document.createElement('canvas'); c.width = W; c.height = H;
+    var x = c.getContext('2d');
+    var isCustom = state.variant !== 'standard';
+    function drawRest(){
+      x.textAlign = 'center';
+      if (isCustom) {
+        var rF = FIELDS.recipient, gF = FIELDS.giver;
+        var nom = activeNom();
+        x.fillStyle = '#202030';
+        x.textBaseline = 'alphabetic';
+        var rName = (nom.name.trim() || 'Their Name').slice(0, 30);
+        var rsp = fitScript(x, rName, rF.w, 68);
+        x.font = rsp + 'px "Pinyon Script",cursive';
+        x.fillText(rName, rF.x + rF.w / 2, rF.y + rF.h - 6);
+        if (state.variant === 'custom-giver') {
+          var gName = ($('fGiver').value.trim() || 'Your Name').slice(0, 30);
+          var gsp = fitScript(x, gName, gF.w, 68);
+          x.font = gsp + 'px "Pinyon Script",cursive';
+          x.fillText(gName, gF.x + gF.w / 2, gF.y + gF.h - 6);
+        }
+      }
+      cb(c.toDataURL('image/jpeg', 0.85));
+    }
+    function fitScript(ctx, txt, maxW, start){
+      var s = start;
+      while (s > 10) { ctx.font = s + 'px "Pinyon Script",cursive'; if (ctx.measureText(txt).width <= maxW) break; s -= 2; }
+      return s;
+    }
+    var tpl = new Image();
+    tpl.onload = function(){
+      x.drawImage(tpl, 0, 0, W, H);
+      var nom = activeNom();
+      if (isCustom && nom.photo) {
+        var pimg = new Image();
+        pimg.onload = function(){
+          try {
+            var B = PHOTO_BOX;
+            x.save(); x.beginPath(); x.rect(B.x, B.y, B.w, B.h); x.clip();
+            var zoom = (isFinite(nom.crop.zoom) && nom.crop.zoom > 0) ? nom.crop.zoom : 1;
+            var cx = isFinite(nom.crop.cx) ? nom.crop.cx : 0.5;
+            var cy = isFinite(nom.crop.cy) ? nom.crop.cy : 0.5;
+            var cover = Math.max(B.w / pimg.width, B.h / pimg.height), eff = cover * zoom;
+            var dw = pimg.width * eff, dh = pimg.height * eff;
+            x.drawImage(pimg, B.x + B.w / 2 - cx * dw, B.y + B.h / 2 - cy * dh, dw, dh);
+            x.restore();
+          } catch (e) {}
+          drawRest();
+        };
+        pimg.onerror = drawRest; pimg.src = nom.photo;
+      } else drawRest();
+    };
+    tpl.onerror = function(){ cb(null); };
+    tpl.src = TPL[state.variant];
+  } catch (e) { cb(null); }
+}
+
+/* ── Checkout ── */
+function stepPosFor(key){
+  var steps = stepsFor();
+  for (var i = 0; i < steps.length; i++) if (steps[i].key === key) return i + 1;
+  return 1;
+}
+var checking = false;
+function checkout(){
+  if (checking) return;
+  clearErr();
+  var isCustom = state.variant !== 'standard';
+  var noms = state.nominees;
+  var first = (noms[0] && noms[0].name.trim()) || '';
+  var street = $('fAddr1').value.trim(), line2 = $('fAddr2').value.trim();
+  var city = $('fCity').value.trim(), st = $('fState').value.trim().toUpperCase(), zip = $('fZip').value.trim();
+  var giver = $('fGiver').value.trim();
+  if (!namesValid()) { go(stepPosFor(isCustom ? 'nominees' : 'recipient'), 'b'); showErr('Every nominee needs a name. 📁'); return; }
+  if (isCustom && !photosValid()) { go(stepPosFor('nominees'), 'b'); showErr('Every Custom nominee needs a photo 📸'); return; }
+  if (!addressValid()) { go(stepPosFor(isCustom ? 'address' : 'recipient'), 'b'); showErr('Full mailing address, please. 📬'); return; }
+  if (state.variant === 'custom-giver' && !giver) { go(stepPosFor('nominees'), 'b'); showErr('“Presented by” needs your name — or switch to Anonymous. 🕵️'); return; }
+  checking = true;
+  var btn = $('checkoutBtn'); btn.disabled = true;
+  var per = feeTotal(), total = per * noms.length;
+  var orderBody = {
+    brand:'goofy', variant:state.variant, src:srcParam,
+    recipients:noms.map(function(nom){
+      return { name:nom.name.trim(), photo:((isCustom && nom.photo) ? nom.photo : null) };
+    }),
+    recipientName:first, giverName:(state.variant === 'custom-giver' ? giver : ''),
+    licenceNo:LICENCE_NO, selfNominate:state.selfNominate,
+    addrStreet:street, addrLine2:line2, addrCity:city, addrState:st, addrZip:zip,
+    total:parseFloat(total.toFixed(2))
+  };
+  function fail(msg){
+    checking = false; btn.disabled = false; recalc();
+    showErr(msg || 'Something went wrong connecting to checkout. Please try again.');
+  }
+  buildSnapshot(function(snap){
+    var snapName = (activeNom().name.trim() || first);
+    if (snap) { try { localStorage.setItem('goofy_last_preview', JSON.stringify({ recipient:snapName, cardDataUrl:snap, ts:Date.now() })); } catch (e) {} }
+    fetch('/api/submit-order', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(orderBody) })
+      .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.error || 'save failed'); return d; }); })
+      .then(function(d){
+        var orderId = d.orderId;
+        var orderIds = (d.orderIds && d.orderIds.length) ? d.orderIds : [orderId];
+        if (window.PLFTrack) PLFTrack.step('goofy_order_submitted', { variant:state.variant });
+        try { if (snap) { var s = JSON.parse(localStorage.getItem('goofy_last_preview')); s.orderId = orderId; localStorage.setItem('goofy_last_preview', JSON.stringify(s)); } } catch (e) {}
+        var affiliateRef = (window.PLFAffiliate && window.PLFAffiliate.getRef && window.PLFAffiliate.getRef()) || '';
+        var promoCode = (new URLSearchParams(window.location.search).get('promo') || '').trim() || (window.PLFPromo && window.PLFPromo.getCode && window.PLFPromo.getCode()) || '';
+        return fetch('/api/create-checkout-session', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({
+          brand:'goofy', variant:state.variant, src:srcParam,
+          recipientName:first, giverName:((state.variant === 'custom-giver') ? giver : ''),
+          orderId:orderId, orderIds:orderIds, recipientCount:orderIds.length,
+          petData:{ petFirstName:first, petLastName:'' },
+          origin:window.location.origin, cancelUrl:window.location.href,
+          affiliateRef:affiliateRef, promoCode:promoCode
+        }) });
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.url) {
+          if (window.PLFTrack) PLFTrack.step('goofy_checkout_clicked', { total:orderBody.total, variant:state.variant });
+          if (window.PLFPixels && window.PLFPixels.initiateCheckout) window.PLFPixels.initiateCheckout(orderBody.total, 'USD');
+          setTimeout(function(){ window.location.href = d.url; }, 300);
+        } else throw new Error(d.error || 'no url');
+      })
+      .catch(function(err){ console.error('goofy checkout error', err); fail(); });
+  });
+}
+
+/* ── Wiring ── */
+function wireStatic(){
+  // Option cards (pre-wizard choice).
+  Array.prototype.forEach.call(document.querySelectorAll('#optionsBlock .opt-card'), function(el){
+    function choose(){ selectVariant(el.dataset.variant, true); }
+    el.addEventListener('click', choose);
+    el.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); } });
+  });
+  // Carousel (images only — no CTAs).
+  var dotsBox = $('cDots');
+  carouselSlides().forEach(function(_, k){
+    var d = document.createElement('button');
+    d.type = 'button'; d.className = 'c-dot' + (k === 0 ? ' active' : '');
+    d.setAttribute('aria-label', 'Show license ' + (k + 1));
+    d.addEventListener('click', function(){ showSlide(k); restartCarousel(); });
+    dotsBox.appendChild(d);
+  });
+  $('cPrev').addEventListener('click', function(){ showSlide(carouselIdx - 1); restartCarousel(); });
+  $('cNext').addEventListener('click', function(){ showSlide(carouselIdx + 1); restartCarousel(); });
+  restartCarousel();
+  $('fileInput').addEventListener('change', function(e){
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0], uploadIdx);
+    e.target.value = '';
+  });
+  // Nominee lists (both paths share state; delegation per container).
+  Array.prototype.forEach.call(document.querySelectorAll('#nomineeListCust, #nomineeListStd'), function(box){
+    box.addEventListener('click', function(e){
+      var btn = e.target.closest('[data-act]');
+      var card = e.target.closest('.nom-card');
+      if (!card) return;
+      var i = parseInt(card.dataset.idx);
+      if (btn) {
+        var act = btn.dataset.act;
+        if (act === 'drop' || act === 'change') { uploadIdx = i; state.activeIdx = i; $('fileInput').click(); }
+        else if (act === 'view') { setActive(i, true); }
+        else if (act === 'rm') {
+          if (state.nominees.length <= 1) return;
+          state.nominees.splice(i, 1);
+          if (state.activeIdx >= state.nominees.length) state.activeIdx = state.nominees.length - 1;
+          if (window.PLFTrack) PLFTrack.step('goofy_recipient_removed');
+          buildNominees(); refreshPreview(); recalc();
+        }
+        return;
+      }
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-add]'), function(b){
+    b.addEventListener('click', function(){
+      if (state.nominees.length >= 5) { showErr('Five nominees max per order — file another batch for the rest. 🐐'); return; }
+      state.nominees.push(newNominee());
+      state.activeIdx = state.nominees.length - 1;
+      clearErr();
+      if (window.PLFTrack) PLFTrack.step('goofy_recipient_added', { count:state.nominees.length });
+      buildNominees(); refreshPreview(); recalc();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.selfNom'), function(cb){
+    cb.addEventListener('change', function(){
+      state.selfNominate = cb.checked;
+      Array.prototype.forEach.call(document.querySelectorAll('.selfNom'), function(o){ o.checked = state.selfNominate; });
+      if (window.PLFTrack) PLFTrack.step(state.selfNominate ? 'goofy_self_on' : 'goofy_self_off');
+      buildNominees(); refreshPreview(); recalc();
+    });
+  });
+  $('fGiver').addEventListener('input', refreshPreview);
+  $('fGiver').addEventListener('change', refreshPreview);
+  $('wizNext').addEventListener('click', function(){ if (validateStep(cur) && cur < stepsFor().length) go(cur + 1, 'f'); });
+  $('wizBack').addEventListener('click', function(){
+    clearErr();
+    if (cur > 1) go(cur - 1, 'b');
+    else collapseToOptions();   // Back on the first step returns to the lineup
+  });
+  $('checkoutBtn').addEventListener('click', checkout);
+  $('reframeBtn').addEventListener('click', openPreview);
+  $('previewClose').addEventListener('click', closePreview);
+  $('previewDone').addEventListener('click', closePreview);
+  $('previewModal').addEventListener('click', function(e){ if (e.target === this) closePreview(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('previewModal').classList.contains('open')) closePreview(); });
+  if (window.ResizeObserver) new ResizeObserver(function(){ layout(); }).observe(frame);
+  window.addEventListener('resize', layout);
+  wireCrop();
+}
+
+/* ── Init (everything above must be defined first) ── */
+(function init(){
+  buildOverlays();
+  wireStatic();
+  buildNominees();
+  // Scroll parallax: ridges drift apart vertically (nearer = faster) AND
+  // slide horizontally in opposite directions (far ←, mid →, near ←).
+  // Clouds drift on their own CSS loop; JS only nudges their wrappers down.
+  // Translate-only, clamped, so the 120vw bleed never exposes an edge.
+  (function parallax(){
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var l1 = document.querySelector('.scene .l1');
+    var l2 = document.querySelector('.scene .l2');
+    var l3 = document.querySelector('.scene .l3');
+    var sun = document.querySelector('.scene .sun');
+    var d1 = document.querySelector('.scene .d1');
+    var d2 = document.querySelector('.scene .d2');
+    var d3 = document.querySelector('.scene .d3');
+    var d4 = document.querySelector('.scene .d4');
+    if (!l3) return;
+    function clam(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+    var ticking = false;
+    function update(){
+      ticking = false;
+      var y = window.pageYOffset || 0;
+      var x1 = clam(y * -0.05, -70, 70);
+      var x2 = clam(y * 0.07, -70, 70);
+      var x3 = clam(y * -0.11, -90, 90);
+      if (l1) l1.style.transform = 'translate3d(' + x1 + 'px,' + Math.min(y * 0.03, 45) + 'px,0)';
+      if (l2) l2.style.transform = 'translate3d(' + x2 + 'px,' + Math.min(y * 0.06, 90) + 'px,0)';
+      l3.style.transform = 'translate3d(' + x3 + 'px,' + Math.min(y * 0.10, 150) + 'px,0)';
+      if (sun) sun.style.transform = 'translate3d(0,' + Math.min(y * 0.05, 90) + 'px,0)';
+      if (d1) d1.style.transform = 'translate3d(0,' + Math.min(y * 0.06, 110) + 'px,0)';
+      if (d2) d2.style.transform = 'translate3d(0,' + Math.min(y * 0.09, 160) + 'px,0)';
+      if (d3) d3.style.transform = 'translate3d(0,' + Math.min(y * 0.12, 190) + 'px,0)';
+      if (d4) d4.style.transform = 'translate3d(0,' + Math.min(y * 0.15, 230) + 'px,0)';
+    }
+    window.addEventListener('scroll', function(){
+      if (!ticking) { ticking = true; requestAnimationFrame(update); }
+    }, { passive:true });
+    update();
+  })();
+  // Council sting: brief, skippable, gone in ~1.6s.
+  (function sting(){
+    var el = $('councilIntro');
+    if (!el) return;
+    var gone = false;
+    function dismiss(){
+      if (gone) return; gone = true;
+      el.classList.add('done');
+      setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 450);
+    }
+    el.addEventListener('click', dismiss);
+    setTimeout(dismiss, 1550);
+  })();
+  // QR scan welcome: a ?src= landing (printed QR on the kit / licence card)
+  // grants the Right of Nomination. Copy comes from GOOFY_QR so the print
+  // and web wording stay in sync. Once per session per src — the tier
+  // selection, recipient + address, and $4.95 checkout flow is unchanged.
+  (function qrWelcome(){
+    var m = $('qrModal');
+    if (!m) return;
+    var urlSrc = '';
+    try { urlSrc = (qs.get('src') || '').trim().slice(0, 120); } catch (e) {}
+    if (!urlSrc) return;
+    var seen = '';
+    try { seen = sessionStorage.getItem('goofy_qr_seen') || ''; } catch (e) {}
+    if (seen === urlSrc) return;
+    var Q = window.GOOFY_QR || {};
+    if (Q.MODAL_TITLE) $('qrTitle').textContent = Q.MODAL_TITLE;
+    if (Q.MODAL_BODY) $('qrBody').textContent = Q.MODAL_BODY;
+    if (Q.MODAL_CTA) $('qrCta').textContent = Q.MODAL_CTA;
+    function hide(action){
+      m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      try { sessionStorage.setItem('goofy_qr_seen', urlSrc); } catch (e) {}
+      if (window.PLFTrack) PLFTrack.step(action || 'goofy_qr_modal_dismissed', { src:urlSrc });
+    }
+    // Delay past the Council sting (~1.6s) so the two never stack.
+    setTimeout(function(){
+      m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      if (window.PLFTrack) PLFTrack.step('goofy_qr_modal_shown', { src:urlSrc });
+    }, 1750);
+    $('qrCta').addEventListener('click', function(){
+      hide('goofy_qr_modal_accepted');
+      var target = $('optionsBlock').style.display === 'none' ? $('wizardBlock') : $('optionsBlock');
+      try { target.scrollIntoView({ behavior:'smooth', block:'start' }); } catch (e) {}
+    });
+    $('qrClose').addEventListener('click', function(){ hide('goofy_qr_modal_dismissed'); });
+    m.addEventListener('click', function(e){ if (e.target === m) hide('goofy_qr_modal_dismissed'); });
+  })();
+  // No wizard on page load — just the carousel + options. A ?variant= deep
+  // link (or QR) opens its steps immediately; otherwise the buyer picks.
+  var pre = (qs.get('variant') || '').toLowerCase();
+  if (VALID[pre]) {
+    selectVariant(pre, false);
+  } else {
+    setVariant('standard');
+    refreshPreview(); recalc();
+  }
+  (function fireView(tries){
+    if (window.PLFTrack) {
+      var meta = { variant:state.variant };
+      if (srcParam) meta.src = srcParam;
+      PLFTrack.step('goofy_builder_view', meta);
+      return;
+    }
+    if (tries < 25) setTimeout(function(){ fireView(tries + 1); }, 200);
+  })(0);
+})();
+})();
+</script>
+</body>
+</html>

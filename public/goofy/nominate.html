@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Nominate a GOAT — Goofy Licenses</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<style>
+body{background:#120b24;color:#fdf6e3;font-family:-apple-system,BlinkMacSystemFont,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+p{color:#b9a8e0;font-size:14px}
+a{color:#f5c542}
+</style>
+</head>
+<body>
+<p>🐐 Taking you to the nomination desk… <a id="fallback" href="./">continue →</a></p>
+<script src="/affiliate-tracker.js"></script>
+<script src="/pixels.js"></script>
+<script src="/plf-track.js" defer></script>
+<script>
+(function(){
+  // The builder lives at /goofy/ (and /<line>/ rewrites, e.g. /goat/, serve
+  // the same file). This page is kept as a back-compat landing for QR codes /
+  // links: hop one level up so the line path is preserved (/goat/nominate →
+  // /goat/), forwarding the FULL query (?variant=, ?src=, ?ref=, ?promo=).
+  // affiliate-tracker.js already ran above (stashes ?ref=/?promo=); the
+  // short delay lets its beacon + the plf-track page_view flush first.
+  var dest = './' + window.location.search + window.location.hash;
+  try { document.getElementById('fallback').setAttribute('href', dest); } catch (e) {}
+  setTimeout(function(){ window.location.replace(dest); }, 350);
+})();
+</script>
+</body>
+</html>

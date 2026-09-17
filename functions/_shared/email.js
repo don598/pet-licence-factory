@@ -243,6 +243,130 @@ Questions? Just reply to this email.
   return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'confirmation' } });
 }
 
+// ── Goofy Licenses nomination confirmation email ────────────────────────────
+// Called from the Stripe webhook (and update-address) when a GOOFY order is
+// finalised. Council bureaucracy framing; every price is a processing fee.
+// This is a separate template so a nominator NEVER receives pet-license copy.
+// Sender stays the shared hello@petlicensefactory.com until the Goofy sender
+// is set up at domain cutover.
+export async function sendGoofyConfirmationEmail(env, order) {
+  const {
+    orderId, customerEmail, customerName,
+    recipientName, giverName, variant, recipientCount,
+    shippingOption, total,
+    shipAddrLine1, shipAddrLine2, shipCity, shipState, shipZip, shipCountry,
+  } = order;
+
+  if (!customerEmail) return { skipped: true, reason: 'no email' };
+
+  const nominee = recipientName || 'your nominee';
+  const count = Math.max(1, parseInt(recipientCount) || 1);
+  const party = count > 1 ? `${nominee} (+${count - 1} more)` : nominee;
+  const honorLabel = ({
+    'standard':     'G.O.A.T. License — Standard Nomination',
+    'custom-giver': 'G.O.A.T. License — Custom Nomination (with giver credit)',
+    'custom-anon':  'G.O.A.T. License — Custom Nomination (anonymous)',
+  })[variant] || 'G.O.A.T. License Nomination';
+  const shipLabel = ({
+    stamp:    'Stamp Mail (USPS)',
+    standard: 'Standard Shipping (7–14 business days)',
+    priority: 'Priority Shipping (3–5 business days)',
+  })[shippingOption] || 'Standard Shipping';
+  const presentedBy = variant === 'custom-giver' && giverName
+    ? `Presented by ${giverName}`
+    : variant === 'custom-anon' ? 'Presented anonymously' : 'Filed by the Council';
+
+  const addrParts = [shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry]
+    .filter(Boolean).join('<br>');
+
+  const subject = `🐐 Nomination filed — ${party}'s G.O.A.T. License is being processed!`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#120b24;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#120b24;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#221547;border:2px solid #f5c542;border-radius:8px;overflow:hidden;">
+
+        <!-- Header -->
+        <tr><td style="padding:32px 32px 16px;text-align:center;">
+          <div style="font-size:48px;">🐐</div>
+          <h1 style="margin:12px 0 0;font-size:18px;color:#f5c542;letter-spacing:2px;text-transform:uppercase;">Nomination Filed!</h1>
+          <p style="margin:12px 0 0;font-size:14px;color:#fdf6e3;line-height:1.5;">
+            The Council has accepted your nomination. ${esc(nominee)} is about to become officially a GOAT.
+          </p>
+        </td></tr>
+
+        <!-- Filing number -->
+        <tr><td style="padding:24px 32px 8px;">
+          <div style="background:#1b1038;border:1px solid #f5c542;border-radius:4px;padding:14px 18px;">
+            <div style="font-size:11px;color:#b9a8e0;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Council Filing Number</div>
+            <div style="font-family:'Courier New',monospace;font-size:14px;color:#f5c542;word-break:break-all;">${esc(orderId || '—')}</div>
+          </div>
+        </td></tr>
+
+        <!-- Summary -->
+        <tr><td style="padding:16px 32px;">
+          <h2 style="margin:0 0 12px;font-size:13px;color:#f5c542;letter-spacing:1px;text-transform:uppercase;font-weight:600;">🧾 Nomination Summary</h2>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size:14px;color:#fdf6e3;border-collapse:collapse;">
+            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(245,197,66,.25);">Honor</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(245,197,66,.25);color:#f5c542;">${esc(honorLabel)}</td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(245,197,66,.25);">Nominee</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(245,197,66,.25);color:#f5c542;">${esc(party)}</td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(245,197,66,.25);">Attribution</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(245,197,66,.25);color:#f5c542;">${esc(presentedBy)}</td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(245,197,66,.25);">Delivery</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(245,197,66,.25);color:#f5c542;">${esc(shipLabel)}</td></tr>
+            <tr><td style="padding:12px 0 0;font-weight:700;color:#f5c542;">Nomination processing fee</td><td style="padding:12px 0 0;text-align:right;font-weight:700;color:#f5c542;font-size:16px;">${esc(total || '—')}</td></tr>
+          </table>
+        </td></tr>
+
+        <!-- Shipping -->
+        ${addrParts ? `<tr><td style="padding:16px 32px;">
+          <h2 style="margin:0 0 12px;font-size:13px;color:#f5c542;letter-spacing:1px;text-transform:uppercase;font-weight:600;">📦 Kit Ships To</h2>
+          <div style="background:#1b1038;border-left:3px solid #f5c542;padding:12px 16px;font-size:14px;color:#fdf6e3;line-height:1.6;">
+            ${customerName ? `<strong style="color:#f5c542;">${esc(customerName)}</strong><br>` : ''}
+            ${addrParts}
+          </div>
+        </td></tr>` : ''}
+
+        <!-- What's next -->
+        <tr><td style="padding:16px 32px 24px;">
+          <h2 style="margin:0 0 12px;font-size:13px;color:#f5c542;letter-spacing:1px;text-transform:uppercase;font-weight:600;">⚡ What Happens Next</h2>
+          <ol style="margin:0;padding-left:20px;font-size:14px;color:#fdf6e3;line-height:1.8;">
+            <li>🖨️ The Council prints the certified G.O.A.T. license kit (2–3 business days).</li>
+            <li>📮 The kit is sealed, stamped, and mailed to <strong>${esc(nominee)}</strong>.</li>
+            <li>🐐 Confusion, then delight. Then they nominate someone. The loop continues.</li>
+          </ol>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 32px;background:#1b1038;border-top:1px solid rgba(245,197,66,.25);text-align:center;font-size:12px;color:#b9a8e0;line-height:1.6;">
+          Questions? Just reply to this email — a clerk reads every message.<br>
+          <span style="opacity:.6;">Goofy Licenses · novelty gag licenses for entertainment · not a government document</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text =
+`Nomination filed! 🐐
+
+Council Filing Number: ${orderId || '—'}
+Honor:  ${honorLabel}
+Nominee: ${nominee}
+${presentedBy}
+Delivery: ${shipLabel}
+Nomination processing fee: ${total || '—'}
+
+${addrParts ? `Kit ships to:\n${customerName ? customerName + '\n' : ''}${[shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry].filter(Boolean).join('\n')}\n\n` : ''}Next up: the Council prints the certified G.O.A.T. license kit, seals it, and mails it to ${nominee}.
+
+Questions? Just reply to this email.
+
+— The Council of G.O.A.T. Affairs (Goofy Licenses)`;
+
+  return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'goofy_confirmation' } });
+}
+
 // ── Stamp-mail shipped (called when admin flips a stamp order to 'printed') ──
 // Stamp orders have no tracking number, so this is a simpler "it's in the
 // mailbox" note vs. the full tracking email used for Standard/Priority.
@@ -709,6 +833,77 @@ Unsubscribe: ${unsubHref}
   return sendEmail(env, {
     to, subject, html, text,
     customArgs: { email_type: 'checkout_recovery', order_id: orderId },
+    asmGroupId,
+    subscriptionTracking: !asmGroupId,
+  });
+}
+
+// ── Goofy Licenses nomination recovery email ────────────────────────────────
+// Same trigger as sendCheckoutRecoveryEmail (expired unpaid Checkout Session
+// with a captured email), Council copy for GOOFY orders so a nominator never
+// receives pet-license copy. One send per order, enforced by
+// pet_orders.recovery_email_sent_at in stripe-webhook.js.
+export async function sendGoofyRecoveryEmail(env, { to, recipientName, recoveryUrl, orderId }) {
+  if (!to || !recoveryUrl) return { skipped: true, reason: 'missing email or url' };
+
+  const nominee = (recipientName || '').trim() || 'your nominee';
+  const subject = `${nominee}'s G.O.A.T. nomination is still on the clerk's desk`;
+
+  const asmGroupId = env.SENDGRID_ASM_GROUP_ID ? parseInt(env.SENDGRID_ASM_GROUP_ID, 10) : null;
+  const unsubHref = asmGroupId ? '<%asm_group_unsubscribe_raw_url%>' : '[unsubscribe]';
+
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#120b24;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#120b24;padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#221547;border:2px solid #f5c542;border-radius:14px;overflow:hidden;">
+
+        <tr><td style="padding:30px 32px 12px;text-align:center;">
+          <div style="font-size:48px;">🐐</div>
+          <h1 style="margin:12px 0 0;font-size:15px;color:#f5c542;letter-spacing:2px;text-transform:uppercase;line-height:1.6;">The file is still open</h1>
+          <p style="margin:12px 0 0;font-size:15px;color:#fdf6e3;line-height:1.6;">
+            You started a G.O.A.T. nomination for ${esc(nominee)} and made it all the way to checkout, then life happened. The Council kept the file exactly as you left it.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px 8px;">
+          <div style="background:#1b1038;border:1px dashed #f5c542;border-radius:10px;padding:20px;text-align:center;">
+            <p style="margin:0 0 14px;font-size:14px;color:#fdf6e3;line-height:1.6;">
+              One click below takes you straight back to the payment page with everything already filled in. The link works for 30 days, but ${esc(nominee)} would prefer sooner.
+            </p>
+            <a href="${esc(recoveryUrl)}" style="display:inline-block;padding:14px 28px;background:#f5c542;color:#2a1a05;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;letter-spacing:.5px;">Finish the nomination →</a>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:20px 32px;text-align:center;font-size:12px;color:#b9a8e0;line-height:1.6;border-top:1px solid rgba(245,197,66,.25);">
+          You are getting this one-time reminder because you started a nomination at Goofy Licenses. Reply any time, a clerk reads these.<br>
+          <span style="opacity:.7;">Goofy Licenses · novelty gag licenses · not a government document</span><br>
+          <a href="${unsubHref}" style="color:#b9a8e0;text-decoration:underline;">Unsubscribe</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text =
+`${nominee}'s G.O.A.T. nomination is still on the clerk's desk.
+
+You started a G.O.A.T. nomination for ${nominee} and made it all the way to checkout, then life happened. The Council kept the file exactly as you left it.
+
+Pick up where you left off (the link works for 30 days):
+${recoveryUrl}
+
+You are getting this one-time reminder because you started a nomination at Goofy Licenses. Reply any time, a clerk reads these.
+
+Goofy Licenses · novelty gag licenses · not a government document
+Unsubscribe: ${unsubHref}
+
+— The Council of G.O.A.T. Affairs`;
+
+  return sendEmail(env, {
+    to, subject, html, text,
+    customArgs: { email_type: 'goofy_recovery', order_id: orderId },
     asmGroupId,
     subscriptionTracking: !asmGroupId,
   });

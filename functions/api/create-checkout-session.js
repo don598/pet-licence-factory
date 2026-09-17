@@ -8,7 +8,7 @@
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { readRefCookie, normalizeCode } from '../_shared/affiliate.js';
-import { PRICES } from '../_shared/pricing.js';
+import { PRICES, GOOFY_PRICES } from '../_shared/pricing.js';
 
 // PRICES (US cents) is the canonical source of truth — see
 // functions/_shared/pricing.js. The client mirror is public/pricing.js.
@@ -44,7 +44,25 @@ export async function onRequest(context) {
     cancelUrl      = '',
     promoCode      = '',
     affiliateRef   = '',
+    // ── Goofy Licenses (additive; absent/anything-else ⇒ PLC path) ──
+    brand          = '',
+    variant        = '',
+    src            = '',
+    recipientName  = '',
+    giverName      = '',
+    // Multi-nominee batch: every id belongs to one checkout (one shipment).
+    orderIds       = [],
+    recipientCount = 0,
   } = body;
+
+  // Brand gate: ONLY the exact string 'goofy' takes the Goofy path.
+  const isGoofy = brand === 'goofy';
+  const GOOFY_VARIANTS = ['standard', 'custom-giver', 'custom-anon'];
+  const gVariant = GOOFY_VARIANTS.includes(variant) ? variant : 'standard';
+  // Headcount: explicit ids win, then the count hint. Clamped 1–5 (matches
+  // submit-order's cap). The fee is charged PER nominee via quantity.
+  const gIds = (Array.isArray(orderIds) ? orderIds : []).filter((id) => typeof id === 'string' && /^GOOFY-/i.test(id)).slice(0, 5);
+  const gCount = isGoofy ? Math.min(5, Math.max(1, gIds.length || parseInt(recipientCount) || 1)) : 1;
 
   // Affiliate ref resolution priority: explicit body → first-party cookie.
   const refFromCookie = readRefCookie(request);
@@ -94,10 +112,42 @@ export async function onRequest(context) {
     });
   }
 
+  // ── Goofy Licenses line items (additive branch) ──────────────────────────
+  // Same Stripe account, new inline products. Every price IS a "nomination
+  // processing fee" — never a fee on top. The Goofy branch rebuilds the cart
+  // from GOOFY_PRICES, so PLC discount/decal math above can never leak in
+  // (a forged discountEarned is ignored by construction).
+  if (isGoofy) {
+    const gAmount = gVariant === 'standard' ? GOOFY_PRICES.standard : GOOFY_PRICES.custom;
+    const gNames = {
+      'standard':     'G.O.A.T. License — Standard Nomination',
+      'custom-giver': 'G.O.A.T. License — Custom Nomination (with giver credit)',
+      'custom-anon':  'G.O.A.T. License — Custom Nomination (anonymous)',
+    };
+    const gDescs = {
+      'standard':     'Certified G.O.A.T. license kit mailed to your nominee — $4.95 nomination processing fee, all-in.',
+      'custom-giver': 'Custom G.O.A.T. license with nominee name & photo, presented by you — $8.95 nomination processing fee, all-in.',
+      'custom-anon':  'Custom G.O.A.T. license with nominee name & photo, no giver named — $8.95 nomination processing fee, all-in.',
+    };
+    lineItems.length = 0;
+    lineItems.push({
+      price_data: {
+        currency: 'usd',
+        product_data: { name: gNames[gVariant], description: gDescs[gVariant] },
+        unit_amount: gAmount,
+      },
+      // One kit per nominee, one shipment.
+      quantity: gCount,
+    });
+  }
+
   // ── Build URLs ────────────────────────────────────────────────────────────
   const siteOrigin = origin || env.URL || 'http://localhost:8788';
-  const successUrl = `${siteOrigin}/success.html?session_id={CHECKOUT_SESSION_ID}&order_id=${encodeURIComponent(orderId)}`;
-  const cancel     = cancelUrl || `${siteOrigin}/game.html`;
+  // Goofy nominators land on the Goofy success page — never on PLC copy.
+  const successUrl = isGoofy
+    ? `${siteOrigin}/goofy/success.html?session_id={CHECKOUT_SESSION_ID}&order_id=${encodeURIComponent(orderId)}`
+    : `${siteOrigin}/success.html?session_id={CHECKOUT_SESSION_ID}&order_id=${encodeURIComponent(orderId)}`;
+  const cancel     = cancelUrl || (isGoofy ? `${siteOrigin}/goofy/nominate.html` : `${siteOrigin}/game.html`);
 
   // ── Create Stripe Checkout Session ───────────────────────────────────────
   try {
@@ -138,7 +188,8 @@ export async function onRequest(context) {
     // Replace the line items with a fresh single-item cart regardless of
     // what the body asked for. The 100% coupon then zeros the cart and
     // Stripe always clamps amount_total >= 0, so no stacking can go negative.
-    if (freebieFreeShipping) {
+    // (PLC-only: the Goofy branch already rebuilt the cart above.)
+    if (freebieFreeShipping && !isGoofy) {
       lineItems.length = 0;
       lineItems.push({
         price_data: {
@@ -243,6 +294,16 @@ export async function onRequest(context) {
         wants_decal:     String(wantsDecal),
         discount_earned: String(discountEarned),
         affiliate_ref:   ref || '',
+        // ── Goofy Licenses (additive keys; empty on PLC orders) ──
+        brand:           isGoofy ? 'goofy' : 'plc',
+        variant:         isGoofy ? gVariant : '',
+        src:             isGoofy ? String(src || '').slice(0, 120) : '',
+        recipient_name:  isGoofy ? String(recipientName || '').slice(0, 100) : '',
+        giver_name:      isGoofy ? String(giverName || '').slice(0, 100) : '',
+        // Batch: every row id in this checkout + headcount (the webhook
+        // finalises all of them; the email names the first + count).
+        order_ids:       isGoofy && gIds.length > 1 ? gIds.join(',').slice(0, 500) : '',
+        recipient_count: isGoofy ? String(gCount) : '',
       },
       success_url: successUrl,
       cancel_url:  cancel,
@@ -263,6 +324,23 @@ export async function onRequest(context) {
         );
       } catch (err) {
         console.error('Failed to persist stripe_session_id (non-fatal):', err);
+      }
+      // Multi-nominee batch: every row shares the checkout session so the
+      // success page, address-fix, and webhook can reach all of them.
+      // Goofy-only, best-effort — the first row above is the source of truth.
+      const gExtras = isGoofy ? gIds.filter((id) => id !== orderId) : [];
+      if (gExtras.length) {
+        try {
+          await getDb(env).query(
+            `UPDATE pet_orders
+               SET stripe_session_id = $1,
+                   affiliate_ref_at_submit = COALESCE(NULLIF($2, ''), affiliate_ref_at_submit)
+             WHERE order_id = ANY($3::text[])`,
+            [session.id, ref || '', gExtras]
+          );
+        } catch (err) {
+          console.error('Failed to persist batch stripe_session_id (non-fatal):', err);
+        }
       }
     }
 

@@ -1,2 +1,12 @@
+# ── Goofy Licenses: canonical domain is goofylicenses.com (plural) ──
+# Singular domain redirects to plural, preserving path + query.
+https://goofylicense.com/* https://goofylicenses.com/:splat 301
+https://www.goofylicense.com/* https://goofylicenses.com/:splat 301
+
+# ── Goofy line URLs: /<line> rewrites to the shared builder (URL stays) ──
+# e.g. goofylicenses.com/goat?src=frat-batch-1 serves public/goofy/index.html.
+/goat /goofy/ 200
+/goat/* /goofy/:splat 200
+
 # Old product-page URL now lives at the site root (product page became the home page)
 /product.html  /  301

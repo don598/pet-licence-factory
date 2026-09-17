@@ -11,7 +11,7 @@
 
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
-import { sendOrderConfirmationEmail, sendCheckoutRecoveryEmail } from '../_shared/email.js';
+import { sendOrderConfirmationEmail, sendCheckoutRecoveryEmail, sendGoofyConfirmationEmail, sendGoofyRecoveryEmail } from '../_shared/email.js';
 import { attributeOrder } from '../_shared/affiliate.js';
 
 function json(status, body) {
@@ -76,6 +76,20 @@ export async function onRequest(context) {
     return json(200, { received: true });
   }
 
+  // ── Dual-brand columns (additive; PLC rows default to 'plc') ─────────────
+  // Lazy, idempotent DDL. Non-fatal: the main order UPDATE below doesn't
+  // touch these columns (brand persistence happens in a separate best-effort
+  // UPDATE), so PLC fulfilment is unaffected even if DDL fails.
+  try {
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS brand TEXT DEFAULT 'plc'`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS src TEXT`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS variant TEXT`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS recipient_name TEXT`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS giver_name TEXT`);
+  } catch (ddlErr) {
+    console.warn('webhook: brand-column DDL failed (non-fatal):', ddlErr);
+  }
+
   // ── Determine shipping option from price (saves a Stripe API subrequest) ──
   let shippingOption = 'stamp';
   const shipAmt = session.shipping_cost?.amount_total
@@ -119,6 +133,12 @@ export async function onRequest(context) {
   }
 
   // ── 1. Persist what Stripe gave us and mark the order paid ───────────────
+  // Batch note: a Goofy multi-nominee checkout carries its sibling row ids
+  // in metadata.order_ids. The extras ride along in $14 (empty for every
+  // PLC order, so the PLC path matches exactly one row, as before).
+  const batchExtraIds = (session.metadata?.brand === 'goofy' && session.metadata?.order_ids
+    ? String(session.metadata.order_ids).split(',')
+    : []).map((s) => s.trim()).filter((s) => /^GOOFY-/i.test(s) && s !== orderId).slice(0, 4);
   let orderRow;
   try {
     const result = await db.query(
@@ -137,7 +157,7 @@ export async function onRequest(context) {
          shipping_option       = $11,
          total                 = COALESCE($12, total),
          updated_at            = NOW()
-       WHERE order_id = $13
+       WHERE order_id = $13 OR order_id = ANY($14::text[])
        RETURNING order_id, pet_first_name, pet_last_name, pack_count, add_on, chip_size,
                  shipping_option, total, customer_email, customer_name,
                  ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country`,
@@ -155,6 +175,7 @@ export async function onRequest(context) {
         shippingOption,
         paidTotal,
         orderId,
+        batchExtraIds,
       ]
     );
     orderRow = result.rows[0];
@@ -166,6 +187,34 @@ export async function onRequest(context) {
   if (!orderRow) {
     console.warn(`No pet_orders row matched order_id=${orderId}`);
     return json(200, { received: true });
+  }
+
+  // ── Brand persistence (separate best-effort UPDATE; main UPDATE above is
+  // byte-identical to the PLC flow). submit-order already stored these, but
+  // the webhook re-asserts from session metadata (the Stripe-side source of
+  // truth, incl. the ?src= QR tracker). COALESCE/NULLIF keep existing values
+  // whenever metadata is empty (e.g. legacy in-flight PLC sessions).
+  try {
+    await db.query(
+      `UPDATE pet_orders SET
+         brand          = COALESCE(NULLIF($1, ''), brand, 'plc'),
+         src            = COALESCE(NULLIF($2, ''), src),
+         variant        = COALESCE(NULLIF($3, ''), variant),
+         recipient_name = COALESCE(NULLIF($4, ''), recipient_name),
+         giver_name     = COALESCE(NULLIF($5, ''), giver_name),
+         updated_at     = NOW()
+       WHERE order_id = $6`,
+      [
+        session.metadata?.brand === 'goofy' ? 'goofy' : '',
+        (session.metadata?.src || '').slice(0, 120),
+        (session.metadata?.variant || '').slice(0, 40),
+        (session.metadata?.recipient_name || '').slice(0, 100),
+        (session.metadata?.giver_name || '').slice(0, 100),
+        orderId,
+      ]
+    );
+  } catch (brandErr) {
+    console.error('Brand persist failed (non-fatal):', brandErr);
   }
 
   // Re-delivered webhook: the order was already paid before this event, so the
@@ -223,8 +272,30 @@ export async function onRequest(context) {
   if (session.amount_total === 0) isFreebie = true;
 
   // ── Confirmation email (non-fatal) ──
+  // Brand branch: Goofy nominators get the Council template — never PLC
+  // pet-license copy. Brand comes from session metadata (always present on
+  // new sessions); the PLC call below is unchanged.
   // For a 100%-off creator freebie, show "Free" rather than the client total.
   try {
+    if (session.metadata?.brand === 'goofy') {
+      await sendGoofyConfirmationEmail(env, {
+        orderId:        orderRow.order_id,
+        customerEmail:  orderRow.customer_email,
+        customerName:   orderRow.customer_name,
+        recipientName:  session.metadata?.recipient_name || orderRow.pet_first_name,
+        giverName:      session.metadata?.giver_name || '',
+        variant:        session.metadata?.variant || '',
+        recipientCount: parseInt(session.metadata?.recipient_count) || batchExtraIds.length + 1 || 1,
+        shippingOption: orderRow.shipping_option,
+        total:          orderRow.total,
+        shipAddrLine1:  orderRow.ship_addr_line1,
+        shipAddrLine2:  orderRow.ship_addr_line2,
+        shipCity:       orderRow.ship_city,
+        shipState:      orderRow.ship_state,
+        shipZip:        orderRow.ship_zip,
+        shipCountry:    orderRow.ship_country,
+      });
+    } else {
     await sendOrderConfirmationEmail(env, {
       orderId:        orderRow.order_id,
       customerEmail:  orderRow.customer_email,
@@ -243,6 +314,7 @@ export async function onRequest(context) {
       shipZip:        orderRow.ship_zip,
       shipCountry:    orderRow.ship_country,
     });
+    }
   } catch (emailErr) {
     console.error('Confirmation email failed (non-fatal):', emailErr);
   }
@@ -310,12 +382,36 @@ async function handleSessionExpired(session, db, env) {
   }
 
   try {
+    // Brand lookup (best-effort, separate SELECT so the claim UPDATE above
+    // stays byte-identical: if the brand columns don't exist yet this throws,
+    // is caught, and the order is treated as PLC — PLC behaviour preserved).
+    let goofyRecipient = null;
+    try {
+      const b = await db.query(
+        `SELECT brand, recipient_name FROM pet_orders WHERE order_id = $1 LIMIT 1`,
+        [orderId]
+      );
+      if ((b.rows[0]?.brand || '').trim() === 'goofy') {
+        goofyRecipient = b.rows[0]?.recipient_name || claimed.pet_first_name || '';
+      }
+    } catch (brandErr) {
+      console.warn('recovery: brand lookup failed (treating as PLC, non-fatal):', brandErr && brandErr.message);
+    }
+    if (goofyRecipient !== null) {
+      await sendGoofyRecoveryEmail(env, {
+        to: email,
+        recipientName: goofyRecipient,
+        recoveryUrl,
+        orderId,
+      });
+    } else {
     await sendCheckoutRecoveryEmail(env, {
       to: email,
       petName: claimed.pet_first_name,
       recoveryUrl,
       orderId,
     });
+    }
     console.log('[webhook] session.expired — recovery email sent', { orderId, email });
   } catch (err) {
     // Row is already marked; better to occasionally lose one nudge than to

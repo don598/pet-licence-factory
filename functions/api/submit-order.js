@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb } from '../_shared/db.js';
+import { GOOFY_PRICES } from '../_shared/pricing.js';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -62,8 +63,30 @@ export async function onRequest(context) {
     return json(400, { error: 'Invalid JSON' });
   }
 
-  // Generate order ID server-side
-  const orderId = 'PLF-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+  // ── Dual-brand columns (additive; PLC rows default to 'plc') ─────────────
+  // Lazy, idempotent DDL — same self-heal pattern used elsewhere
+  // (stripe-webhook recovery_email_sent_at). Fire-and-forget: a DDL failure
+  // must never block order submission; the PLC INSERT below doesn't touch
+  // these columns, so PLC is unaffected even if they don't exist yet.
+  try {
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS brand TEXT DEFAULT 'plc'`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS src TEXT`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS variant TEXT`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS recipient_name TEXT`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS giver_name TEXT`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS batch_id TEXT`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS self_nominate BOOLEAN DEFAULT FALSE`);
+  } catch (ddlErr) {
+    console.warn('submit-order: brand-column DDL failed (non-fatal):', ddlErr);
+  }
+
+  // Brand gate: ONLY the exact string 'goofy' takes the Goofy path.
+  // Everything else (including missing) is PLC, unchanged.
+  const brand = body.brand === 'goofy' ? 'goofy' : 'plc';
+
+  // Generate order ID server-side (brand-prefixed so the two are
+  // distinguishable at a glance in the dashboard and inboxes).
+  const orderId = (brand === 'goofy' ? 'GOOFY-' : 'PLF-') + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
 
   // Validate photo size (750KB limit for base64 data URLs)
   const photoUrl = body.photo || null;
@@ -73,6 +96,112 @@ export async function onRequest(context) {
 
   // Sanitize string fields (max 500 chars each)
   const s = (val, fallback) => (val || fallback || '').toString().slice(0, 500);
+
+  // ── Goofy Licenses nomination path (new; PLC block below untouched) ──────
+  // Multi-nominee: one shipment, same variant + address. The client sends
+  // recipients[] (one entry per kit); each becomes its own row sharing a
+  // batch_id so the webhook/fulfilment can treat them as one checkout.
+  // Legacy single shape {recipientName, photo} is wrapped automatically.
+  if (brand === 'goofy') {
+    const GOOFY_VARIANTS = ['standard', 'custom-giver', 'custom-anon'];
+    const variant = GOOFY_VARIANTS.includes(body.variant) ? body.variant : 'standard';
+    const isCustom = variant !== 'standard';
+    const giverName = variant === 'custom-giver' ? s(body.giverName) : '';
+    const street = s(body.addrStreet);
+    const city = s(body.addrCity);
+    const addrState = s(body.addrState);
+    const addrZip = s(body.addrZip);
+    const addrUnit = s(body.addrLine2);
+    const cityLine = [city, addrState, addrZip].filter(Boolean).join(' ').replace(/^(.+) ([A-Z]{2}) (.+)$/, '$1, $2 $3');
+
+    let recips = Array.isArray(body.recipients) && body.recipients.length
+      ? body.recipients
+      : [{ name: body.recipientName, photo: body.photo }];
+    // Cap the headcount so one checkout can't bloat the table or the body.
+    recips = recips.slice(0, 5).map((r) => ({
+      name: s(r && r.name),
+      photo: (r && r.photo) || null,
+    }));
+
+    // Mandatory address collection: every nomination is a new lead.
+    if (!street || !city || !addrState || !addrZip) {
+      return json(400, { error: 'Complete recipient mailing address is required.' });
+    }
+    if (variant === 'custom-giver' && !giverName) {
+      return json(400, { error: 'Giver name is required for a with-giver nomination.' });
+    }
+    for (const r of recips) {
+      if (!r.name) return json(400, { error: 'Every nominee needs a name.' });
+      if (r.photo && r.photo.length > 750 * 1024) {
+        return json(400, { error: 'A photo is too large. Please use smaller images.' });
+      }
+      if (isCustom && !r.photo) {
+        return json(400, { error: 'Photo is required for every Custom nominee.' });
+      }
+    }
+
+    // Server-side per-kit fee (never trust the client total).
+    const kitFee = '$' + ((isCustom ? GOOFY_PRICES.custom : GOOFY_PRICES.standard) / 100).toFixed(2);
+    const selfNom = body.selfNominate === true;
+    const stamp = () => 'GOOFY-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+
+    try {
+      const orderIds = [];
+      for (const r of recips) {
+        const oid = stamp();
+        orderIds.push(oid);
+      }
+      const batchId = orderIds[0];
+      for (let i = 0; i < recips.length; i++) {
+        const r = recips[i];
+        await db.query(
+          `INSERT INTO pet_orders (
+            order_id, status, brand, src, variant, recipient_name, giver_name, batch_id, self_nominate,
+            pet_first_name, pet_last_name, dl_number, dob, exp_date, iss_date,
+            addr_line1, addr_line2, sex, height, weight, eyes, lic_class, restrict, signature,
+            photo_url, pack_count, total, chip_size, add_on, pet_species
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9,
+            $10, $11, $12, $13, $14, $15,
+            $16, $17, $18, $19, $20, $21, $22, $23, $24,
+            $25, $26, $27, $28, $29, $30
+          )`,
+          [
+            orderIds[i],
+            'pending',
+            'goofy',
+            s(body.src),
+            variant,
+            r.name,
+            giverName,
+            batchId,
+            selfNom,
+            r.name,
+            '',
+            'GOAT-0001',
+            '', '', '',
+            street,
+            addrUnit ? `${addrUnit}, ${cityLine}` : cityLine,
+            '', '', '', '',
+            'G',
+            'NONE',
+            r.name,
+            r.photo,
+            1,
+            kitFee,
+            null,
+            null,
+            'goat',
+          ]
+        );
+      }
+
+      return json(200, { orderId: orderIds[0], orderIds });
+    } catch (err) {
+      console.error('Goofy nomination submission error:', err);
+      return json(500, { error: 'Failed to save nomination' });
+    }
+  }
 
   try {
     await db.query(

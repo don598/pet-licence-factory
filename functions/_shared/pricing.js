@@ -15,3 +15,17 @@ export const PRICES = {
   standard:  699,   // Standard Shipping (USPS Ground Advantage — covers worst-case AK/HI $6.36)
   priority:  1099,  // Priority Shipping (USPS Priority Flat Rate Envelope — covers continental $9.62; ~$0.13 AK/HI shortfall absorbed)
 };
+
+// ── Goofy Licenses — Canonical Pricing (SERVER) ─────────────────────────────
+// Same contract as PRICES above: what the card is actually charged at
+// checkout. Amounts in US cents. Client mirror: public/goofy/pricing.js.
+//
+// Site-wide pricing frame: every price IS a "nomination processing fee" —
+// never a fee on top of a price.
+export const GOOFY_PRICES = {
+  standard: 495,   // G.O.A.T. License Standard nomination processing fee
+  custom:   895,   // G.O.A.T. License Custom nomination processing fee ($4.95 + $4.00)
+  stamp:      95,  // Stamp Shipping (shared fulfilment with PLC)
+  standardShip: 699,  // Standard Shipping (USPS Ground Advantage)
+  priority: 1099,  // Priority Shipping (USPS Priority Flat Rate Envelope)
+};

@@ -79,13 +79,16 @@
   var visitorId = persistentId('plf_vid');
   var sessionId = loadSession();
 
-  // ── Attribution: capture UTM + ttclid once, persist for the session ──
+  // ── Attribution: capture UTM + ttclid + src once, persist for the session ──
   // Stored in localStorage (keyed to the session's lifetime) so it survives
   // the Stripe redirect and rides along on the purchase_success event fired
   // from success.html. Mirrored to sessionStorage because the free-digital
   // lead form on index.html reads plf_attr from there directly. A genuinely-
   // new session starts clean so stale campaigns don't leak into a later visit.
-  var ATTR_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'ttclid'];
+  // `src` is the Goofy Licenses QR/batch tracker (e.g. ?src=frat-batch-1).
+  // It is captured here so it survives the Stripe round-trip; Goofy checkout
+  // reads it back (live URL first, plf_attr fallback) and logs it on the order.
+  var ATTR_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'ttclid', 'src'];
   var attribution = {};
   (function captureAttribution() {
     var stored = {};

@@ -19,7 +19,7 @@
 
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
-import { sendOrderConfirmationEmail } from '../_shared/email.js';
+import { sendOrderConfirmationEmail, sendGoofyConfirmationEmail } from '../_shared/email.js';
 import { attributeOrder, getPaymentIntentId } from '../_shared/affiliate.js';
 
 const MAX_ATTEMPTS = 5;
@@ -85,7 +85,7 @@ export async function onRequest(context) {
       `SELECT id, order_id, status, verification_attempts, stripe_payment_intent,
               customer_email, customer_name, pet_first_name, pet_last_name,
               pack_count, add_on, chip_size, shipping_option, total
-       FROM pet_orders WHERE stripe_session_id = $1 LIMIT 1`,
+       FROM pet_orders WHERE stripe_session_id = $1 ORDER BY id ASC LIMIT 1`,
       [sessionId]
     );
     order = result.rows[0];
@@ -141,6 +141,32 @@ export async function onRequest(context) {
     return json(500, { error: 'Database error while saving the verified address.' });
   }
 
+  // Multi-nominee Goofy batch: sibling rows share this checkout session.
+  // Finalise them with the same address so no kit is stranded pending.
+  // Session ids are unique per checkout, so this can't touch other orders.
+  // Best-effort and PLC-neutral (PLC sessions match exactly one row).
+  try {
+    await db.query(
+      `UPDATE pet_orders SET
+         ship_addr_line1    = $1,
+         ship_addr_line2    = $2,
+         ship_city          = $3,
+         ship_state         = $4,
+         ship_zip           = $5,
+         ship_country       = $6,
+         status             = 'paid',
+         verification_error = NULL,
+         updated_at         = NOW()
+       WHERE stripe_session_id = $7
+         AND id <> $8
+         AND status IN ('address_invalid', 'address_pending_verification')`,
+      [normalized.street1, normalized.street2, normalized.city, normalized.state,
+       normalized.zip, normalized.country, sessionId, order.id]
+    );
+  } catch (err) {
+    console.error('Failed to finalise sibling rows (non-fatal):', err);
+  }
+
   // Capture the held Stripe auth. Resolve the PaymentIntent defensively — the
   // webhook doesn't always persist stripe_payment_intent, so fall back to the
   // session. A genuinely empty PI means a $0 order (e.g. 100% freebie) with
@@ -169,7 +195,38 @@ export async function onRequest(context) {
 
   // Send the confirmation email (delayed-but-now-real). Show "Free" for a
   // 100%-off creator freebie rather than the client-submitted full price.
+  // Brand branch: Goofy orders get the Council template (best-effort brand
+  // lookup in a separate SELECT so the main order lookup above is untouched —
+  // a lookup failure falls back to the PLC template).
   try {
+    let goofyCtx = null;
+    try {
+      const b = await db.query(
+        `SELECT brand, variant, recipient_name, giver_name FROM pet_orders WHERE id = $1 LIMIT 1`,
+        [order.id]
+      );
+      if ((b.rows[0]?.brand || '').trim() === 'goofy') goofyCtx = b.rows[0];
+    } catch (brandErr) {
+      console.warn('update-address brand lookup failed (PLC fallback, non-fatal):', brandErr && brandErr.message);
+    }
+    if (goofyCtx) {
+      await sendGoofyConfirmationEmail(env, {
+        orderId:        order.order_id,
+        customerEmail:  order.customer_email,
+        customerName:   order.customer_name,
+        recipientName:  goofyCtx.recipient_name || order.pet_first_name,
+        giverName:      goofyCtx.giver_name || '',
+        variant:        goofyCtx.variant || '',
+        shippingOption: order.shipping_option,
+        total:          order.total,
+        shipAddrLine1:  normalized.street1,
+        shipAddrLine2:  normalized.street2,
+        shipCity:       normalized.city,
+        shipState:      normalized.state,
+        shipZip:        normalized.zip,
+        shipCountry:    normalized.country,
+      });
+    } else {
     await sendOrderConfirmationEmail(env, {
       orderId:        order.order_id,
       customerEmail:  order.customer_email,
@@ -188,6 +245,7 @@ export async function onRequest(context) {
       shipZip:        normalized.zip,
       shipCountry:    normalized.country,
     });
+    }
   } catch (err) {
     console.error('Confirmation email failed (non-fatal):', err);
   }
