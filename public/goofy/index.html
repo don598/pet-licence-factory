@@ -294,6 +294,19 @@ button{ -webkit-tap-highlight-color:transparent; }
 #qrModal.open .modal{animation:qrshake .4s ease .1s}
 @keyframes qrshake{0%,100%{transform:none}25%{transform:translate(-4px,2px) rotate(-.4deg)}50%{transform:translate(4px,-2px) rotate(.4deg)}75%{transform:translate(-2px,-1px)}}
 @media (prefers-reduced-motion:reduce){#qrModal.open .qr-seal,#qrModal.open .modal{animation:none}}
+/* ── QR proclamation crawl (Star Wars-style intro, responsive) ── */
+.crawl{position:fixed;inset:0;z-index:200;background:radial-gradient(120% 100% at 50% 0%,#1a1430 0%,#0b0a1a 55%,#060511 100%);overflow:hidden;display:none}
+.crawl.open{display:block}
+.crawl-stars span{position:absolute;background:#fff;border-radius:50%;animation:twinkle 2.6s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.25}50%{opacity:.9}}
+.crawl-view{position:absolute;inset:0;perspective:340px;overflow:hidden;touch-action:none}
+#qrCrawlBody{position:absolute;left:50%;top:0;width:min(88vw,600px);text-align:center;color:#f5c542;will-change:transform}
+#qrCrawlBody .crawl-kicker{font-size:clamp(11px,2.6vw,14px);font-weight:800;letter-spacing:4px;color:#e9d8a6;margin-bottom:18px;font-family:'Inter',sans-serif}
+.crawl-title{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(30px,9vw,58px);letter-spacing:3px;line-height:1.25;margin-bottom:28px;text-shadow:0 0 24px rgba(245,197,66,.35)}
+#qrCrawlBody p{font-family:'Cinzel',serif;font-size:clamp(15px,4.2vw,22px);line-height:2;margin-bottom:26px}
+.crawl-hint{position:absolute;bottom:78px;width:100%;text-align:center;font-size:11px;letter-spacing:2px;color:rgba(233,216,166,.6)}
+.crawl-skip{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);background:transparent;border:1.5px solid rgba(245,197,66,.6);color:#f5c542;font-weight:800;font-size:14px;padding:10px 26px;border-radius:999px;cursor:pointer;font-family:inherit}
+@media (prefers-reduced-motion:reduce){.crawl{display:none !important}}
 .crop-ctl{display:flex;gap:14px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap}
 .dpad{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:3px}
 .pad{background:var(--bg2);border:1px solid var(--line);color:var(--gold);border-radius:8px;font-size:15px;cursor:pointer;touch-action:none}
@@ -482,6 +495,22 @@ footer a{color:var(--gold)}
   <footer>
     <p class="fine">Goofy Licenses makes novelty gag licences for entertainment. Not a real government document. Questions? <a href="mailto:contact@creditcardart.com">Contact the Council</a>.</p>
   </footer>
+</div>
+
+<!-- ── QR proclamation crawl (Star Wars-style intro before the modal) ── -->
+<div class="crawl" id="qrCrawl" aria-hidden="true">
+  <div class="crawl-stars" id="qrStars" aria-hidden="true"></div>
+  <div class="crawl-view"><div id="qrCrawlBody">
+    <p class="crawl-kicker">THE COUNCIL OF G.O.A.T. AFFAIRS</p>
+    <h2 class="crawl-title">THE RIGHT OF<br/>NOMINATION</h2>
+    <p>In a ceremony centuries in the making, the Council has convened under seal and starlight…</p>
+    <p>A new Fellow GOAT walks among us — and ancient rite demands recognition.</p>
+    <p>By rubber stamp and unanimous hoof, the RIGHT OF NOMINATION is hereby GRANTED.</p>
+    <p>Choose the honor. Name the legend. The Council itself shall deliver their certification upon submission.</p>
+    <p>A small processing fee of $4.95 applies. The Council forbids drip pricing…</p>
+  </div></div>
+  <p class="crawl-hint">drag to speed up</p>
+  <button class="crawl-skip" id="qrSkip" type="button">Skip →</button>
 </div>
 
 <!-- ── QR scan welcome (Right of Nomination — shown on ?src= landings) ── -->
@@ -1442,21 +1471,18 @@ function wireStatic(){
     try { seen = sessionStorage.getItem('goofy_qr_seen') || ''; } catch (e) {}
     if (seen === urlSrc) return;
     var Q = window.GOOFY_QR || {};
-    var licSrc = Q.LICENCE_SRC || 'license-qr';
     var urlName = '';
     try { urlName = (qs.get('name') || '').trim().slice(0, 40); } catch (e) {}
     var urlOrder = '';
     try { urlOrder = (qs.get('o') || '').trim().slice(0, 40); } catch (e) {}
     if (Q.MODAL_BODY) $('qrBody').textContent = Q.MODAL_BODY;
     if (Q.MODAL_CTA) $('qrCta').textContent = Q.MODAL_CTA;
+    // Named scans greet by name; anonymous scans just hear Congratulations —
+    // the ?src= tracker stays silent (still logged, never displayed).
     function headline(orderName){
       var n = urlName || orderName;
       if (n) return 'Congratulations, ' + n + '! 🎉';
-      if (urlSrc !== licSrc) {
-        var pretty = (Q.prettySrc ? Q.prettySrc(urlSrc) : urlSrc);
-        if (pretty) return 'Congratulations, Fellow GOAT of ' + pretty + '!';
-      }
-      return Q.MODAL_TITLE || '🐐 Right of Nomination Granted';
+      return 'Congratulations! 🎉';
     }
     var orderName = null;
     function paint(){ $('qrTitle').textContent = headline(orderName); }
@@ -1508,13 +1534,78 @@ function wireStatic(){
       try { sessionStorage.setItem('goofy_qr_seen', urlSrc); } catch (e) {}
       if (window.PLFTrack) PLFTrack.step(action || 'goofy_qr_modal_dismissed', { src:urlSrc });
     }
-    // Delay past the Council sting (~1.6s) so the two never stack.
-    setTimeout(function(){
+    // Star Wars-style proclamation crawl: perspective text rising into the
+    // distance. Drag (or scroll-wheel) fast-forwards; Skip jumps to the end.
+    // Either way the full text lands in the modal afterwards. Pure rAF —
+    // no library, responsive via vw-clamped type.
+    function startCrawl(done){
+      var ov = $('qrCrawl'), body = $('qrCrawlBody');
+      if (!ov || !body) { done(false); return; }
+      var stars = $('qrStars');
+      if (stars && !stars.firstChild) {
+        try {
+          for (var i = 0; i < 90; i++) {
+            var s = document.createElement('span');
+            var sz = Math.random() * 2 + 1;
+            s.style.cssText = 'left:' + (Math.random() * 100) + '%;top:' + (Math.random() * 100) +
+              '%;width:' + sz + 'px;height:' + sz + 'px;animation-delay:' + (Math.random() * 2.6).toFixed(2) + 's';
+            stars.appendChild(s);
+          }
+        } catch (e) {}
+      }
+      ov.classList.add('open'); ov.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      var finished = false, raf = 0;
+      var viewH = window.innerHeight || 800;
+      var bodyH = body.offsetHeight || 600;
+      var y = viewH + 40, last = 0, dragging = false, lastY = 0;
+      var DUR = 17000, total = bodyH + viewH + 80;
+      function finish(skipped){
+        if (finished) return; finished = true;
+        try { cancelAnimationFrame(raf); } catch (e) {}
+        ov.classList.remove('open'); ov.setAttribute('aria-hidden', 'true');
+        done(!!skipped);
+      }
+      ov.addEventListener('pointerdown', function(e){ dragging = true; lastY = e.clientY; });
+      window.addEventListener('pointerup', function(){ dragging = false; });
+      window.addEventListener('pointercancel', function(){ dragging = false; });
+      ov.addEventListener('pointermove', function(e){
+        if (!dragging || finished) return;
+        var dy = lastY - e.clientY; lastY = e.clientY;
+        y -= Math.abs(dy) * 2.2;
+      });
+      ov.addEventListener('wheel', function(e){ if (!finished) y -= Math.abs(e.deltaY || 0) * 1.4; }, { passive:true });
+      $('qrSkip').addEventListener('click', function(){ finish(true); });
+      function place(){ body.style.transform = 'translateX(-50%) rotateX(24deg) translateY(' + y + 'px)'; }
+      place();
+      last = performance.now();
+      function frame(t){
+        if (finished) return;
+        var dt = Math.min(100, t - last); last = t;
+        var sp = total / DUR;
+        if (dragging) sp *= 4;
+        y -= sp * dt;
+        if (y <= -(bodyH + 60)) { finish(false); return; }
+        place();
+        raf = requestAnimationFrame(frame);
+      }
+      raf = requestAnimationFrame(frame);
+    }
+    function openModal(){
       paint();
       m.classList.add('open'); m.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
       confetti();
       if (window.PLFTrack) PLFTrack.step('goofy_qr_modal_shown', { src:urlSrc });
+    }
+    // Delay past the Council sting (~1.6s) so the intros never stack, then
+    // the crawl (skipped on reduced-motion — straight to the modal).
+    setTimeout(function(){
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) openModal();
+      else startCrawl(function(skipped){
+        if (window.PLFTrack) PLFTrack.step(skipped ? 'goofy_qr_crawl_skipped' : 'goofy_qr_crawl_seen', { src:urlSrc });
+        openModal();
+      });
     }, 1750);
     $('qrCta').addEventListener('click', function(){
       hide('goofy_qr_modal_accepted');
