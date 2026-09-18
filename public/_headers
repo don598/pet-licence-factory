@@ -22,12 +22,16 @@
 /goat/*
   Cache-Control: no-store
 
-# Goofy house pages + the line registry: always revalidate (cheap 304s), so
-# a deploy never pairs new HTML with a browser's 4-hour-old CSS/JS.
-/goofy-home/*
-  Cache-Control: no-cache
+# Goofy homepage CSS/JS + the line registry: never let a browser pair new
+# HTML with a 4-hour-old copy. no-store, because the zone's Browser Cache TTL
+# (4h) overrides no-cache/max-age=0 but leaves no-store alone. The pages also
+# reference these with ?v=<date> (bump it when they change).
+/goofy-home/home.css
+  Cache-Control: no-store
+/goofy-home/home.js
+  Cache-Control: no-store
 /lines.js
-  Cache-Control: no-cache
+  Cache-Control: no-store
 
 /test-bg.html
   Content-Security-Policy:
