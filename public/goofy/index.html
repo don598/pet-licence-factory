@@ -262,6 +262,13 @@ button{ -webkit-tap-highlight-color:transparent; }
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}}
 .req{color:var(--gold)}
+/* Presented-by switch (credit ↔ anonymous) */
+.giver-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg2);border:2px solid var(--line);border-radius:12px;padding:4px;margin-bottom:10px}
+.giver-seg button{font:inherit;font-size:13.5px;font-weight:700;color:var(--muted);background:none;border:0;border-radius:9px;padding:10px 8px;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s}
+.giver-seg button:hover{color:var(--cream)}
+.giver-seg button[aria-checked="true"]{background:#fff;color:var(--gold2);box-shadow:inset 0 0 0 2px var(--gold),0 2px 8px rgba(90,65,10,.12)}
+.giver-seg button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.giver-note{font-size:12.5px;color:var(--muted);margin:0 2px;line-height:1.5}
 .opt{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
 /* dropzone */
 .dropzone{border:2px dashed var(--line);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;color:var(--muted);font-size:14px;margin-top:4px;background:#fff}
@@ -437,9 +444,16 @@ footer a{color:var(--gold)}
             <div class="step-title"><h2>The nominees</h2><span class="hint">one kit each · same address</span></div>
             <div id="nomineeListCust"></div>
             <button type="button" class="add-btn" data-add>＋ Add another recipient</button>
-            <div class="field" id="giverField">
-              <label>Presented by <span class="req">your name, printed on the licence</span></label>
-              <input id="fGiver" type="text" placeholder="e.g. Dave from Accounting" maxlength="40"/>
+            <!-- Credit ↔ anonymous switch: both are $8.95, so flipping here
+                 swaps the variant in place instead of sending them back. -->
+            <div class="field giver-block">
+              <label id="giverLbl">Presented by <span class="req" id="giverReq">your name, printed on the licence</span></label>
+              <div class="giver-seg" role="radiogroup" aria-labelledby="giverLbl">
+                <button type="button" role="radio" data-giver="custom-giver" aria-checked="true">🌟 Credit me</button>
+                <button type="button" role="radio" data-giver="custom-anon" aria-checked="false" tabindex="-1">🕵️ Stay anonymous</button>
+              </div>
+              <div id="giverField"><input id="fGiver" type="text" placeholder="e.g. Dave from Accounting" maxlength="40" aria-labelledby="giverLbl"/></div>
+              <p class="giver-note" id="anonNote" hidden>No giver on the licence. The Council keeps your secret. Same $8.95.</p>
             </div>
             <label class="self-row"><input type="checkbox" class="selfNom"/><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></span><span>🎯 <b>Nominate myself</b> — mail the kit to me</span></label>
           </div>
@@ -932,7 +946,20 @@ function updateReframeBtn(){
   if (btn) btn.classList.toggle('show', show);
 }
 
-function setVariant(v){
+/* Presented-by switch state (custom-giver ↔ custom-anon). */
+function syncGiverSeg(v){
+  Array.prototype.forEach.call(document.querySelectorAll('.giver-seg [data-giver]'), function(b){
+    var on = b.dataset.giver === v;
+    b.setAttribute('aria-checked', String(on));
+    b.tabIndex = on ? 0 : -1;
+  });
+  $('anonNote').hidden = v !== 'custom-anon';
+  $('giverReq').textContent = v === 'custom-anon' ? 'nobody, officially' : 'your name, printed on the licence';
+}
+
+/* quiet: switch in place (the Presented-by switch). Both custom variants
+   have the same steps, so the current panel stays put instead of sliding. */
+function setVariant(v, quiet){
   if (!VALID[v]) v = 'standard';
   state.variant = v;
   frame.dataset.variant = v;
@@ -951,6 +978,7 @@ function setVariant(v){
   // Self-nominate boxes mirror one state.
   Array.prototype.forEach.call(document.querySelectorAll('.selfNom'), function(cb){ cb.checked = state.selfNominate; });
   $('giverField').style.display = (v === 'custom-giver') ? '' : 'none';
+  syncGiverSeg(v);
   if (window.PLFTrack) PLFTrack.step('goofy_variant_' + v.replace(/-/g, '_'));
   buildStepper();
   buildNominees();
@@ -960,7 +988,7 @@ function setVariant(v){
   if (cur > len) cur = len;
   maxReached = Math.min(Math.max(maxReached, 1), len);
   updateReframeBtn();
-  showStep(cur, 'f');
+  if (quiet) renderStepper(); else showStep(cur, 'f');
   bump(); refreshPreview(); recalc();
 }
 
@@ -1330,6 +1358,23 @@ function wireStatic(){
     function choose(){ selectVariant(el.dataset.variant, true); }
     el.addEventListener('click', choose);
     el.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); } });
+  });
+  // Presented-by switch: flip credit ↔ anonymous without leaving the step.
+  var segBtns = document.querySelectorAll('.giver-seg [data-giver]');
+  function pickGiver(v){
+    if (state.variant === v) return;
+    setVariant(v, true);
+    clearErr();
+    if (window.PLFTrack) PLFTrack.step(v === 'custom-anon' ? 'goofy_giver_switch_anon' : 'goofy_giver_switch_credit');
+  }
+  Array.prototype.forEach.call(segBtns, function(b, i){
+    b.addEventListener('click', function(){ pickGiver(b.dataset.giver); });
+    b.addEventListener('keydown', function(e){   // radiogroup arrows
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].indexOf(e.key) < 0) return;
+      e.preventDefault();
+      var o = segBtns[1 - i];
+      pickGiver(o.dataset.giver); o.focus();
+    });
   });
   // Carousel (images only — no CTAs).
   var dotsBox = $('cDots');
