@@ -9,99 +9,116 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐐</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Pinyon+Script&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Pinyon+Script&family=Inter:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--gold:#a86e0a;--cream:#2b2118;--muted:#7c7264;--paper:#fffdf7}
-body{background:#3a332a;color:var(--cream);font-family:'Inter',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:22px 16px 60px}
+:root{--ink:#2b2118;--muted:#7c7264;--paper:#fffdf7}
+body{background:#3a332a;color:var(--ink);font-family:'Inter',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:22px 16px 60px}
 /* ── Screen toolbar (hidden in print) ── */
 .toolbar{background:var(--paper);border-radius:12px;padding:14px 16px;max-width:6in;width:100%;margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .toolbar .field{flex:1 1 120px}
 .toolbar label{display:block;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
-.toolbar input,.toolbar select{width:100%;border:2px solid rgba(120,90,20,.28);border-radius:8px;font-size:14px;padding:8px 10px;font-family:inherit;background:#fff;color:var(--cream)}
+.toolbar input,.toolbar select{width:100%;border:2px solid rgba(120,90,20,.28);border-radius:8px;font-size:14px;padding:8px 10px;font-family:inherit;background:#fff;color:var(--ink)}
+.toolbar .checks{flex:1 1 100%;display:flex;gap:22px}
+.toolbar .checks label{display:flex;gap:8px;align-items:center;cursor:pointer;margin:0}
+.toolbar .checks input{width:auto;transform:scale(1.3)}
 .toolbar button{background:#f5c542;color:#2a1a05;font-weight:800;font-size:14px;padding:10px 18px;border-radius:10px;border:0;cursor:pointer;font-family:inherit}
 .toolbar .hint{flex:1 1 100%;font-size:12px;color:var(--muted);line-height:1.5}
-/* ── The 6×4 certificate ── */
-.cert{position:relative;width:6in;height:4in;background:var(--paper);border:6px double var(--gold);border-radius:4px;display:flex;flex-direction:column;align-items:center;padding:0.28in 0.4in 0.24in;overflow:hidden}
-.cert::after{content:'';position:absolute;inset:0.12in;border:1px solid rgba(168,110,10,.5);pointer-events:none}
-.cert::before{content:'';position:absolute;inset:0;background:radial-gradient(90% 90% at 50% 0%,rgba(245,197,66,.10),rgba(245,197,66,0) 60%);pointer-events:none}
-.c-head{font-family:'Cinzel',serif;font-weight:700;font-size:13pt;letter-spacing:3px;color:var(--gold);text-align:center;line-height:1.3}
-.c-sub{font-size:7.5pt;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin:4px 0 8px;text-align:center}
-.c-intro{font-style:italic;font-size:9.5pt;color:#555}
-.c-name{font-family:'Pinyon Script',cursive;font-size:34pt;line-height:1.15;color:#111;margin:2px 0 4px;text-align:center;max-width:100%;overflow:hidden;white-space:nowrap}
-.c-achieve{font-size:9pt;color:#333;text-align:center;line-height:1.5;max-width:3.6in}
-.c-foot{margin-top:auto;width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:8px}
-.c-sig{text-align:center}
-.c-sig .sig-name{font-family:'Pinyon Script',cursive;font-size:17pt;line-height:1;color:#111}
-.c-sig .sig-title{font-size:7pt;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-top:1px solid #999;padding-top:3px;margin-top:1px}
-.c-seal{width:0.95in;height:0.95in;flex:0 0 auto}
-.c-qr{text-align:center}
-.c-qr img{width:0.85in;height:0.85in;border:1px solid rgba(120,90,20,.4);border-radius:4px;background:#fff}
-.c-qr .qr-cap{font-size:6pt;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:3px}
-.c-file{font-size:6.5pt;letter-spacing:1px;color:#999;margin-top:6px;text-transform:uppercase}
+
+/* ── The 6×4 certificate. PURE BLACK ON WHITE: no color, no grays, no
+   gradients, no emoji. Thermal label printers threshold anything lighter
+   than ~50% gray to white, which is what ate the gold header, the gray
+   filing line and the signature rule on the first print. Every mark here
+   is solid #000 so it prints the same on thermal, laser or inkjet.
+   The frame sits 0.1in inside the edge so a label that feeds a hair off
+   still shows an even border. ── */
+.cert{position:relative;width:6in;height:4in;background:#fff;color:#000;display:flex;flex-direction:column;align-items:center;padding:0.32in 0.46in 0.25in;overflow:hidden}
+.cert::before{content:'';position:absolute;inset:0.1in;border:2.5px solid #000;pointer-events:none}
+.cert::after{content:'';position:absolute;inset:0.15in;border:1px solid #000;pointer-events:none}
+.c-head{font-family:'Cinzel',serif;font-weight:700;font-size:14.5pt;letter-spacing:2.5px;line-height:1.2;text-align:center;white-space:nowrap}
+.c-sub{display:flex;align-items:center;gap:9px;margin:4px 0 7px}
+.c-sub .ink{width:0.5in;height:1px;background:#000}
+.c-sub-t{font-weight:600;font-size:7pt;letter-spacing:3.5px;text-transform:uppercase;line-height:1.2}
+.c-intro{font-style:italic;font-size:9.5pt;line-height:1.2}
+.c-name{font-family:'Pinyon Script',cursive;font-size:40pt;line-height:1.2;width:100%;text-align:center;white-space:nowrap}
+/* A touch of stroke so the script's hairlines survive a 203dpi head. */
+.c-name span{-webkit-text-stroke:.3px #000}
+.c-divider{display:flex;align-items:center;gap:6px;margin:5px 0 7px}
+.c-divider .ink{width:1.3in;height:1px;background:#000}
+.c-divider .gem{width:5px;height:5px;background:#000;transform:rotate(45deg)}
+.c-achieve{font-size:9.5pt;line-height:1.45;text-align:center;max-width:4.1in}
+.c-date{font-style:italic;font-size:8.5pt;line-height:1.3;margin-top:5px;text-align:center}
+.c-foot{margin-top:auto;width:100%;display:grid;grid-template-columns:1fr auto 1fr;align-items:end}
+.c-sig{justify-self:start;text-align:center;width:1.55in}
+.c-sig .sig-name{font-family:'Pinyon Script',cursive;font-size:20pt;line-height:1.15;-webkit-text-stroke:.2px #000}
+.c-sig .sig-title{font-weight:600;font-size:7pt;letter-spacing:1.5px;text-transform:uppercase;line-height:1.2;border-top:1px solid #000;padding-top:3px;margin-top:1px}
+.c-seal{width:1in;height:1in;justify-self:center;display:block}
+.c-qr{justify-self:end;text-align:center;width:1.1in}
+.c-qr .qr-img{width:0.8in;height:0.8in;margin:0 auto}
+.c-qr .qr-img svg{display:block;width:100%;height:100%}
+.c-qr .qr-cap{font-weight:600;font-size:6pt;letter-spacing:1px;text-transform:uppercase;line-height:1.3;margin-top:2px}
+/* QR hidden: the seal takes the bottom-right corner, opposite the signature. */
+.cert.noqr .c-qr{display:none}
+.cert.noqr .c-seal{grid-column:3;justify-self:end}
+.c-file{font-size:6.5pt;letter-spacing:1.5px;text-transform:uppercase;line-height:1.2;margin-top:6px}
+/* ── Thermal mode: still pure black, just heavier. Thicker frame and rules,
+   bolder small type and extra stroke on the script so nothing thin drops out
+   on a label printer. ── */
+.cert.thermal::before{border-width:3.5px}
+.cert.thermal::after{border-width:1.5px}
+.cert.thermal .c-head{font-weight:900}
+.cert.thermal .c-sub .ink,.cert.thermal .c-divider .ink{height:1.5px}
+.cert.thermal .c-intro,.cert.thermal .c-date{font-weight:600}
+.cert.thermal .c-achieve,.cert.thermal .c-file{font-weight:600}
+.cert.thermal .c-sig .sig-title,.cert.thermal .c-qr .qr-cap{font-weight:700}
+.cert.thermal .c-sig .sig-title{border-top-width:1.5px}
+.cert.thermal .c-name span{-webkit-text-stroke:.6px #000}
+.cert.thermal .c-sig .sig-name{-webkit-text-stroke:.45px #000}
 @media print{
   html,body{width:6in;height:4in;margin:0 !important;padding:0 !important;background:#fff !important;display:block !important}
   body > :not(.cert){display:none !important}
   .cert{margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
-/* ── Thermal B&W mode: pure black on white, no grays, no backgrounds.
-   Thermal heads dither gray into mush and light text washes out. ── */
-.cert.thermal{border-color:#000;background:#fff;border-width:8px}
-.cert.thermal .c-head{font-weight:900}
-.cert.thermal::before{display:none}
-.cert.thermal::after{border-color:#000}
-.cert.thermal .c-head,.cert.thermal .c-sub,.cert.thermal .c-intro,
-.cert.thermal .c-achievement,.cert.thermal .c-sig .sig-title,
-.cert.thermal .c-qr .qr-cap,.cert.thermal .c-file{color:#000}
-.cert.thermal .c-name,.cert.thermal .sig-name{color:#000}
-.cert.thermal .c-sig .sig-title{border-top-color:#000}
-.cert.thermal .c-seal circle{stroke:#000}
-.cert.thermal .c-seal text{fill:#000}
-.cert.thermal .c-qr img{border-color:#000;border-width:2px}
 /* Top-level: some Chrome builds ignore @page nested inside @media. */
 @page{size:6in 4in landscape;margin:0}
 </style>
 </head>
 <body>
 <div class="toolbar">
-  <div class="field"><label>Recipient (?name=)</label><input id="fName" type="text" maxlength="40" placeholder="Greg"/></div>
-  <div class="field"><label>Honor (?variant=)</label><select id="fVariant">
+  <div class="field"><label for="fName">Recipient (?name=)</label><input id="fName" type="text" maxlength="40" placeholder="Greg"/></div>
+  <div class="field"><label for="fVariant">Honor (?variant=)</label><select id="fVariant">
     <option value="standard">Standard</option>
     <option value="custom-giver">Custom, with giver credit</option>
     <option value="custom-anon">Custom, anonymous</option>
   </select></div>
-  <div class="field"><label>Order (?o=)</label><input id="fOrder" type="text" maxlength="40" placeholder="GOOFY-…"/></div>
-  <div class="field"><label>Batch (?src=)</label><input id="fBatch" type="text" maxlength="120" placeholder="frat-batch-1"/></div>
-  <div class="field"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input id="fThermal" type="checkbox" style="width:auto;transform:scale(1.3)"/> Thermal B&W</label></div>
-  <div class="field"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input id="fNoQr" type="checkbox" style="width:auto;transform:scale(1.3)"/> Hide QR</label></div>
-  <button id="btnUpdate" type="button">Update</button>
+  <div class="field"><label for="fOrder">Order (?o=)</label><input id="fOrder" type="text" maxlength="40" placeholder="GOOFY-…"/></div>
+  <div class="field"><label for="fBatch">Batch (?src=)</label><input id="fBatch" type="text" maxlength="120" placeholder="frat-batch-1"/></div>
+  <div class="field"><label for="fDate">Date (?date=)</label><input id="fDate" type="date"/></div>
+  <div class="checks">
+    <label><input id="fThermal" type="checkbox"/> Thermal (heavier lines)</label>
+    <label><input id="fNoQr" type="checkbox"/> Hide QR</label>
+  </div>
   <button id="btnPrint" type="button">🖨 Print 6×4</button>
   <button id="btnPng" type="button">⬇ PNG 6×4</button>
-  <p class="hint">Easiest exact-size route: <b>PNG 6×4</b> downloads a print-ready 1800×1200 file, then print it Actual Size on 4×6 media. Tick <b>Thermal B&W</b> for label printers (pure black, no grays). Or Chrome → Print → paper <b>6×4 (4×6 inch)</b>, landscape, margins None, Background graphics ON. Params can also be passed straight in the URL.</p>
+  <p class="hint">Always pure black on white, so it prints the same on thermal, laser or inkjet. On a label printer, tick <b>Thermal</b> for heavier lines (it stays ticked next time). <b>PNG 6×4</b> downloads an exact 1800×1200 file to print at Actual Size on 4×6 media. Or <b>Print 6×4</b> in Chrome: paper 4×6 in, landscape, margins None, scale 100%. Every field also works as a URL param (<b>?thermal=1</b>, <b>?qr=0</b> too).</p>
 </div>
 
 <div class="cert" id="cert">
   <div class="c-head">THE COUNCIL OF G.O.A.T. AFFAIRS</div>
-  <div class="c-sub">Certificate of Nomination</div>
+  <div class="c-sub"><span class="ink"></span><span class="c-sub-t">Certificate of Nomination</span><span class="ink"></span></div>
   <div class="c-intro">This certifies that</div>
-  <div class="c-name" id="cName">Greg</div>
+  <div class="c-name" id="cName"><span id="cNameT">Greg</span></div>
+  <div class="c-divider"><span class="ink"></span><span class="gem"></span><span class="ink"></span></div>
   <div class="c-achieve" id="cAchieve"></div>
+  <div class="c-date" id="cDate"></div>
   <div class="c-foot">
     <div class="c-sig">
       <div class="sig-name">Gerald</div>
       <div class="sig-title">Keeper of the Seal</div>
     </div>
-    <svg class="c-seal" viewBox="0 0 120 120" aria-label="Certified GOAT seal">
-      <defs><path id="sealArc" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs>
-      <circle cx="60" cy="60" r="57" fill="none" stroke="#a86e0a" stroke-width="2.5"/>
-      <circle cx="60" cy="60" r="33" fill="none" stroke="#a86e0a" stroke-width="1.5"/>
-      <text font-size="10.5" letter-spacing="2.2" fill="#a86e0a" font-family="Cinzel,serif" font-weight="700">
-        <textPath href="#sealArc">★ CERTIFIED GOAT ★ GREATEST OF ALL TIME</textPath>
-      </text>
-      <text x="60" y="73" text-anchor="middle" font-size="30">🐐</text>
-    </svg>
+    <svg class="c-seal" id="cSeal" viewBox="0 0 120 120" role="img" aria-label="Certified GOAT seal"></svg>
     <div class="c-qr">
-      <img id="cQr" alt="Nominate the next legend"/>
+      <div class="qr-img" id="cQr"></div>
       <div class="qr-cap">Scan to nominate<br/>the next legend</div>
     </div>
   </div>
@@ -113,105 +130,232 @@ body{background:#3a332a;color:var(--cream);font-family:'Inter',sans-serif;min-he
 <script>
 (function(){
 'use strict';
-var Q = window.GOOFY_QR || { CANONICAL_ORIGIN:'https://goofylicenses.com', LINE_PATH:'/goat', LICENCE_SRC:'license-qr' };
+var Q = window.GOOFY_QR || { CANONICAL_ORIGIN:'https://goofylicenses.com', LINE_PATH:'/goat' };
 function $(id){ return document.getElementById(id); }
+var VARIANTS = ['standard','custom-giver','custom-anon'];
 var ACHIEVE = {
   'standard': 'is hereby recognized as a certified G.O.A.T. and entered into the Council record.',
   'custom-giver': 'whose likeness and name are hereby entered into the Council record as a certified G.O.A.T.',
   'custom-anon': 'whose likeness and name are hereby entered into the Council record as a certified G.O.A.T.'
 };
-function params(){
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var LS_KEY = 'goatCertPrefs';
+
+/* ── Seal: Gerald (he has seniority) under the crown, same motif as the seal
+   on the licence card. Pure vector, solid black, so it prints crisp at any
+   DPI. SEAL_ART is shared by the page and the PNG export; the ring text is
+   an SVG textPath on the page and redrawn on canvas for the PNG (an SVG
+   drawn as an image can't see the page's web fonts). ── */
+var SEAL_ART =
+  '<defs><clipPath id="sealIn"><circle cx="60" cy="60" r="37.3"/></clipPath></defs>' +
+  '<circle cx="60" cy="60" r="58" fill="none" stroke="#000" stroke-width="2.6"/>' +
+  '<circle cx="60" cy="60" r="54.6" fill="none" stroke="#000" stroke-width="1.1"/>' +
+  '<circle cx="60" cy="60" r="38" fill="none" stroke="#000" stroke-width="1.5"/>' +
+  '<g clip-path="url(#sealIn)"><g transform="translate(31 37) scale(0.56)">' +
+    '<g fill="#000">' +
+      '<path d="M36 120 C35 90 37 70 42 60 C45 52 48 45 53 41 C57 37 63 36 67 38 C72 41 77 48 82 56 C86 62 90 67 91 71 C92 75 89 77 86 76 C84 76 82 77 80 78 C78 80 76 81 73 80 C73 86 71 92 67 98 C65 93 62 89 60 85 C59 92 59 100 60 120 Z"/>' +
+      '<path d="M65 38 C61 18 41 8 25 14 C15 18 10 28 15 40 C16 31 22 24 32 24 C42 24 49 31 51 42 Z"/>' +
+      '<path d="M51 49 C44 46 34 48 27 55 C26 56 27 57 28 57 C36 57 44 56 51 55 Z"/>' +
+    '</g>' +
+    '<g fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round">' +
+      '<path d="M56.2 32.2 L59.8 29.8"/><path d="M50 25.8 L53 22.2"/><path d="M42.6 21.6 L44.4 17.4"/>' +
+      '<path d="M34.2 20.4 L34.8 15.6"/><path d="M25.4 23.4 L23.6 18.6"/><path d="M18.8 30 L15.2 27"/>' +
+    '</g>' +
+    '<path d="M69 53 Q72.5 50.5 76 53 Q72.5 54.5 69 53 Z" fill="#fff"/>' +
+  '</g></g>' +
+  '<g transform="translate(60 31)" fill="#000">' +
+    '<path d="M-7.5 4 L-7.5 -2 L-3.8 1.2 L0 -5 L3.8 1.2 L7.5 -2 L7.5 4 Z"/>' +
+    '<rect x="-7.5" y="4.8" width="15" height="1.8"/>' +
+    '<circle cx="-7.5" cy="-3" r="1.1"/><circle cx="0" cy="-6.1" r="1.2"/><circle cx="7.5" cy="-3" r="1.1"/>' +
+  '</g>' +
+  '<g fill="#000">' +
+    '<path transform="translate(13.6 60)" d="M0,-3.2 L0.94,-1.29 L3.04,-0.99 L1.52,0.49 L1.88,2.59 L0,1.6 L-1.88,2.59 L-1.52,0.49 L-3.04,-0.99 L-0.94,-1.29 Z"/>' +
+    '<path transform="translate(106.4 60)" d="M0,-3.2 L0.94,-1.29 L3.04,-0.99 L1.52,0.49 L1.88,2.59 L0,1.6 L-1.88,2.59 L-1.52,0.49 L-3.04,-0.99 L-0.94,-1.29 Z"/>' +
+  '</g>';
+// Ring text geometry in seal units (viewBox 120). Top reads clockwise with
+// glyphs pointing out; bottom reads left-to-right with glyphs pointing in.
+var SEAL_TEXT = [
+  { text:'CERTIFIED GOAT', r:43.1, size:9.4, ls:1.6, bottom:false },
+  { text:'GREATEST OF ALL TIME', r:49.7, size:7.6, ls:1.1, bottom:true }
+];
+function sealTextSvg(){
+  return '<defs>' +
+    '<path id="sealArcTop" d="M60,60 m-43.1,0 a43.1,43.1 0 1,1 86.2,0"/>' +
+    '<path id="sealArcBot" d="M60,60 m-49.7,0 a49.7,49.7 0 0,0 99.4,0"/>' +
+    '</defs>' +
+    SEAL_TEXT.map(function(t){
+      return '<text font-family="Cinzel,serif" font-weight="700" font-size="' + t.size + '" letter-spacing="' + t.ls +
+        '" fill="#000" text-anchor="middle"><textPath href="#' + (t.bottom ? 'sealArcBot' : 'sealArcTop') +
+        '" startOffset="50%">' + t.text + '</textPath></text>';
+    }).join('');
+}
+$('cSeal').innerHTML = SEAL_ART + sealTextSvg();
+
+function loadPrefs(){ try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; } }
+// Only Thermal is remembered (it's a property of the printer). Hide QR is
+// deliberately per-cert: a sticky hide would quietly ship certs without the
+// nomination QR.
+function savePrefs(p){ try { localStorage.setItem(LS_KEY, JSON.stringify({ thermal:p.thermal })); } catch (e) {} }
+function isoToday(){
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+function ordinal(n){
+  var s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function dateLine(iso){
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  var d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date();
+  if (isNaN(d)) d = new Date();
+  return 'Given under seal this ' + ordinal(d.getDate()) + ' day of ' + MONTHS[d.getMonth()] + ', ' + d.getFullYear() + '.';
+}
+
+// URL (or saved prefs) → fields, once on load. After that the fields are
+// the single source of truth and every change is mirrored back to the URL.
+function syncFromUrl(){
   var qs;
-  try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = { get:function(){ return ''; } }; }
-  var thermal = $('fThermal').checked || qs.get('thermal') === '1';
-  var qr = !($('fNoQr').checked || qs.get('qr') === '0');
+  try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = { get:function(){ return null; } }; }
+  var prefs = loadPrefs();
+  $('fName').value = qs.get('name') || '';
+  var v = (qs.get('variant') || 'standard').toLowerCase();
+  $('fVariant').value = VARIANTS.indexOf(v) >= 0 ? v : 'standard';
+  $('fOrder').value = qs.get('o') || '';
+  $('fBatch').value = qs.get('src') || '';
+  $('fDate').value = /^\d{4}-\d{2}-\d{2}$/.test(qs.get('date') || '') ? qs.get('date') : isoToday();
+  var t = qs.get('thermal'), q = qs.get('qr');
+  $('fThermal').checked = t != null ? t === '1' : !!prefs.thermal;
+  $('fNoQr').checked = q === '0';
+}
+function params(){
   return {
-    name: ($('fName').value.trim() || qs.get('name') || 'Greg').slice(0, 40),
-    variant: ['standard','custom-giver','custom-anon'].indexOf($('fVariant').value) >= 0
-      ? $('fVariant').value : ((qs.get('variant') || 'standard').toLowerCase()),
-    order: ($('fOrder').value.trim() || qs.get('o') || '').slice(0, 40),
-    batch: ($('fBatch').value.trim() || qs.get('src') || '').slice(0, 120),
-    thermal: thermal
+    name: ($('fName').value.trim() || 'Greg').slice(0, 40),
+    variant: VARIANTS.indexOf($('fVariant').value) >= 0 ? $('fVariant').value : 'standard',
+    order: $('fOrder').value.trim().slice(0, 40),
+    batch: $('fBatch').value.trim().slice(0, 120),
+    date: $('fDate').value || isoToday(),
+    thermal: $('fThermal').checked,
+    qr: !$('fNoQr').checked
   };
 }
+
+var qrModel = null;   // last generated QR, reused by the PNG export
+function qrSvg(qr){
+  var n = qr.getModuleCount(), m = 2, d = '';
+  for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) {
+    if (qr.isDark(r, c)) d += 'M' + (c + m) + ' ' + (r + m) + 'h1v1h-1z';
+  }
+  var s = n + m * 2;
+  return '<svg viewBox="0 0 ' + s + ' ' + s + '" shape-rendering="crispEdges"><rect width="' + s + '" height="' + s + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+}
+
 function render(){
   var p = params();
-  if (['standard','custom-giver','custom-anon'].indexOf(p.variant) < 0) p.variant = 'standard';
-  $('fThermal').checked = p.thermal;
-  $('fNoQr').checked = !p.qr;
-  $('cert').classList.toggle('thermal', p.thermal);
-  $('cName').textContent = p.name;
-  // Shrink long names to fit the line.
-  var fs = 34;
-  $('cName').style.fontSize = fs + 'pt';
-  var guard = 0;
-  while ($('cName').scrollWidth > $('cName').clientWidth + 1 && fs > 16 && guard++ < 40) {
-    fs -= 1; $('cName').style.fontSize = fs + 'pt';
-  }
+  var cert = $('cert');
+  cert.classList.toggle('thermal', p.thermal);
+  cert.classList.toggle('noqr', !p.qr);
+  // Name: largest size that fits the line.
+  var nm = $('cName'), nt = $('cNameT');
+  nt.textContent = p.name;
+  var fs = 40;
+  nm.style.fontSize = fs + 'pt';
+  while (nt.offsetWidth > nm.clientWidth && fs > 18) { fs -= 1; nm.style.fontSize = fs + 'pt'; }
   $('cAchieve').textContent = ACHIEVE[p.variant];
+  $('cDate').textContent = dateLine(p.date);
   var file = [];
   if (p.order) file.push('Filing No. ' + p.order);
   if (p.batch) file.push('Batch ' + p.batch);
   $('cFile').textContent = file.join('  ·  ') || 'Filed by the Council';
-  // The certificate's QR keeps the loop going: scan to nominate the next
-  // legend (personalized to this order when known). Skipped when hidden.
-  var qrBox = document.querySelector('.c-qr');
-  if (qrBox) qrBox.style.display = p.qr ? '' : 'none';
+  // The QR keeps the loop going: scan to nominate the next legend (this
+  // batch's nomination URL, personalized to this order when known).
+  // Destination comes from qr-config.js, never hardcoded here.
+  qrModel = null;
+  $('cQr').innerHTML = '';
   if (p.qr) {
-  try {
-    var qr = qrcode(0, 'M');
-    qr.addData(url); qr.make();
-    $('cQr').src = qr.createDataURL(6, 1);
-  } catch (e) { $('cQr').alt = 'QR unavailable offline'; }
+    try {
+      var url = Q.nominationUrl ? Q.nominationUrl(p.batch || 'frat-batch-1')
+        : ((Q.CANONICAL_ORIGIN || 'https://goofylicenses.com') + (Q.LINE_PATH || '/goat')
+          + '?src=' + encodeURIComponent(p.batch || 'frat-batch-1'));
+      if (p.order) url += '&o=' + encodeURIComponent(p.order);
+      var qr = qrcode(0, 'M');
+      qr.addData(url); qr.make();
+      qrModel = qr;
+      $('cQr').innerHTML = qrSvg(qr);
+    } catch (e) { $('cQr').textContent = 'QR unavailable'; }
   }
-  // Reflect back into the URL so a print/reload reproduces this exact cert.
+  savePrefs(p);
+  // Reflect into the URL so a reload or a shared link reproduces this cert.
   try {
     var u = new URL(window.location.href);
     u.searchParams.set('name', p.name);
     u.searchParams.set('variant', p.variant);
-    if (p.order) u.searchParams.set('o', p.order); else u.searchParams.delete('o');
-    if (p.batch) u.searchParams.set('src', p.batch); else u.searchParams.delete('src');
+    [['o', p.order], ['src', p.batch]].forEach(function(kv){
+      if (kv[1]) u.searchParams.set(kv[0], kv[1]); else u.searchParams.delete(kv[0]);
+    });
+    if (p.date !== isoToday()) u.searchParams.set('date', p.date); else u.searchParams.delete('date');
+    if (p.thermal) u.searchParams.set('thermal', '1'); else u.searchParams.delete('thermal');
+    if (!p.qr) u.searchParams.set('qr', '0'); else u.searchParams.delete('qr');
     window.history.replaceState(null, '', u.toString());
   } catch (e) {}
 }
-function syncFromUrl(){
-  var qs;
-  try { qs = new URLSearchParams(window.location.search); } catch (e) { return; }
-  if (qs.get('name')) $('fName').value = qs.get('name');
-  if (qs.get('variant')) $('fVariant').value = qs.get('variant').toLowerCase();
-  if (qs.get('o')) $('fOrder').value = qs.get('o');
-  if (qs.get('src')) $('fBatch').value = qs.get('src');
-  if (qs.get('thermal') === '1') $('fThermal').checked = true;
-  if (qs.get('qr') === '0') $('fNoQr').checked = true;
+
+/* ── PNG export: exact 6×4in at 300dpi (1800×1200). Instead of a separate
+   hand-tuned layout, it traces the live certificate: every glyph, rule, the
+   seal and the QR are drawn at their on-page positions, scaled to 300dpi.
+   So the PNG always matches the print preview, thermal mode included. ── */
+var W = 1800, H = 1200;
+function canvasFont(cs, px){
+  return cs.fontStyle + ' ' + cs.fontWeight + ' ' + px + 'px ' + cs.fontFamily;
 }
-$('btnUpdate').addEventListener('click', render);
-$('btnPrint').addEventListener('click', function(){ render(); setTimeout(function(){ window.print(); }, 60); });
-/* ── PNG export: exact 6×4in at 300dpi (1800×1200). Redraws the certificate
-   on canvas so the file prints Actual Size from any app, no driver fuss. ── */
-function wrapLines(x, text, maxW){
-  var words = String(text).split(/\s+/), lines = [], line = '';
-  words.forEach(function(w){
-    var t = line ? line + ' ' + w : w;
-    if (x.measureText(t).width > maxW && line) { lines.push(line); line = w; }
-    else line = t;
-  });
-  if (line) lines.push(line);
-  return lines;
+function drawTextNodes(x, root, box, S){
+  var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), node;
+  var rg = document.createRange();
+  while ((node = walker.nextNode())) {
+    var el = node.parentElement;
+    // Seal ring text is drawn by arcText; hidden QR caption is skipped.
+    if (!el || !node.data.trim() || el.closest('svg')) continue;
+    var cs = getComputedStyle(el);
+    if (cs.display === 'none' || el.closest('.c-qr') && getComputedStyle(el.closest('.c-qr')).display === 'none') continue;
+    var px = parseFloat(cs.fontSize) * S;
+    x.font = canvasFont(cs, px);
+    x.fillStyle = '#000';
+    x.textAlign = 'left'; x.textBaseline = 'alphabetic';
+    var descent = x.measureText('Hg').fontBoundingBoxDescent;
+    if (!isFinite(descent)) descent = px * 0.25;
+    var upper = cs.textTransform === 'uppercase';
+    var spaced = (parseFloat(cs.letterSpacing) || 0) !== 0;
+    var stroke = parseFloat(cs.webkitTextStrokeWidth) || 0;
+    // Letter-spaced text goes glyph by glyph at its exact on-page x (no
+    // reliance on canvas letterSpacing support); everything else word by
+    // word so script joins and kerning stay intact.
+    var re = spaced ? /\S/g : /\S+/g, mt;
+    while ((mt = re.exec(node.data))) {
+      rg.setStart(node, mt.index); rg.setEnd(node, mt.index + mt[0].length);
+      var rr = rg.getBoundingClientRect();
+      if (!rr.width) continue;
+      var t = upper ? mt[0].toUpperCase() : mt[0];
+      var tx = (rr.left - box.left) * S, ty = (rr.bottom - box.top) * S - descent;
+      x.fillText(t, tx, ty);
+      if (stroke) { x.lineWidth = stroke * S; x.strokeStyle = '#000'; x.lineJoin = 'round'; x.strokeText(t, tx, ty); }
+    }
+  }
 }
-function ringText(x, cx, cy, r, text, font, color){
+function arcText(x, cx, cy, r, t, font, ls){
   x.save();
-  x.font = font; x.fillStyle = color;
-  x.textAlign = 'center'; x.textBaseline = 'middle';
-  var ang = -Math.PI / 2, i, ch, w, da;
-  for (i = 0; i < text.length; i++) {
-    ch = text[i]; w = x.measureText(ch).width; da = w / r;
-    ang += da / 2;
+  x.font = font; x.fillStyle = '#000';
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  var ws = t.text.split('').map(function(ch){ return x.measureText(ch).width + ls; });
+  var total = ws.reduce(function(a, b){ return a + b; }, 0), acc = 0;
+  var start = t.bottom ? Math.PI / 2 + total / (2 * r) : -Math.PI / 2 - total / (2 * r);
+  for (var i = 0; i < t.text.length; i++) {
+    var mid = acc + (ws[i] - ls) / 2;
+    var a = t.bottom ? start - mid / r : start + mid / r;
     x.save();
-    x.translate(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
-    x.rotate(ang + Math.PI / 2);
-    x.fillText(ch, 0, 0);
+    x.translate(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    x.rotate(t.bottom ? a - Math.PI / 2 : a + Math.PI / 2);
+    x.fillText(t.text[i], 0, 0);
     x.restore();
-    ang += da / 2;
+    acc += ws[i];
   }
   x.restore();
 }
@@ -225,113 +369,82 @@ function loadImg(src){
 }
 async function renderPNG(){
   render();
-  try {
-    await Promise.all([
-      document.fonts.load('700 54px Cinzel'),
-      document.fonts.load('142px "Pinyon Script"'),
-      document.fonts.load('italic 40px Inter'),
-      document.fonts.load('600 31px Inter')
-    ]);
-  } catch (e) {}
-  var p = params();
-  var W = 1800, H = 1200;
+  try { await document.fonts.ready; } catch (e) {}
+  var cert = $('cert'), box = cert.getBoundingClientRect();
+  var S = W / box.width;
   var c = document.createElement('canvas'); c.width = W; c.height = H;
   var x = c.getContext('2d');
-  // Thermal: pure black on white, no glow, heavier lines, larger small type.
-  var MONO = !!p.thermal;
-  var GOLD = MONO ? '#000000' : '#a86e0a', GREY = MONO ? '#000000' : '#555555';
-  var SMALL = MONO ? 1.15 : 1;
-  x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
-  if (!MONO) {
-    var g = x.createRadialGradient(900, 0, 60, 900, 0, 900);
-    g.addColorStop(0, 'rgba(245,197,66,.10)'); g.addColorStop(1, 'rgba(245,197,66,0)');
-    x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#000'; x.strokeStyle = '#000';
+  // Frame (the two pseudo-element borders).
+  ['::before', '::after'].forEach(function(pe){
+    var cs = getComputedStyle(cert, pe);
+    var bw = parseFloat(cs.borderTopWidth) * S, ins = parseFloat(cs.top) * S;
+    x.lineWidth = bw;
+    x.strokeRect(ins + bw / 2, ins + bw / 2, W - 2 * ins - bw, H - 2 * ins - bw);
+  });
+  function rel(el){
+    var r = el.getBoundingClientRect();
+    return { x:(r.left - box.left) * S, y:(r.top - box.top) * S, w:r.width * S, h:r.height * S };
   }
-  // Borders: outer double gold + inner hairline.
-  x.strokeStyle = GOLD; x.lineWidth = MONO ? 18 : 10; x.strokeRect(22, 22, W - 44, H - 44);
-  x.lineWidth = MONO ? 7 : 3; x.strokeRect(40, 40, W - 80, H - 80);
-  x.strokeStyle = MONO ? '#000000' : 'rgba(168,110,10,.5)'; x.lineWidth = 2; x.strokeRect(72, 72, W - 144, H - 144);
-  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
-  try { x.letterSpacing = '9px'; } catch (e) {}
-  x.fillStyle = GOLD; x.font = (MONO ? '900 58px Cinzel, serif' : '700 54px Cinzel, serif');
-  x.fillText('THE COUNCIL OF G.O.A.T. AFFAIRS', 900, 168);
-  try { x.letterSpacing = '12px'; } catch (e) {}
-  x.fillStyle = GREY; x.font = '600 31px Inter, sans-serif';
-  x.fillText('CERTIFICATE OF NOMINATION', 900, 218);
-  try { x.letterSpacing = '0px'; } catch (e) {}
-  x.fillStyle = GREY; x.font = 'italic 40px Inter, sans-serif';
-  x.fillText('This certifies that', 900, 278);
-  // Name, shrunk to fit.
-  var fs = 142;
-  x.font = fs + 'px "Pinyon Script", cursive';
-  while (x.measureText(p.name).width > 1520 && fs > 50) { fs -= 4; x.font = fs + 'px "Pinyon Script", cursive'; }
-  x.fillStyle = '#111111';
-  x.fillText(p.name, 900, 430);
-  // Achievement, wrapped.
-  x.fillStyle = MONO ? '#000000' : '#333333'; x.font = '37px Inter, sans-serif';
-  var lines = wrapLines(x, ACHIEVE[p.variant] || ACHIEVE.standard, 1120);
-  lines.forEach(function(ln, i){ x.fillText(ln, 900, 520 + i * 52); });
-  // Footer row.
-  var fy = 1010;
-  x.fillStyle = '#111111'; x.font = '71px "Pinyon Script", cursive';
-  x.fillText('Gerald', 330, fy);
-  x.strokeStyle = '#999999'; x.lineWidth = 2;
-  x.beginPath(); x.moveTo(150, fy + 18); x.lineTo(510, fy + 18); x.stroke();
-  x.fillStyle = GREY; x.font = '600 ' + Math.round(27 * SMALL) + 'px Inter, sans-serif';
-  try { x.letterSpacing = '5px'; } catch (e) {}
-  x.fillText('KEEPER OF THE SEAL', 330, fy + 58);
-  try { x.letterSpacing = '0px'; } catch (e) {}
-  // Seal.
-  var sx = 900, sy = 975;
-  x.strokeStyle = GOLD; x.lineWidth = MONO ? 10 : 7;
-  x.beginPath(); x.arc(sx, sy, 135, 0, Math.PI * 2); x.stroke();
-  x.lineWidth = MONO ? 6 : 4;
-  x.beginPath(); x.arc(sx, sy, 78, 0, Math.PI * 2); x.stroke();
-  ringText(x, sx, sy, 105, '★ CERTIFIED GOAT ★ GREATEST OF ALL TIME', (MONO ? '900 25px Cinzel, serif' : '700 25px Cinzel, serif'), GOLD);
-  x.font = '72px serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.fillText('🐐', sx, sy + 4);
-  x.textBaseline = 'alphabetic';
-  // QR + caption (skipped when hidden).
-  if (p.qr) {
-  try {
-    var qrIm = await loadImg($('cQr').src);
-    x.drawImage(qrIm, 1425, 800, 255, 255);
-  } catch (e) {}
-  x.fillStyle = GREY; x.font = '600 ' + Math.round(25 * SMALL) + 'px Inter, sans-serif';
-  try { x.letterSpacing = '3px'; } catch (e) {}
-  x.fillText('SCAN TO NOMINATE', 1552, 1085);
-  x.fillText('THE NEXT LEGEND', 1552, 1115);
-  try { x.letterSpacing = '0px'; } catch (e) {}
+  // Solid rules, the divider gem, and the signature line.
+  cert.querySelectorAll('.ink').forEach(function(el){ var r = rel(el); x.fillRect(r.x, r.y, r.w, r.h); });
+  cert.querySelectorAll('.gem').forEach(function(el){
+    var r = rel(el), mx = r.x + r.w / 2, my = r.y + r.h / 2;
+    x.beginPath(); x.moveTo(mx, r.y); x.lineTo(r.x + r.w, my); x.lineTo(mx, r.y + r.h); x.lineTo(r.x, my); x.closePath(); x.fill();
+  });
+  var st = cert.querySelector('.sig-title'), stw = parseFloat(getComputedStyle(st).borderTopWidth) * S, sr = rel(st);
+  x.fillRect(sr.x, sr.y, sr.w, stw);
+  // Seal art as a vector image, then its ring text in Cinzel.
+  var seal = rel($('cSeal')), sealPx = Math.round(seal.w);
+  var sealIm = await loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + sealPx + '" height="' + sealPx + '" viewBox="0 0 120 120">' + SEAL_ART + '</svg>'));
+  x.drawImage(sealIm, seal.x, seal.y, seal.w, seal.h);
+  var k = seal.w / 120;
+  SEAL_TEXT.forEach(function(t){
+    arcText(x, seal.x + 60 * k, seal.y + 60 * k, t.r * k, t, '700 ' + (t.size * k) + 'px Cinzel, serif', t.ls * k);
+  });
+  // QR modules, pixel-snapped so every module is a crisp solid square.
+  if (qrModel && getComputedStyle(cert.querySelector('.c-qr')).display !== 'none') {
+    var qb = rel($('cQr')), n = qrModel.getModuleCount(), m = 2;
+    var cell = Math.floor(qb.w / (n + 2 * m));
+    var ox = Math.round(qb.x + (qb.w - cell * (n + 2 * m)) / 2) + cell * m;
+    var oy = Math.round(qb.y + (qb.h - cell * (n + 2 * m)) / 2) + cell * m;
+    for (var r = 0; r < n; r++) for (var cc = 0; cc < n; cc++) {
+      if (qrModel.isDark(r, cc)) x.fillRect(ox + cc * cell, oy + r * cell, cell, cell);
+    }
   }
-  // Filing line.
-  var file = [];
-  if (p.order) file.push('Filing No. ' + p.order);
-  if (p.batch) file.push('Batch ' + p.batch);
-  x.fillStyle = MONO ? '#000000' : '#999999'; x.font = Math.round(27 * SMALL) + 'px Inter, sans-serif';
-  try { x.letterSpacing = '3px'; } catch (e) {}
-  x.fillText(file.join('   ·   ') || 'Filed by the Council', 900, 1152);
-  try { x.letterSpacing = '0px'; } catch (e) {}
+  drawTextNodes(x, cert, box, S);
   return c.toDataURL('image/png');
 }
 // Exposed for testing/preview; the button below is the normal path.
 window.GOATCertPNG = renderPNG;
+
+$('btnPrint').addEventListener('click', function(){
+  render();
+  var go = function(){ window.print(); };
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ setTimeout(go, 60); });
+  else setTimeout(go, 60);
+});
 $('btnPng').addEventListener('click', function(){
   var btn = $('btnPng'), orig = btn.textContent;
   btn.textContent = 'Rendering…';
   renderPNG().then(function(url){
-    var a = document.createElement('a');
-    var slug = (params().name || 'cert').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'cert';
-    a.href = url; a.download = 'goat-cert-' + slug + (params().thermal ? '-thermal' : '') + '.png';
+    var p = params(), a = document.createElement('a');
+    var slug = p.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'cert';
+    a.href = url; a.download = 'goat-cert-' + slug + (p.thermal ? '-thermal' : '') + '.png';
     document.body.appendChild(a); a.click();
     setTimeout(function(){ a.parentNode.removeChild(a); }, 500);
     btn.textContent = orig;
-  }).catch(function(){ btn.textContent = 'Failed — try Print'; setTimeout(function(){ btn.textContent = orig; }, 2000); });
+  }).catch(function(){ btn.textContent = 'Failed, try Print'; setTimeout(function(){ btn.textContent = orig; }, 2000); });
 });
-['fName','fVariant','fOrder','fBatch'].forEach(function(id){
-  $(id).addEventListener('keydown', function(e){ if (e.key === 'Enter') render(); });
+['fName','fVariant','fOrder','fBatch','fDate','fThermal','fNoQr'].forEach(function(id){
+  $(id).addEventListener($(id).tagName === 'INPUT' && $(id).type === 'text' ? 'input' : 'change', render);
 });
 syncFromUrl();
 render();
+// Re-fit the name once the script font has actually loaded.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
 })();
 </script>
 </body>
