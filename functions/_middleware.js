@@ -54,6 +54,18 @@ export async function onRequest(context) {
 
   if (path.startsWith('/api/')) return next();
 
+  // Per-card licence QR (public/goofy/qr-config.js licenceUrl): the printed
+  // code is HTTPS://GOOFYLICENSES.COM/L/<ORDER-ID> in caps (smaller QR grid).
+  // Send it to the G.O.A.T. landing with the licence tracker and the order,
+  // which greets that card's recipient by name. Any host, any case.
+  const card = /^\/l(?:\/([A-Za-z0-9-]{1,40}))?\/?$/i.exec(path);
+  if (card) {
+    const dest = new URL('/goat', GOOFY_ORIGIN);
+    dest.searchParams.set('src', 'license-qr');
+    if (card[1]) dest.searchParams.set('o', card[1].toUpperCase());
+    return Response.redirect(dest.toString(), 302);
+  }
+
   // Alias domains → the canonical Goofy domain, path and query kept.
   if (GOOFY_ALIASES.has(host)) {
     return Response.redirect(GOOFY_ORIGIN + path + url.search, 301);

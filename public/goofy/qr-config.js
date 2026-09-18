@@ -33,12 +33,25 @@
   };
 
   // Licence-card URL (its own tracker, separate from nomination-card scans).
-  // Pass the order id for per-print personalization: the landing page greets
-  // that order's recipient by name (?src=license-qr&o=GOOFY-...).
+  // With an order id (every printed card) it's the short per-card link
+  //   HTTPS://GOOFYLICENSES.COM/L/GOOFY-1726694400000-AB12
+  // which functions/_middleware.js redirects to
+  //   /goat?src=license-qr&o=GOOFY-... (the landing greets that recipient).
+  // It's all caps on purpose: that fits QR "alphanumeric" mode, so the code
+  // needs a smaller grid and each printed module is ~35% bigger than the long
+  // lowercase URL would give on the same 128px corner (easier to scan).
+  // Without an id (the builder preview) it's the plain landing URL.
+  QR.LICENCE_PATH = '/L/';
   QR.licenceUrl = function (orderId) {
-    var u = QR.CANONICAL_ORIGIN + QR.LINE_PATH + '?src=' + encodeURIComponent(QR.LICENCE_SRC);
-    if (orderId && String(orderId).trim()) u += '&o=' + encodeURIComponent(String(orderId).trim());
-    return u;
+    var id = String(orderId == null ? '' : orderId).trim().toUpperCase();
+    if (/^[A-Z0-9-]{1,40}$/.test(id)) return QR.CANONICAL_ORIGIN.toUpperCase() + QR.LICENCE_PATH + id;
+    return QR.CANONICAL_ORIGIN + QR.LINE_PATH + '?src=' + encodeURIComponent(QR.LICENCE_SRC);
+  };
+
+  // QR encoding mode for a URL: 'Alphanumeric' when every character fits
+  // that set (0-9 A-Z space $%*+-./:), else 'Byte'.
+  QR.qrMode = function (text) {
+    return /^[0-9A-Z $%*+\-.\/:]*$/.test(String(text)) ? 'Alphanumeric' : 'Byte';
   };
 
   // "frat-batch-1" → "Frat Batch 1" for the scan-modal callout.

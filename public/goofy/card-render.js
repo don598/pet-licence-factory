@@ -1,33 +1,54 @@
-// ── Goofy Licenses — G.O.A.T. license card renderer ─────────────────────────
-// Re-renders an order's printable G.O.A.T. license card (1010×638, ~300dpi at
-// CR80 size) from the stored order: the same template art, photo box, script
-// names and QR corner the builder (public/goofy/index.html) composes, so a
-// re-print from Command Station matches what the customer saw.
+// ── Goofy Licenses — G.O.A.T. license card: geometry + renderer ─────────────
+// The ONE place that knows where things go on the 1010×638 G.O.A.T. card
+// (~300dpi at CR80 size). Everything that draws the card uses it:
+//   - the builder (public/goofy/index.html): live-preview overlay positions
+//     and the checkout snapshot shown on the success page,
+//   - Command Station: the print re-render of an order,
+// so the preview, the snapshot and the printed card can't drift apart.
 //
 //   GoofyCard.render({ variant, recipientName, giverName, photo, crop, orderId })
 //     → Promise<HTMLCanvasElement>
+//   GoofyCard.geometry                         boxes in card pixels (below)
+//   GoofyCard.nameLayout(text, 'recipient'|'giver') → { text, size, x, base }
+//   GoofyCard.qrCanvas(orderId, px)            just the QR, for previews
 //
-// - Geometry is copied from the builder's measured constants (keep in sync).
-// - photo: the stored data URL; crop: { cx, cy, zoom } the customer set in the
-//   builder (defaults to a centered cover crop for orders placed before the
-//   crop was saved).
-// - The QR is always the per-order licence QR (GOOFY_QR.licenceUrl(orderId))
-//   drawn module by module so it prints crisp; needs /goofy/qr-config.js and
-//   qrcode-generator loaded first.
+// - photo: data URL; crop: { cx, cy, zoom } the customer set in the builder
+//   (a centered cover crop when missing, e.g. orders placed before it was
+//   saved).
+// - QR: GOOFY_QR.licenceUrl(orderId), drawn module by module so it prints
+//   crisp. With an orderId it's that order's own short URL (every card gets
+//   its own QR). Without one, custom cards show the generic licence URL (the
+//   builder preview) and the standard card keeps its printed QR. Needs
+//   /goofy/qr-config.js and qrcode-generator loaded before render() runs.
 (function (root) {
   'use strict';
   var TW = 1010, TH = 638;
-  var PHOTO_BOX = { x: 41, y: 90, w: 303, h: 407 };
-  var QR_BOX = { x: 851, y: 33, w: 126, h: 127 };
+
+  // Measured on the templates (bg-custom-*.png, product-standard.png).
+  // Photo: the frame's grey rule runs x31-352, y90-497 with ~10px corners;
+  // the photo covers it with 1px to spare so no rule peeks out.
+  var PHOTO_BOX = { x: 30, y: 89, w: 324, h: 410, r: 12 };
+  // QR: the printed QR on product-standard.png spans x851-977, y33-160. The
+  // box covers all of it, since the standard card's QR is redrawn per order.
+  // No quiet zone inside the box: the white card around it is the quiet zone,
+  // which keeps the modules as big as possible.
+  var QR_BOX = { x: 851, y: 33, w: 128, h: 128 };
+  // Names sit on the signature rules (y569; recipient x35-356, giver
+  // x383-617): centered by ink on a fixed baseline, 52px, shrinking to fit
+  // the rule. At 52px Pinyon Script's tallest glyph stays below FOREVER
+  // (ends y511) and its deepest descender above the labels under the rules
+  // (start y582).
   var FIELDS = {
-    recipient: { x: 30,  y: 488, w: 336, h: 82 },
-    giver:     { x: 372, y: 488, w: 260, h: 82 }
+    recipient: { x: 35,  w: 321, base: 557, max: 52 },
+    giver:     { x: 383, w: 234, base: 557, max: 52 }
   };
   var TPL = {
     'standard':     '/goofy/images/product-standard.png',
     'custom-giver': '/goofy/images/bg-custom-giver.png',
     'custom-anon':  '/goofy/images/bg-custom-anon.png'
   };
+  var SCRIPT = '"Pinyon Script",cursive';
+  var INK = '#202030';
 
   function loadImg(src) {
     return new Promise(function (res, rej) {
@@ -50,7 +71,7 @@
         });
         var loadFace = function () {
           if (!document.fonts || !document.fonts.load) return resolve();
-          document.fonts.load('68px "Pinyon Script"').then(resolve, resolve);
+          document.fonts.load('52px "Pinyon Script"').then(resolve, resolve);
         };
         if (link && link.sheet) return loadFace();
         if (!link) {
@@ -67,44 +88,35 @@
     return fontReady;
   }
 
-  function fitScript(x, txt, maxW, start) {
-    var s = start;
-    while (s > 10) {
-      x.font = s + 'px "Pinyon Script",cursive';
-      if (x.measureText(txt).width <= maxW) break;
-      s -= 2;
+  // Size + position of a name, in card pixels. Fits the ink (swashes
+  // included) inside the rule and centers the ink, not the advance box, so a
+  // big leading capital doesn't push the name off-center. The builder uses
+  // the same numbers to place its DOM preview, so both match.
+  var mctx = null;
+  function nameLayout(text, key) {
+    var f = FIELDS[key] || FIELDS.recipient;
+    var t = String(text == null ? '' : text).trim().slice(0, 30);
+    if (!mctx) { mctx = document.createElement('canvas').getContext('2d'); mctx.textAlign = 'left'; }
+    var s = f.max, m, L, R;
+    for (;;) {
+      mctx.font = s + 'px ' + SCRIPT;
+      m = mctx.measureText(t);
+      L = m.actualBoundingBoxLeft || 0;
+      R = m.actualBoundingBoxRight || m.width;
+      if (L + R <= f.w || s <= 14) break;
+      s -= 1;
     }
-    return s;
+    return { text: t, size: s, x: f.x + f.w / 2 - (R - L) / 2, base: f.base };
   }
 
-  function drawName(x, field, name) {
-    var t = String(name || '').trim().slice(0, 30);
-    if (!t) return;
-    x.fillStyle = '#202030';
-    x.textAlign = 'center';
+  function drawName(x, text, key) {
+    var lay = nameLayout(text, key);
+    if (!lay.text) return;
+    x.fillStyle = INK;
+    x.textAlign = 'left';
     x.textBaseline = 'alphabetic';
-    x.font = fitScript(x, t, field.w, 68) + 'px "Pinyon Script",cursive';
-    x.fillText(t, field.x + field.w / 2, field.y + field.h - 6);
-  }
-
-  function drawQr(x, orderId) {
-    var Q = root.GOOFY_QR || {};
-    if (typeof root.qrcode !== 'function' || !Q.licenceUrl) return;
-    var qr = root.qrcode(0, 'M');
-    qr.addData(Q.licenceUrl(orderId));
-    qr.make();
-    var n = qr.getModuleCount(), m = 1, cell = QR_BOX.w / (n + 2 * m);
-    x.fillStyle = '#ffffff';
-    x.fillRect(QR_BOX.x, QR_BOX.y, QR_BOX.w, QR_BOX.h);
-    x.fillStyle = '#000000';
-    for (var r = 0; r < n; r++) {
-      for (var c = 0; c < n; c++) {
-        if (!qr.isDark(r, c)) continue;
-        var x0 = Math.round(QR_BOX.x + (c + m) * cell), x1 = Math.round(QR_BOX.x + (c + m + 1) * cell);
-        var y0 = Math.round(QR_BOX.y + (r + m) * cell), y1 = Math.round(QR_BOX.y + (r + m + 1) * cell);
-        x.fillRect(x0, y0, x1 - x0, y1 - y0);
-      }
-    }
+    x.font = lay.size + 'px ' + SCRIPT;
+    x.fillText(lay.text, lay.x, lay.base);
   }
 
   function parseCrop(crop) {
@@ -114,8 +126,70 @@
     return {
       cx: isFinite(c.cx) ? +c.cx : 0.5,
       cy: isFinite(c.cy) ? +c.cy : 0.5,
-      zoom: isFinite(c.zoom) && c.zoom > 0 ? +c.zoom : 1
+      zoom: isFinite(c.zoom) && c.zoom > 0 ? Math.max(1, +c.zoom) : 1
     };
+  }
+
+  function roundRect(x, b) {
+    var r = Math.min(b.r || 0, b.w / 2, b.h / 2);
+    x.beginPath();
+    x.moveTo(b.x + r, b.y);
+    x.arcTo(b.x + b.w, b.y, b.x + b.w, b.y + b.h, r);
+    x.arcTo(b.x + b.w, b.y + b.h, b.x, b.y + b.h, r);
+    x.arcTo(b.x, b.y + b.h, b.x, b.y, r);
+    x.arcTo(b.x, b.y, b.x + b.w, b.y, r);
+    x.closePath();
+  }
+
+  // Cover-fit the photo in the rounded photo window at the customer's crop.
+  // The centre is clamped the same way the builder clamps it, so no crop can
+  // ever leave an empty edge.
+  function drawPhoto(x, img, crop) {
+    var B = PHOTO_BOX, cr = parseCrop(crop);
+    var eff = Math.max(B.w / img.width, B.h / img.height) * cr.zoom;
+    var dw = img.width * eff, dh = img.height * eff;
+    var mx = B.w / (2 * dw), my = B.h / (2 * dh);
+    var cx = mx > 1 - mx ? 0.5 : Math.min(1 - mx, Math.max(mx, cr.cx));
+    var cy = my > 1 - my ? 0.5 : Math.min(1 - my, Math.max(my, cr.cy));
+    x.save();
+    roundRect(x, B);
+    x.clip();
+    x.drawImage(img, B.x + B.w / 2 - cx * dw, B.y + B.h / 2 - cy * dh, dw, dh);
+    x.restore();
+  }
+
+  function qrFor(orderId) {
+    var Q = root.GOOFY_QR;
+    if (typeof root.qrcode !== 'function' || !Q || !Q.licenceUrl) return null;
+    var url = Q.licenceUrl(orderId);
+    var qr = root.qrcode(0, 'M');
+    qr.addData(url, Q.qrMode ? Q.qrMode(url) : 'Byte');
+    qr.make();
+    return qr;
+  }
+
+  function drawQr(x, qr, bx, by, size) {
+    var n = qr.getModuleCount(), cell = size / n;
+    x.fillStyle = '#ffffff';
+    x.fillRect(bx, by, size, size);
+    x.fillStyle = '#000000';
+    for (var r = 0; r < n; r++) {
+      for (var c = 0; c < n; c++) {
+        if (!qr.isDark(r, c)) continue;
+        var x0 = Math.round(bx + c * cell), x1 = Math.round(bx + (c + 1) * cell);
+        var y0 = Math.round(by + r * cell), y1 = Math.round(by + (r + 1) * cell);
+        x.fillRect(x0, y0, x1 - x0, y1 - y0);
+      }
+    }
+  }
+
+  function qrCanvas(orderId, px) {
+    var qr = qrFor(orderId);
+    if (!qr) return null;
+    var c = document.createElement('canvas');
+    c.width = c.height = px || 256;
+    drawQr(c.getContext('2d'), qr, 0, 0, c.width);
+    return c;
   }
 
   async function render(o) {
@@ -127,23 +201,24 @@
     c.width = TW; c.height = TH;
     var x = c.getContext('2d');
     x.drawImage(await loadImg(TPL[variant]), 0, 0, TW, TH);
-    if (custom && o.photo) {
-      var p = await loadImg(o.photo);
-      var cr = parseCrop(o.crop), B = PHOTO_BOX;
-      var eff = Math.max(B.w / p.width, B.h / p.height) * cr.zoom;
-      var dw = p.width * eff, dh = p.height * eff;
-      x.save();
-      x.beginPath(); x.rect(B.x, B.y, B.w, B.h); x.clip();
-      x.drawImage(p, B.x + B.w / 2 - cr.cx * dw, B.y + B.h / 2 - cr.cy * dh, dw, dh);
-      x.restore();
-    }
+    if (custom && o.photo) drawPhoto(x, await loadImg(o.photo), o.crop);
     if (custom) {
-      drawName(x, FIELDS.recipient, o.recipientName || 'Their Name');
-      if (variant === 'custom-giver') drawName(x, FIELDS.giver, o.giverName);
+      drawName(x, o.recipientName || 'Their Name', 'recipient');
+      if (variant === 'custom-giver' && o.giverName) drawName(x, o.giverName, 'giver');
     }
-    drawQr(x, o.orderId);
+    if (custom || o.orderId) {
+      var qr = qrFor(o.orderId);
+      if (qr) drawQr(x, qr, QR_BOX.x, QR_BOX.y, QR_BOX.w);
+    }
     return c;
   }
 
-  root.GoofyCard = { render: render, width: TW, height: TH };
+  root.GoofyCard = {
+    render: render,
+    nameLayout: nameLayout,
+    qrCanvas: qrCanvas,
+    ensureFont: ensureScriptFont,
+    width: TW, height: TH,
+    geometry: { TW: TW, TH: TH, PHOTO_BOX: PHOTO_BOX, QR_BOX: QR_BOX, FIELDS: FIELDS, TPL: TPL }
+  };
 })(typeof window !== 'undefined' ? window : this);

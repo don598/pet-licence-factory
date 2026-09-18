@@ -93,12 +93,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .card-frame img.tpl{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 /* overlay system (PLC mechanics, G.O.A.T. geometry on 1010×638) */
 .gov{position:absolute;display:flex;align-items:center;overflow:hidden;white-space:nowrap;line-height:1;pointer-events:none;color:var(--ink)}
-#ov-photo{overflow:hidden;background:rgba(255,255,255,.0);border-radius:15px;display:flex;align-items:center;justify-content:center}
+#ov-photo{overflow:hidden;background:rgba(255,255,255,.0);display:flex;align-items:center;justify-content:center}
 #ov-photo .ph{font-family:'Inter',sans-serif;font-weight:800;color:rgba(32,32,48,.35);font-size:3.2cqw;text-align:center;line-height:1.3;letter-spacing:1px;text-transform:uppercase}
 #petImg{position:absolute;top:0;left:0;max-width:none;display:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
 #ov-photo.has-photo{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 #ov-photo.has-photo.dragging{cursor:grabbing}
-.gov-script{justify-content:center;align-items:flex-end;padding-bottom:1%;font-family:'Pinyon Script',cursive;color:var(--ink)}
+/* Names: plain block text placed by JS (placeName) at the print's exact size,
+   x and baseline. Visible overflow so swashes are never clipped. */
+.gov.gov-name{display:block;overflow:visible;line-height:1;padding:0;font-family:'Pinyon Script',cursive;color:#202030}
+.gov-name .bl{display:inline-block;width:0;height:0;vertical-align:baseline}
 /* per-variant overlay visibility (JS also drives display — belt & suspenders) */
 .card-frame[data-variant="standard"] .gov,.card-frame[data-variant="standard"] #ov-photo{display:none !important}
 .card-frame[data-variant="custom-anon"] #ov-giver{display:none !important}
@@ -571,6 +574,7 @@ footer a{color:var(--gold)}
 <script src="/goofy/qr-config.js"></script>
 <script src="/goofy/pricing.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="/goofy/card-render.js"></script>
 <script src="/affiliate-tracker.js"></script>
 <script src="/pixels.js"></script>
 <script src="/plf-track.js" defer></script>
@@ -599,23 +603,13 @@ if (!srcParam) {
   } catch (e) {}
 }
 
-/* ── Card geometry (measured, px on 1010×638) ── */
-var TW = 1010, TH = 638;
-var PHOTO_BOX = { x:41, y:90, w:303, h:407 };
-/* Live QR overlay box — measured off the product art (baked QR at x851 y33
-   126×127 on 1010×638). Blank templates leave this corner empty for it. */
-var QR_BOX = { x:851, y:33, w:126, h:127 };
-/* Name boxes hug the measured script extents on the card art (the printed
-   GOAT-0001 ID number is left exactly as printed — no overlay). */
-var FIELDS = {
-  recipient: { x:30,  y:488, w:336, h:82, fs:6.7, script:true },
-  giver:     { x:372, y:488, w:260, h:82, fs:6.7, script:true }
-};
-var TPL = {
-  'standard':     '/goofy/images/product-standard.png',
-  'custom-giver': '/goofy/images/bg-custom-giver.png',
-  'custom-anon':  '/goofy/images/bg-custom-anon.png'
-};
+/* ── Card geometry (px on 1010×638) ──
+   Shared with the print renderer (/goofy/card-render.js, GoofyCard.geometry)
+   so the preview, the snapshot and the printed card use the same boxes. The
+   printed GOAT-0001 ID number is part of the art (no overlay). */
+var G = window.GoofyCard.geometry;
+var TW = G.TW, TH = G.TH;
+var PHOTO_BOX = G.PHOTO_BOX, QR_BOX = G.QR_BOX, FIELDS = G.FIELDS, TPL = G.TPL;
 var VALID = { 'standard':1, 'custom-giver':1, 'custom-anon':1 };
 var VARIANT_LABEL = {
   'standard': 'G.O.A.T. Licence — Standard nomination',
@@ -649,39 +643,45 @@ function buildOverlays(){
   ovPhoto.style.top = pct(PHOTO_BOX.y, TH);
   ovPhoto.style.width = pct(PHOTO_BOX.w, TW);
   ovPhoto.style.height = pct(PHOTO_BOX.h, TH);
+  // Same corner radius as the printed photo (elliptical %, so it scales).
+  ovPhoto.style.borderRadius = pct(PHOTO_BOX.r, PHOTO_BOX.w) + ' / ' + pct(PHOTO_BOX.r, PHOTO_BOX.h);
   var ovQr = $('ov-qr');
   if (ovQr) {
     ovQr.style.left = pct(QR_BOX.x, TW);
     ovQr.style.top = pct(QR_BOX.y, TH);
     ovQr.style.width = pct(QR_BOX.w, TW);
   }
+  // Name overlays: sized and placed in layout() from GoofyCard.nameLayout,
+  // the same numbers the print uses.
   Object.keys(FIELDS).forEach(function(k){
-    var f = FIELDS[k];
     var el = document.createElement('div');
-    el.className = 'gov' + (f.script ? ' gov-script' : '');
+    el.className = 'gov gov-name';
     el.id = 'ov-' + k;
-    el.style.left = pct(f.x, TW);
-    el.style.top = pct(f.y, TH);
-    el.style.width = pct(f.w, TW);
-    el.style.height = pct(f.h, TH);
-    el.dataset.fs = f.fs;
+    el.dataset.field = k;
     frame.appendChild(el);
   });
 }
 
-function fitOne(el){
-  var fw = frame.clientWidth; if (!fw) return;
-  var px = (parseFloat(el.dataset.fs) / 100) * fw;
-  el.style.fontSize = px + 'px';
-  var guard = 0;
-  while (el.scrollWidth > el.clientWidth + 0.5 && px > 4 && guard++ < 60) { px -= 0.5; el.style.fontSize = px + 'px'; }
+/* Put a name exactly where the print draws it: same font size, same ink-
+   centred x, and its baseline on the same card-pixel y. The baseline is
+   found with a zero-size probe, so it holds for any font metrics. */
+function placeName(el){
+  var fw = frame.clientWidth; if (!fw || !el.textContent) return;
+  var k = fw / TW, lay = window.GoofyCard.nameLayout(el.textContent, el.dataset.field);
+  el.style.fontSize = (lay.size * k) + 'px';
+  el.style.left = (lay.x * k) + 'px';
+  el.style.top = '0px';
+  var probe = document.createElement('i');
+  probe.className = 'bl';
+  el.appendChild(probe);
+  var baseline = probe.offsetTop;
+  el.removeChild(probe);
+  el.style.top = (lay.base * k - baseline) + 'px';
 }
 function layout(){
-  var nodes = [ovPhoto.querySelector('.ph')];
   ['ov-recipient', 'ov-giver'].forEach(function(id){
-    var el = document.getElementById(id); if (el) nodes.push(el);
+    var el = document.getElementById(id); if (el) placeName(el);
   });
-  nodes.forEach(function(el){ if (el && el.dataset.fs) fitOne(el); });
   renderPhoto();
 }
 function bump(){ frame.classList.remove('bump'); void frame.offsetWidth; frame.classList.add('bump'); }
@@ -691,23 +691,20 @@ function feeTotal(){ return state.variant === 'standard' ? PRICES.standard : PRI
 /* ── Custom QR overlay (per-variant, live-generated) ──
    Blank templates ship with an empty QR corner; the QR is generated in the
    browser from GOOFY_QR so the destination is never hardcoded. Preview uses
-   the generic licence tracker; fulfilment re-renders per order via
-   QR.licenceUrl(orderId) (see qr.html). Never hardcode QR URLs here. */
+   the generic licence tracker; the printed card gets that order's own QR
+   (GoofyCard.render with the order id, from Command Station). Never
+   hardcode QR URLs here. */
 var lastQrDataUrl = '';
-function licenceQrDataUrl(){
-  var Q = window.GOOFY_QR || {};
-  var url = (Q.licenceUrl ? Q.licenceUrl() : 'https://goofylicenses.com/goat?src=license-qr');
-  var qr = qrcode(0, 'M');
-  qr.addData(url); qr.make();
-  return qr.createDataURL(6, 1);
-}
 function renderQr(isCustom){
   var box = $('ov-qr'), img = $('qrImg');
   if (!box || !img) return;
   if (!isCustom) { box.style.display = 'none'; return; }
   try {
-    if (typeof qrcode === 'undefined') { box.style.display = 'none'; return; }
-    lastQrDataUrl = licenceQrDataUrl();
+    if (!lastQrDataUrl) {
+      var qc = window.GoofyCard.qrCanvas(null, 384);
+      if (!qc) { box.style.display = 'none'; return; }
+      lastQrDataUrl = qc.toDataURL('image/png');
+    }
     if (img.getAttribute('src') !== lastQrDataUrl) img.setAttribute('src', lastQrDataUrl);
     box.style.display = '';
   } catch (e) { box.style.display = 'none'; }
@@ -1233,87 +1230,24 @@ function recalc(){
   $('checkoutBtn').textContent = '🐐 Pay ' + money(total) + ' processing fee →';
 }
 
-/* ── Snapshot (Council card composite for the success page) ── */
+/* ── Snapshot (Council card composite for the success page) ──
+   Drawn by the print renderer itself (GoofyCard.render), so the success page
+   shows exactly what prints, minus the per-order QR (no order id yet). */
 function buildSnapshot(cb){
+  var nom = activeNom(), isCustom = state.variant !== 'standard';
+  var done = false;
+  function out(v){ if (!done) { done = true; cb(v); } }
+  setTimeout(function(){ out(null); }, 8000);   // never block checkout on it
   try {
-    var W = TW, H = TH;
-    var c = document.createElement('canvas'); c.width = W; c.height = H;
-    var x = c.getContext('2d');
-    var isCustom = state.variant !== 'standard';
-    function drawRest(){
-      x.textAlign = 'center';
-      if (isCustom) {
-        var rF = FIELDS.recipient, gF = FIELDS.giver;
-        var nom = activeNom();
-        x.fillStyle = '#202030';
-        x.textBaseline = 'alphabetic';
-        var rName = (nom.name.trim() || 'Their Name').slice(0, 30);
-        var rsp = fitScript(x, rName, rF.w, 68);
-        x.font = rsp + 'px "Pinyon Script",cursive';
-        x.fillText(rName, rF.x + rF.w / 2, rF.y + rF.h - 6);
-        if (state.variant === 'custom-giver') {
-          var gName = ($('fGiver').value.trim() || 'Your Name').slice(0, 30);
-          var gsp = fitScript(x, gName, gF.w, 68);
-          x.font = gsp + 'px "Pinyon Script",cursive';
-          x.fillText(gName, gF.x + gF.w / 2, gF.y + gF.h - 6);
-        }
-      }
-      finish();
-    }
-    // Custom snapshot gets the same live QR as the preview, composited over
-    // the blank template's empty QR corner (per-order QR is re-rendered at
-    // fulfilment via QR.licenceUrl(orderId) — see qr.html).
-    function finish(){
-      if (isCustom) {
-        var qrUrl = lastQrDataUrl;
-        if (!qrUrl) { try { qrUrl = licenceQrDataUrl(); } catch (e) { qrUrl = ''; } }
-        if (qrUrl) {
-          var qi = new Image();
-          qi.onload = function(){
-            try {
-              x.fillStyle = '#ffffff'; x.fillRect(QR_BOX.x, QR_BOX.y, QR_BOX.w, QR_BOX.h);
-              x.drawImage(qi, QR_BOX.x, QR_BOX.y, QR_BOX.w, QR_BOX.h);
-            } catch (e) {}
-            cb(c.toDataURL('image/jpeg', 0.85));
-          };
-          qi.onerror = function(){ cb(c.toDataURL('image/jpeg', 0.85)); };
-          qi.src = qrUrl;
-          return;
-        }
-      }
-      cb(c.toDataURL('image/jpeg', 0.85));
-    }
-    function fitScript(ctx, txt, maxW, start){
-      var s = start;
-      while (s > 10) { ctx.font = s + 'px "Pinyon Script",cursive'; if (ctx.measureText(txt).width <= maxW) break; s -= 2; }
-      return s;
-    }
-    var tpl = new Image();
-    tpl.onload = function(){
-      x.drawImage(tpl, 0, 0, W, H);
-      var nom = activeNom();
-      if (isCustom && nom.photo) {
-        var pimg = new Image();
-        pimg.onload = function(){
-          try {
-            var B = PHOTO_BOX;
-            x.save(); x.beginPath(); x.rect(B.x, B.y, B.w, B.h); x.clip();
-            var zoom = (isFinite(nom.crop.zoom) && nom.crop.zoom > 0) ? nom.crop.zoom : 1;
-            var cx = isFinite(nom.crop.cx) ? nom.crop.cx : 0.5;
-            var cy = isFinite(nom.crop.cy) ? nom.crop.cy : 0.5;
-            var cover = Math.max(B.w / pimg.width, B.h / pimg.height), eff = cover * zoom;
-            var dw = pimg.width * eff, dh = pimg.height * eff;
-            x.drawImage(pimg, B.x + B.w / 2 - cx * dw, B.y + B.h / 2 - cy * dh, dw, dh);
-            x.restore();
-          } catch (e) {}
-          drawRest();
-        };
-        pimg.onerror = drawRest; pimg.src = nom.photo;
-      } else drawRest();
-    };
-    tpl.onerror = function(){ cb(null); };
-    tpl.src = TPL[state.variant];
-  } catch (e) { cb(null); }
+    window.GoofyCard.render({
+      variant: state.variant,
+      recipientName: nom.name.trim() || 'Their Name',
+      giverName: ($('fGiver').value.trim() || 'Your Name'),
+      photo: (isCustom && nom.photo) ? nom.photo : null,
+      crop: nom.crop,
+      orderId: null
+    }).then(function(c){ out(c.toDataURL('image/jpeg', 0.85)); }, function(){ out(null); });
+  } catch (e) { out(null); }
 }
 
 /* ── Checkout ── */
@@ -1469,6 +1403,8 @@ function wireStatic(){
   document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('previewModal').classList.contains('open')) closePreview(); });
   if (window.ResizeObserver) new ResizeObserver(function(){ layout(); }).observe(frame);
   window.addEventListener('resize', layout);
+  // Names are measured in Pinyon Script: re-place them once it has loaded.
+  window.GoofyCard.ensureFont().then(layout);
   wireCrop();
 }
 
