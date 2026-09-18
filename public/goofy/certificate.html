@@ -60,7 +60,8 @@ body{background:#3a332a;color:var(--cream);font-family:'Inter',sans-serif;min-he
   <div class="field"><label>Batch (?src=)</label><input id="fBatch" type="text" maxlength="120" placeholder="frat-batch-1"/></div>
   <button id="btnUpdate" type="button">Update</button>
   <button id="btnPrint" type="button">🖨 Print 6×4</button>
-  <p class="hint">Open in Chrome → Print → paper <b>6×4 (4×6 inch)</b>, landscape, margins None, Background graphics ON. Params can also be passed straight in the URL.</p>
+  <button id="btnPng" type="button">⬇ PNG 6×4</button>
+  <p class="hint">Easiest exact-size route: <b>PNG 6×4</b> downloads a print-ready 1800×1200 file, then print it Actual Size on 4×6 media. Or Chrome → Print → paper <b>6×4 (4×6 inch)</b>, landscape, margins None, Background graphics ON. Params can also be passed straight in the URL.</p>
 </div>
 
 <div class="cert" id="cert">
@@ -159,6 +160,140 @@ function syncFromUrl(){
 }
 $('btnUpdate').addEventListener('click', render);
 $('btnPrint').addEventListener('click', function(){ render(); setTimeout(function(){ window.print(); }, 60); });
+/* ── PNG export: exact 6×4in at 300dpi (1800×1200). Redraws the certificate
+   on canvas so the file prints Actual Size from any app, no driver fuss. ── */
+function wrapLines(x, text, maxW){
+  var words = String(text).split(/\s+/), lines = [], line = '';
+  words.forEach(function(w){
+    var t = line ? line + ' ' + w : w;
+    if (x.measureText(t).width > maxW && line) { lines.push(line); line = w; }
+    else line = t;
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+function ringText(x, cx, cy, r, text, font, color){
+  x.save();
+  x.font = font; x.fillStyle = color;
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  var ang = -Math.PI / 2, i, ch, w, da;
+  for (i = 0; i < text.length; i++) {
+    ch = text[i]; w = x.measureText(ch).width; da = w / r;
+    ang += da / 2;
+    x.save();
+    x.translate(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+    x.rotate(ang + Math.PI / 2);
+    x.fillText(ch, 0, 0);
+    x.restore();
+    ang += da / 2;
+  }
+  x.restore();
+}
+function loadImg(src){
+  return new Promise(function(res, rej){
+    var im = new Image();
+    im.onload = function(){ res(im); };
+    im.onerror = rej;
+    im.src = src;
+  });
+}
+async function renderPNG(){
+  render();
+  try {
+    await Promise.all([
+      document.fonts.load('700 54px Cinzel'),
+      document.fonts.load('142px "Pinyon Script"'),
+      document.fonts.load('italic 40px Inter'),
+      document.fonts.load('600 31px Inter')
+    ]);
+  } catch (e) {}
+  var p = params();
+  var W = 1800, H = 1200;
+  var c = document.createElement('canvas'); c.width = W; c.height = H;
+  var x = c.getContext('2d');
+  var GOLD = '#a86e0a', INK = '#2b2118', GREY = '#555555';
+  x.fillStyle = '#fffdf7'; x.fillRect(0, 0, W, H);
+  var g = x.createRadialGradient(900, 0, 60, 900, 0, 900);
+  g.addColorStop(0, 'rgba(245,197,66,.10)'); g.addColorStop(1, 'rgba(245,197,66,0)');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // Borders: outer double gold + inner hairline.
+  x.strokeStyle = GOLD; x.lineWidth = 10; x.strokeRect(22, 22, W - 44, H - 44);
+  x.lineWidth = 3; x.strokeRect(40, 40, W - 80, H - 80);
+  x.strokeStyle = 'rgba(168,110,10,.5)'; x.lineWidth = 2; x.strokeRect(72, 72, W - 144, H - 144);
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  try { x.letterSpacing = '9px'; } catch (e) {}
+  x.fillStyle = GOLD; x.font = '700 54px Cinzel, serif';
+  x.fillText('THE COUNCIL OF G.O.A.T. AFFAIRS', 900, 168);
+  try { x.letterSpacing = '12px'; } catch (e) {}
+  x.fillStyle = '#7c7264'; x.font = '600 31px Inter, sans-serif';
+  x.fillText('CERTIFICATE OF NOMINATION', 900, 218);
+  try { x.letterSpacing = '0px'; } catch (e) {}
+  x.fillStyle = GREY; x.font = 'italic 40px Inter, sans-serif';
+  x.fillText('This certifies that', 900, 278);
+  // Name, shrunk to fit.
+  var fs = 142;
+  x.font = fs + 'px "Pinyon Script", cursive';
+  while (x.measureText(p.name).width > 1520 && fs > 50) { fs -= 4; x.font = fs + 'px "Pinyon Script", cursive'; }
+  x.fillStyle = '#111111';
+  x.fillText(p.name, 900, 430);
+  // Achievement, wrapped.
+  x.fillStyle = '#333333'; x.font = '37px Inter, sans-serif';
+  var lines = wrapLines(x, ACHIEVE[p.variant] || ACHIEVE.standard, 1120);
+  lines.forEach(function(ln, i){ x.fillText(ln, 900, 520 + i * 52); });
+  // Footer row.
+  var fy = 1010;
+  x.fillStyle = '#111111'; x.font = '71px "Pinyon Script", cursive';
+  x.fillText('Gerald', 330, fy);
+  x.strokeStyle = '#999999'; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(150, fy + 18); x.lineTo(510, fy + 18); x.stroke();
+  x.fillStyle = '#7c7264'; x.font = '600 27px Inter, sans-serif';
+  try { x.letterSpacing = '5px'; } catch (e) {}
+  x.fillText('KEEPER OF THE SEAL', 330, fy + 58);
+  try { x.letterSpacing = '0px'; } catch (e) {}
+  // Seal.
+  var sx = 900, sy = 975;
+  x.strokeStyle = GOLD; x.lineWidth = 7;
+  x.beginPath(); x.arc(sx, sy, 135, 0, Math.PI * 2); x.stroke();
+  x.lineWidth = 4;
+  x.beginPath(); x.arc(sx, sy, 78, 0, Math.PI * 2); x.stroke();
+  ringText(x, sx, sy, 105, '★ CERTIFIED GOAT ★ GREATEST OF ALL TIME', '700 25px Cinzel, serif', GOLD);
+  x.font = '72px serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('🐐', sx, sy + 4);
+  x.textBaseline = 'alphabetic';
+  // QR + caption.
+  try {
+    var qrIm = await loadImg($('cQr').src);
+    x.drawImage(qrIm, 1425, 800, 255, 255);
+  } catch (e) {}
+  x.fillStyle = '#7c7264'; x.font = '600 25px Inter, sans-serif';
+  try { x.letterSpacing = '3px'; } catch (e) {}
+  x.fillText('SCAN TO NOMINATE', 1552, 1085);
+  x.fillText('THE NEXT LEGEND', 1552, 1115);
+  try { x.letterSpacing = '0px'; } catch (e) {}
+  // Filing line.
+  var file = [];
+  if (p.order) file.push('Filing No. ' + p.order);
+  if (p.batch) file.push('Batch ' + p.batch);
+  x.fillStyle = '#999999'; x.font = '27px Inter, sans-serif';
+  try { x.letterSpacing = '3px'; } catch (e) {}
+  x.fillText(file.join('   ·   ') || 'Filed by the Council', 900, 1152);
+  try { x.letterSpacing = '0px'; } catch (e) {}
+  return c.toDataURL('image/png');
+}
+// Exposed for testing/preview; the button below is the normal path.
+window.GOATCertPNG = renderPNG;
+$('btnPng').addEventListener('click', function(){
+  var btn = $('btnPng'), orig = btn.textContent;
+  btn.textContent = 'Rendering…';
+  renderPNG().then(function(url){
+    var a = document.createElement('a');
+    var slug = (params().name || 'cert').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'cert';
+    a.href = url; a.download = 'goat-cert-' + slug + '.png';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ a.parentNode.removeChild(a); }, 500);
+    btn.textContent = orig;
+  }).catch(function(){ btn.textContent = 'Failed — try Print'; setTimeout(function(){ btn.textContent = orig; }, 2000); });
+});
 ['fName','fVariant','fOrder','fBatch'].forEach(function(id){
   $(id).addEventListener('keydown', function(e){ if (e.key === 'Enter') render(); });
 });
