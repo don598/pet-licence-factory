@@ -40,11 +40,12 @@ body{background:#3a332a;color:var(--cream);font-family:'Inter',sans-serif;min-he
 .c-qr .qr-cap{font-size:6pt;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:3px}
 .c-file{font-size:6.5pt;letter-spacing:1px;color:#999;margin-top:6px;text-transform:uppercase}
 @media print{
-  body{background:#fff;padding:0;display:block}
-  .toolbar{display:none !important}
-  .cert{margin:0}
-  @page{size:6in 4in landscape;margin:0}
+  html,body{width:6in;height:4in;margin:0 !important;padding:0 !important;background:#fff !important;display:block !important}
+  body > :not(.cert){display:none !important}
+  .cert{margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+/* Top-level: some Chrome builds ignore @page nested inside @media. */
+@page{size:6in 4in landscape;margin:0}
 </style>
 </head>
 <body>
