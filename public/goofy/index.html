@@ -278,6 +278,12 @@ button{ -webkit-tap-highlight-color:transparent; }
 .upload-row.show{display:flex}
 .upload-thumb{width:60px;height:60px;object-fit:cover;border-radius:10px;border:2px solid var(--gold)}
 .link-btn{background:none;border:0;color:var(--gold);font-size:13px;cursor:pointer;text-decoration:underline}
+/* Paste / drop a photo */
+.paste-btn{margin-top:10px;font:inherit;font-size:12.5px;font-weight:700;color:var(--gold2);background:var(--bg2);border:1.5px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer}
+.paste-btn:hover{border-color:var(--gold)}
+.dz-tip{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.45}
+.nom-card.drag .dropzone,.nom-card.drag .nom-thumb-row{border-color:var(--gold);background:#fffaf0;color:var(--cream)}
+.nom-card.drag{border-color:var(--gold)}
 .std-note{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.4);border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.6;color:var(--cream)}
 /* summary / checkout */
 .summary{background:#faf5ea;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:6px;font-size:14px}
@@ -759,6 +765,71 @@ function downscalePhoto(file, cb){
 }
 var photoEverAdded = false;
 var uploadIdx = 0;
+
+/* ── Paste / drop a photo ──
+   Besides the file picker: the "Paste image" button (async Clipboard API),
+   ⌘V / Ctrl+V anywhere on the nominees step (goes to the active nominee),
+   and dropping an image file on a nominee card. All feed handleFile. */
+var IS_TOUCH = !!(window.matchMedia && matchMedia('(hover: none)').matches);
+var PASTE_KEY = IS_TOUCH ? '' : (/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? '⌘V' : 'Ctrl+V');
+function imageFileFrom(list){
+  for (var i = 0; list && i < list.length; i++) {
+    var it = list[i], f = it && (it.getAsFile ? (it.kind === 'file' ? it.getAsFile() : null) : it);
+    if (f && /^image\//.test(f.type)) return f;
+  }
+  return null;
+}
+function pasteFromClipboard(idx){
+  var noClip = function(){
+    showErr(PASTE_KEY ? 'Your browser kept the clipboard to itself. Press ' + PASTE_KEY + ' to paste instead. 📋'
+                      : 'Your browser blocked the clipboard. Upload the screenshot instead. 📸');
+  };
+  if (!navigator.clipboard || !navigator.clipboard.read) { noClip(); return; }
+  navigator.clipboard.read().then(function(items){
+    for (var i = 0; i < items.length; i++) {
+      var t = items[i].types.filter(function(x){ return /^image\//.test(x); })[0];
+      if (t) {
+        return items[i].getType(t).then(function(blob){
+          if (window.PLFTrack) PLFTrack.step('goofy_photo_pasted', { via:'button' });
+          handleFile(new File([blob], 'pasted.' + (t.split('/')[1] || 'png'), { type:t }), idx);
+        });
+      }
+    }
+    showErr('No image on your clipboard yet. Copy a photo (or screenshot one), then tap Paste. 📋');
+  }).catch(noClip);
+}
+function wirePhotoPasteDrop(){
+  document.addEventListener('paste', function(e){
+    if (!selected || state.variant === 'standard' || curKey() !== 'nominees') return;
+    var f = imageFileFrom(e.clipboardData && e.clipboardData.items) || imageFileFrom(e.clipboardData && e.clipboardData.files);
+    if (!f) return;   // plain-text pastes (names) are left alone
+    e.preventDefault();
+    if (window.PLFTrack) PLFTrack.step('goofy_photo_pasted', { via:'keys' });
+    handleFile(f, state.activeIdx);
+  });
+  var box = $('nomineeListCust');
+  if (!box) return;
+  var hasFiles = function(e){ return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; };
+  var clear = function(){ Array.prototype.forEach.call(box.querySelectorAll('.nom-card.drag'), function(c){ c.classList.remove('drag'); }); };
+  box.addEventListener('dragover', function(e){
+    var card = e.target.closest('.nom-card');
+    if (!card || !hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    if (!card.classList.contains('drag')) { clear(); card.classList.add('drag'); }
+  });
+  box.addEventListener('dragleave', function(e){ if (!box.contains(e.relatedTarget)) clear(); });
+  box.addEventListener('drop', function(e){
+    var card = e.target.closest('.nom-card');
+    clear();
+    if (!card || !hasFiles(e)) return;
+    e.preventDefault();
+    var f = imageFileFrom(e.dataTransfer.files);
+    if (!f) { showErr('That file isn’t an image. Try a JPG or PNG. 📸'); return; }
+    if (window.PLFTrack) PLFTrack.step('goofy_photo_dropped');
+    handleFile(f, parseInt(card.dataset.idx, 10));
+  });
+}
 function handleFile(file, idx){
   if (!file || !/^image\//.test(file.type)) return;
   if (idx == null || !state.nominees[idx]) idx = state.activeIdx;
@@ -1094,13 +1165,17 @@ function buildNominees(){
         tx.style.fontSize = '13px'; tx.innerHTML = '<b>Photo added ✓</b>';
         var ch = document.createElement('button');
         ch.type = 'button'; ch.className = 'link-btn'; ch.dataset.act = 'change'; ch.textContent = 'Change';
-        row.appendChild(th); row.appendChild(tx); row.appendChild(ch);
+        var pa = document.createElement('button');
+        pa.type = 'button'; pa.className = 'link-btn'; pa.dataset.act = 'paste'; pa.textContent = 'Paste';
+        row.appendChild(th); row.appendChild(tx); row.appendChild(ch); row.appendChild(pa);
         card.appendChild(row);
       } else {
         var dz = document.createElement('div');
         dz.className = 'dropzone nom-drop'; dz.dataset.act = 'drop';
         dz.innerHTML = '<div class="uico">📸</div><div><b>Upload photo for ' +
-          escHtml(nomTitle(nom, i)) + '</b></div><div style="font-size:12px;margin-top:4px">Clear &amp; front-facing · JPG or PNG</div>';
+          escHtml(nomTitle(nom, i)) + '</b></div><div style="font-size:12px;margin-top:4px">Clear &amp; front-facing · JPG or PNG</div>' +
+          '<button type="button" class="paste-btn" data-act="paste"' + (PASTE_KEY ? ' title="Or press ' + PASTE_KEY + '"' : '') + '>📋 Paste image</button>' +
+          '<div class="dz-tip">Tip: a screenshot of their Instagram profile photo works. Paste or upload it, then zoom to fit.</div>';
         card.appendChild(dz);
       }
     }
@@ -1392,6 +1467,7 @@ function wireStatic(){
     if (e.target.files && e.target.files[0]) handleFile(e.target.files[0], uploadIdx);
     e.target.value = '';
   });
+  wirePhotoPasteDrop();
   // Nominee lists (both paths share state; delegation per container).
   Array.prototype.forEach.call(document.querySelectorAll('#nomineeListCust, #nomineeListStd'), function(box){
     box.addEventListener('click', function(e){
@@ -1402,6 +1478,7 @@ function wireStatic(){
       if (btn) {
         var act = btn.dataset.act;
         if (act === 'drop' || act === 'change') { uploadIdx = i; state.activeIdx = i; $('fileInput').click(); }
+        else if (act === 'paste') { pasteFromClipboard(i); }
         else if (act === 'view') { setActive(i, true); }
         else if (act === 'rm') {
           if (state.nominees.length <= 1) return;
