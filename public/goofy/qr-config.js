@@ -22,7 +22,7 @@
 
     // ── Scan modal copy (shown when a visitor lands with ?src= in the URL) ──
     MODAL_TITLE: '🐐 Right of Nomination Granted',
-    MODAL_BODY: 'Congratulations, Fellow GOAT. The Council has granted you the Right of Nomination. Choose the honor below and we will deliver the certification upon submission. A small processing fee of $4.95 applies.',
+    MODAL_BODY: 'Congratulations, Fellow GOAT. The Council has granted you the Right of Nomination. Choose the honor below and we will deliver the certification upon submission. The processing fee is the only thing charged.',
     MODAL_CTA: 'Choose the honor →'
   };
 
