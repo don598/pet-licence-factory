@@ -44,6 +44,19 @@ body{background:#3a332a;color:var(--cream);font-family:'Inter',sans-serif;min-he
   body > :not(.cert){display:none !important}
   .cert{margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+/* ── Thermal B&W mode: pure black on white, no grays, no backgrounds.
+   Thermal heads dither gray into mush and light text washes out. ── */
+.cert.thermal{border-color:#000;background:#fff}
+.cert.thermal::before{display:none}
+.cert.thermal::after{border-color:#000}
+.cert.thermal .c-head,.cert.thermal .c-sub,.cert.thermal .c-intro,
+.cert.thermal .c-achievement,.cert.thermal .c-sig .sig-title,
+.cert.thermal .c-qr .qr-cap,.cert.thermal .c-file{color:#000}
+.cert.thermal .c-name,.cert.thermal .sig-name{color:#000}
+.cert.thermal .c-sig .sig-title{border-top-color:#000}
+.cert.thermal .c-seal circle{stroke:#000}
+.cert.thermal .c-seal text{fill:#000}
+.cert.thermal .c-qr img{border-color:#000;border-width:2px}
 /* Top-level: some Chrome builds ignore @page nested inside @media. */
 @page{size:6in 4in landscape;margin:0}
 </style>
@@ -58,10 +71,11 @@ body{background:#3a332a;color:var(--cream);font-family:'Inter',sans-serif;min-he
   </select></div>
   <div class="field"><label>Order (?o=)</label><input id="fOrder" type="text" maxlength="40" placeholder="GOOFY-…"/></div>
   <div class="field"><label>Batch (?src=)</label><input id="fBatch" type="text" maxlength="120" placeholder="frat-batch-1"/></div>
+  <div class="field"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input id="fThermal" type="checkbox" style="width:auto;transform:scale(1.3)"/> Thermal B&W</label></div>
   <button id="btnUpdate" type="button">Update</button>
   <button id="btnPrint" type="button">🖨 Print 6×4</button>
   <button id="btnPng" type="button">⬇ PNG 6×4</button>
-  <p class="hint">Easiest exact-size route: <b>PNG 6×4</b> downloads a print-ready 1800×1200 file, then print it Actual Size on 4×6 media. Or Chrome → Print → paper <b>6×4 (4×6 inch)</b>, landscape, margins None, Background graphics ON. Params can also be passed straight in the URL.</p>
+  <p class="hint">Easiest exact-size route: <b>PNG 6×4</b> downloads a print-ready 1800×1200 file, then print it Actual Size on 4×6 media. Tick <b>Thermal B&W</b> for label printers (pure black, no grays). Or Chrome → Print → paper <b>6×4 (4×6 inch)</b>, landscape, margins None, Background graphics ON. Params can also be passed straight in the URL.</p>
 </div>
 
 <div class="cert" id="cert">
@@ -107,17 +121,21 @@ var ACHIEVE = {
 function params(){
   var qs;
   try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = { get:function(){ return ''; } }; }
+  var thermal = $('fThermal').checked || qs.get('thermal') === '1';
   return {
     name: ($('fName').value.trim() || qs.get('name') || 'Greg').slice(0, 40),
     variant: ['standard','custom-giver','custom-anon'].indexOf($('fVariant').value) >= 0
       ? $('fVariant').value : ((qs.get('variant') || 'standard').toLowerCase()),
     order: ($('fOrder').value.trim() || qs.get('o') || '').slice(0, 40),
-    batch: ($('fBatch').value.trim() || qs.get('src') || '').slice(0, 120)
+    batch: ($('fBatch').value.trim() || qs.get('src') || '').slice(0, 120),
+    thermal: thermal
   };
 }
 function render(){
   var p = params();
   if (['standard','custom-giver','custom-anon'].indexOf(p.variant) < 0) p.variant = 'standard';
+  $('fThermal').checked = p.thermal;
+  $('cert').classList.toggle('thermal', p.thermal);
   $('cName').textContent = p.name;
   // Shrink long names to fit the line.
   var fs = 34;
@@ -157,6 +175,7 @@ function syncFromUrl(){
   if (qs.get('variant')) $('fVariant').value = qs.get('variant').toLowerCase();
   if (qs.get('o')) $('fOrder').value = qs.get('o');
   if (qs.get('src')) $('fBatch').value = qs.get('src');
+  if (qs.get('thermal') === '1') $('fThermal').checked = true;
 }
 $('btnUpdate').addEventListener('click', render);
 $('btnPrint').addEventListener('click', function(){ render(); setTimeout(function(){ window.print(); }, 60); });
@@ -211,21 +230,26 @@ async function renderPNG(){
   var W = 1800, H = 1200;
   var c = document.createElement('canvas'); c.width = W; c.height = H;
   var x = c.getContext('2d');
-  var GOLD = '#a86e0a', INK = '#2b2118', GREY = '#555555';
-  x.fillStyle = '#fffdf7'; x.fillRect(0, 0, W, H);
-  var g = x.createRadialGradient(900, 0, 60, 900, 0, 900);
-  g.addColorStop(0, 'rgba(245,197,66,.10)'); g.addColorStop(1, 'rgba(245,197,66,0)');
-  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // Thermal: pure black on white, no glow, heavier lines, larger small type.
+  var MONO = !!p.thermal;
+  var GOLD = MONO ? '#000000' : '#a86e0a', GREY = MONO ? '#000000' : '#555555';
+  var SMALL = MONO ? 1.15 : 1;
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
+  if (!MONO) {
+    var g = x.createRadialGradient(900, 0, 60, 900, 0, 900);
+    g.addColorStop(0, 'rgba(245,197,66,.10)'); g.addColorStop(1, 'rgba(245,197,66,0)');
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+  }
   // Borders: outer double gold + inner hairline.
-  x.strokeStyle = GOLD; x.lineWidth = 10; x.strokeRect(22, 22, W - 44, H - 44);
-  x.lineWidth = 3; x.strokeRect(40, 40, W - 80, H - 80);
-  x.strokeStyle = 'rgba(168,110,10,.5)'; x.lineWidth = 2; x.strokeRect(72, 72, W - 144, H - 144);
+  x.strokeStyle = GOLD; x.lineWidth = MONO ? 14 : 10; x.strokeRect(22, 22, W - 44, H - 44);
+  x.lineWidth = MONO ? 5 : 3; x.strokeRect(40, 40, W - 80, H - 80);
+  x.strokeStyle = MONO ? '#000000' : 'rgba(168,110,10,.5)'; x.lineWidth = 2; x.strokeRect(72, 72, W - 144, H - 144);
   x.textAlign = 'center'; x.textBaseline = 'alphabetic';
   try { x.letterSpacing = '9px'; } catch (e) {}
   x.fillStyle = GOLD; x.font = '700 54px Cinzel, serif';
   x.fillText('THE COUNCIL OF G.O.A.T. AFFAIRS', 900, 168);
   try { x.letterSpacing = '12px'; } catch (e) {}
-  x.fillStyle = '#7c7264'; x.font = '600 31px Inter, sans-serif';
+  x.fillStyle = GREY; x.font = '600 31px Inter, sans-serif';
   x.fillText('CERTIFICATE OF NOMINATION', 900, 218);
   try { x.letterSpacing = '0px'; } catch (e) {}
   x.fillStyle = GREY; x.font = 'italic 40px Inter, sans-serif';
@@ -237,7 +261,7 @@ async function renderPNG(){
   x.fillStyle = '#111111';
   x.fillText(p.name, 900, 430);
   // Achievement, wrapped.
-  x.fillStyle = '#333333'; x.font = '37px Inter, sans-serif';
+  x.fillStyle = MONO ? '#000000' : '#333333'; x.font = '37px Inter, sans-serif';
   var lines = wrapLines(x, ACHIEVE[p.variant] || ACHIEVE.standard, 1120);
   lines.forEach(function(ln, i){ x.fillText(ln, 900, 520 + i * 52); });
   // Footer row.
@@ -246,7 +270,7 @@ async function renderPNG(){
   x.fillText('Gerald', 330, fy);
   x.strokeStyle = '#999999'; x.lineWidth = 2;
   x.beginPath(); x.moveTo(150, fy + 18); x.lineTo(510, fy + 18); x.stroke();
-  x.fillStyle = '#7c7264'; x.font = '600 27px Inter, sans-serif';
+  x.fillStyle = GREY; x.font = '600 ' + Math.round(27 * SMALL) + 'px Inter, sans-serif';
   try { x.letterSpacing = '5px'; } catch (e) {}
   x.fillText('KEEPER OF THE SEAL', 330, fy + 58);
   try { x.letterSpacing = '0px'; } catch (e) {}
@@ -265,7 +289,7 @@ async function renderPNG(){
     var qrIm = await loadImg($('cQr').src);
     x.drawImage(qrIm, 1425, 800, 255, 255);
   } catch (e) {}
-  x.fillStyle = '#7c7264'; x.font = '600 25px Inter, sans-serif';
+  x.fillStyle = GREY; x.font = '600 ' + Math.round(25 * SMALL) + 'px Inter, sans-serif';
   try { x.letterSpacing = '3px'; } catch (e) {}
   x.fillText('SCAN TO NOMINATE', 1552, 1085);
   x.fillText('THE NEXT LEGEND', 1552, 1115);
@@ -274,7 +298,7 @@ async function renderPNG(){
   var file = [];
   if (p.order) file.push('Filing No. ' + p.order);
   if (p.batch) file.push('Batch ' + p.batch);
-  x.fillStyle = '#999999'; x.font = '27px Inter, sans-serif';
+  x.fillStyle = MONO ? '#000000' : '#999999'; x.font = Math.round(27 * SMALL) + 'px Inter, sans-serif';
   try { x.letterSpacing = '3px'; } catch (e) {}
   x.fillText(file.join('   ·   ') || 'Filed by the Council', 900, 1152);
   try { x.letterSpacing = '0px'; } catch (e) {}
@@ -288,7 +312,7 @@ $('btnPng').addEventListener('click', function(){
   renderPNG().then(function(url){
     var a = document.createElement('a');
     var slug = (params().name || 'cert').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'cert';
-    a.href = url; a.download = 'goat-cert-' + slug + '.png';
+    a.href = url; a.download = 'goat-cert-' + slug + (params().thermal ? '-thermal' : '') + '.png';
     document.body.appendChild(a); a.click();
     setTimeout(function(){ a.parentNode.removeChild(a); }, 500);
     btn.textContent = orig;
