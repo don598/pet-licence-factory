@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>GOAT Certificate 6x4 Print - Goofy Licenses</title>
+<meta name="description" content="Print-ready 6x4 Council certificate for G.O.A.T. nominations. Fed by URL params."/>
+<meta name="robots" content="noindex, nofollow"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐐</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Pinyon+Script&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#a86e0a;--cream:#2b2118;--muted:#7c7264;--paper:#fffdf7}
+body{background:#3a332a;color:var(--cream);font-family:'Inter',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:22px 16px 60px}
+/* ── Screen toolbar (hidden in print) ── */
+.toolbar{background:var(--paper);border-radius:12px;padding:14px 16px;max-width:6in;width:100%;margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.toolbar .field{flex:1 1 120px}
+.toolbar label{display:block;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.toolbar input,.toolbar select{width:100%;border:2px solid rgba(120,90,20,.28);border-radius:8px;font-size:14px;padding:8px 10px;font-family:inherit;background:#fff;color:var(--cream)}
+.toolbar button{background:#f5c542;color:#2a1a05;font-weight:800;font-size:14px;padding:10px 18px;border-radius:10px;border:0;cursor:pointer;font-family:inherit}
+.toolbar .hint{flex:1 1 100%;font-size:12px;color:var(--muted);line-height:1.5}
+/* ── The 6×4 certificate ── */
+.cert{position:relative;width:6in;height:4in;background:var(--paper);border:6px double var(--gold);border-radius:4px;display:flex;flex-direction:column;align-items:center;padding:0.28in 0.4in 0.24in;overflow:hidden}
+.cert::after{content:'';position:absolute;inset:0.12in;border:1px solid rgba(168,110,10,.5);pointer-events:none}
+.cert::before{content:'';position:absolute;inset:0;background:radial-gradient(90% 90% at 50% 0%,rgba(245,197,66,.10),rgba(245,197,66,0) 60%);pointer-events:none}
+.c-head{font-family:'Cinzel',serif;font-weight:700;font-size:13pt;letter-spacing:3px;color:var(--gold);text-align:center;line-height:1.3}
+.c-sub{font-size:7.5pt;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin:4px 0 8px;text-align:center}
+.c-intro{font-style:italic;font-size:9.5pt;color:#555}
+.c-name{font-family:'Pinyon Script',cursive;font-size:34pt;line-height:1.15;color:#111;margin:2px 0 4px;text-align:center;max-width:100%;overflow:hidden;white-space:nowrap}
+.c-achieve{font-size:9pt;color:#333;text-align:center;line-height:1.5;max-width:3.6in}
+.c-foot{margin-top:auto;width:100%;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:8px}
+.c-sig{text-align:center}
+.c-sig .sig-name{font-family:'Pinyon Script',cursive;font-size:17pt;line-height:1;color:#111}
+.c-sig .sig-title{font-size:7pt;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-top:1px solid #999;padding-top:3px;margin-top:1px}
+.c-seal{width:0.95in;height:0.95in;flex:0 0 auto}
+.c-qr{text-align:center}
+.c-qr img{width:0.85in;height:0.85in;border:1px solid rgba(120,90,20,.4);border-radius:4px;background:#fff}
+.c-qr .qr-cap{font-size:6pt;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.c-file{font-size:6.5pt;letter-spacing:1px;color:#999;margin-top:6px;text-transform:uppercase}
+@media print{
+  body{background:#fff;padding:0;display:block}
+  .toolbar{display:none !important}
+  .cert{margin:0}
+  @page{size:6in 4in landscape;margin:0}
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <div class="field"><label>Recipient (?name=)</label><input id="fName" type="text" maxlength="40" placeholder="Greg"/></div>
+  <div class="field"><label>Honor (?variant=)</label><select id="fVariant">
+    <option value="standard">Standard</option>
+    <option value="custom-giver">Custom, with giver credit</option>
+    <option value="custom-anon">Custom, anonymous</option>
+  </select></div>
+  <div class="field"><label>Order (?o=)</label><input id="fOrder" type="text" maxlength="40" placeholder="GOOFY-…"/></div>
+  <div class="field"><label>Batch (?src=)</label><input id="fBatch" type="text" maxlength="120" placeholder="frat-batch-1"/></div>
+  <button id="btnUpdate" type="button">Update</button>
+  <button id="btnPrint" type="button">🖨 Print 6×4</button>
+  <p class="hint">Open in Chrome → Print → paper <b>6×4 (4×6 inch)</b>, landscape, margins None, Background graphics ON. Params can also be passed straight in the URL.</p>
+</div>
+
+<div class="cert" id="cert">
+  <div class="c-head">THE COUNCIL OF G.O.A.T. AFFAIRS</div>
+  <div class="c-sub">Certificate of Nomination</div>
+  <div class="c-intro">This certifies that</div>
+  <div class="c-name" id="cName">Greg</div>
+  <div class="c-achieve" id="cAchieve"></div>
+  <div class="c-foot">
+    <div class="c-sig">
+      <div class="sig-name">Gerald</div>
+      <div class="sig-title">Keeper of the Seal</div>
+    </div>
+    <svg class="c-seal" viewBox="0 0 120 120" aria-label="Certified GOAT seal">
+      <defs><path id="sealArc" d="M60,60 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs>
+      <circle cx="60" cy="60" r="57" fill="none" stroke="#a86e0a" stroke-width="2.5"/>
+      <circle cx="60" cy="60" r="33" fill="none" stroke="#a86e0a" stroke-width="1.5"/>
+      <text font-size="10.5" letter-spacing="2.2" fill="#a86e0a" font-family="Cinzel,serif" font-weight="700">
+        <textPath href="#sealArc">★ CERTIFIED GOAT ★ GREATEST OF ALL TIME</textPath>
+      </text>
+      <text x="60" y="73" text-anchor="middle" font-size="30">🐐</text>
+    </svg>
+    <div class="c-qr">
+      <img id="cQr" alt="Nominate the next legend"/>
+      <div class="qr-cap">Scan to nominate<br/>the next legend</div>
+    </div>
+  </div>
+  <div class="c-file" id="cFile"></div>
+</div>
+
+<script src="/goofy/qr-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+(function(){
+'use strict';
+var Q = window.GOOFY_QR || { CANONICAL_ORIGIN:'https://goofylicenses.com', LINE_PATH:'/goat', LICENCE_SRC:'license-qr' };
+function $(id){ return document.getElementById(id); }
+var ACHIEVE = {
+  'standard': 'is hereby recognized as a certified G.O.A.T. and entered into the Council record.',
+  'custom-giver': 'whose likeness and name are hereby entered into the Council record as a certified G.O.A.T.',
+  'custom-anon': 'whose likeness and name are hereby entered into the Council record as a certified G.O.A.T.'
+};
+function params(){
+  var qs;
+  try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = { get:function(){ return ''; } }; }
+  return {
+    name: ($('fName').value.trim() || qs.get('name') || 'Greg').slice(0, 40),
+    variant: ['standard','custom-giver','custom-anon'].indexOf($('fVariant').value) >= 0
+      ? $('fVariant').value : ((qs.get('variant') || 'standard').toLowerCase()),
+    order: ($('fOrder').value.trim() || qs.get('o') || '').slice(0, 40),
+    batch: ($('fBatch').value.trim() || qs.get('src') || '').slice(0, 120)
+  };
+}
+function render(){
+  var p = params();
+  if (['standard','custom-giver','custom-anon'].indexOf(p.variant) < 0) p.variant = 'standard';
+  $('cName').textContent = p.name;
+  // Shrink long names to fit the line.
+  var fs = 34;
+  $('cName').style.fontSize = fs + 'pt';
+  var guard = 0;
+  while ($('cName').scrollWidth > $('cName').clientWidth + 1 && fs > 16 && guard++ < 40) {
+    fs -= 1; $('cName').style.fontSize = fs + 'pt';
+  }
+  $('cAchieve').textContent = ACHIEVE[p.variant];
+  var file = [];
+  if (p.order) file.push('Filing No. ' + p.order);
+  if (p.batch) file.push('Batch ' + p.batch);
+  $('cFile').textContent = file.join('  ·  ') || 'Filed by the Council';
+  // The certificate's QR keeps the loop going: scan to nominate the next
+  // legend (personalized to this order when known).
+  var url = Q.CANONICAL_ORIGIN + Q.LINE_PATH + '?src=' + encodeURIComponent(Q.LICENCE_SRC)
+    + (p.order ? '&o=' + encodeURIComponent(p.order) : '');
+  try {
+    var qr = qrcode(0, 'M');
+    qr.addData(url); qr.make();
+    $('cQr').src = qr.createDataURL(6, 1);
+  } catch (e) { $('cQr').alt = 'QR unavailable offline'; }
+  // Reflect back into the URL so a print/reload reproduces this exact cert.
+  try {
+    var u = new URL(window.location.href);
+    u.searchParams.set('name', p.name);
+    u.searchParams.set('variant', p.variant);
+    if (p.order) u.searchParams.set('o', p.order); else u.searchParams.delete('o');
+    if (p.batch) u.searchParams.set('src', p.batch); else u.searchParams.delete('src');
+    window.history.replaceState(null, '', u.toString());
+  } catch (e) {}
+}
+function syncFromUrl(){
+  var qs;
+  try { qs = new URLSearchParams(window.location.search); } catch (e) { return; }
+  if (qs.get('name')) $('fName').value = qs.get('name');
+  if (qs.get('variant')) $('fVariant').value = qs.get('variant').toLowerCase();
+  if (qs.get('o')) $('fOrder').value = qs.get('o');
+  if (qs.get('src')) $('fBatch').value = qs.get('src');
+}
+$('btnUpdate').addEventListener('click', render);
+$('btnPrint').addEventListener('click', function(){ render(); setTimeout(function(){ window.print(); }, 60); });
+['fName','fVariant','fOrder','fBatch'].forEach(function(id){
+  $(id).addEventListener('keydown', function(e){ if (e.key === 'Enter') render(); });
+});
+syncFromUrl();
+render();
+})();
+</script>
+</body>
+</html>
