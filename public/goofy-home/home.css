@@ -26,6 +26,7 @@ img{display:block;max-width:100%}
 /* Header */
 .top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px var(--gutter);border-bottom:2px solid var(--ink)}
 .brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+.brand .mark{flex:0 0 auto;display:block}
 .brand-name{display:flex;flex-direction:column;gap:3px}
 .brand-name b{font-family:var(--display);font-weight:800;font-size:24px;line-height:1;letter-spacing:.01em}
 .brand-name span{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--muted)}
@@ -153,6 +154,7 @@ img{display:block;max-width:100%}
 }
 @media (max-width:420px){
   .brand-name span{display:none}
+  .brand .mark{width:44px;height:32px}
   .nav{gap:16px}
 }
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
