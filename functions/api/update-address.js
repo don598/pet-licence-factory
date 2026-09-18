@@ -21,6 +21,7 @@ import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { sendOrderConfirmationEmail, sendGoofyConfirmationEmail } from '../_shared/email.js';
 import { attributeOrder, getPaymentIntentId } from '../_shared/affiliate.js';
+import { lineOfBrand } from '../_shared/lines.js';
 
 const MAX_ATTEMPTS = 5;
 
@@ -205,7 +206,7 @@ export async function onRequest(context) {
         `SELECT brand, variant, recipient_name, giver_name FROM pet_orders WHERE id = $1 LIMIT 1`,
         [order.id]
       );
-      if ((b.rows[0]?.brand || '').trim() === 'goofy') goofyCtx = b.rows[0];
+      if (lineOfBrand(b.rows[0]?.brand) === 'goat') goofyCtx = b.rows[0];
     } catch (brandErr) {
       console.warn('update-address brand lookup failed (PLC fallback, non-fatal):', brandErr && brandErr.message);
     }

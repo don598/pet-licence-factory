@@ -5,6 +5,8 @@
 // Production overrides this via the SENDGRID_FROM_EMAIL env var.
 // ---------------------------------------------------------------------------
 
+import { LINE_FROM_NAME } from './lines.js';
+
 const SENDGRID_ENDPOINT = 'https://api.sendgrid.com/v3/mail/send';
 
 const DEFAULT_FROM_EMAIL = 'hello@petlicensefactory.com';
@@ -29,7 +31,9 @@ export function esc(v) {
 // ── Low-level send ───────────────────────────────────────────────────────────
 // `attachments` (optional): array of SendGrid attachment objects, each
 // { content (pure base64, no data: prefix), type, filename, disposition, content_id }.
-export async function sendEmail(env, { to, subject, html, text, replyTo, customArgs, attachments, asmGroupId, subscriptionTracking }) {
+// `fromName` (optional) overrides the sender display name for one send, so a
+// product line can sign its own mail (the G.O.A.T. line signs as the Council).
+export async function sendEmail(env, { to, subject, html, text, replyTo, fromName: fromNameOverride, customArgs, attachments, asmGroupId, subscriptionTracking }) {
   const apiKey = env.SENDGRID_API_KEY;
   if (!apiKey) {
     console.warn('[SendGrid] No SENDGRID_API_KEY set — skipping email to', to);
@@ -41,7 +45,7 @@ export async function sendEmail(env, { to, subject, html, text, replyTo, customA
   }
 
   const fromEmail = env.SENDGRID_FROM_EMAIL || DEFAULT_FROM_EMAIL;
-  const fromName  = env.SENDGRID_FROM_NAME  || DEFAULT_FROM_NAME;
+  const fromName  = fromNameOverride || env.SENDGRID_FROM_NAME || DEFAULT_FROM_NAME;
   const replyEmail = replyTo || env.SENDGRID_REPLY_TO || DEFAULT_REPLY_TO;
 
   // custom_args are echoed back verbatim on every Event Webhook event, so we
@@ -364,7 +368,7 @@ Questions? Just reply to this email.
 
 — The Council of G.O.A.T. Affairs (Goofy Licenses)`;
 
-  return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'goofy_confirmation' } });
+  return sendEmail(env, { to: customerEmail, subject, html, text, fromName: LINE_FROM_NAME.goat, customArgs: { order_id: orderId, email_type: 'goofy_confirmation' } });
 }
 
 // ── Stamp-mail shipped (called when admin flips a stamp order to 'printed') ──
@@ -903,9 +907,131 @@ Unsubscribe: ${unsubHref}
 
   return sendEmail(env, {
     to, subject, html, text,
+    fromName: LINE_FROM_NAME.goat,
     customArgs: { email_type: 'goofy_recovery', order_id: orderId },
     asmGroupId,
     subscriptionTracking: !asmGroupId,
+  });
+}
+
+// ── G.O.A.T. line: kit shipped ───────────────────────────────────────────────
+// The Council-branded counterpart of sendShippingNotificationEmail +
+// sendStampShippedEmail, sent from the admin flows for goat-line orders so a
+// Goofy customer never gets a Pet License Factory email. Goes to the
+// NOMINATOR (the buyer), not the nominee, so the surprise survives. With a
+// tracking number it shows the USPS tracking box; without one (stamp mail) it
+// says so. Styled like the printed Council certificate: black on cream.
+export async function sendGoofyShippedEmail(env, order) {
+  const {
+    orderId, customerEmail, recipientName, giverName, variant, selfNominate,
+    trackingNumber,
+    shipAddrLine1, shipAddrLine2, shipCity, shipState, shipZip,
+  } = order;
+  if (!customerEmail) return { skipped: true, reason: 'no email' };
+
+  const nominee = (recipientName || '').trim() || 'your nominee';
+  const tracking = (trackingNumber || '').trim();
+  const trackUrl = tracking ? `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(tracking)}` : '';
+  const honorLabel = ({
+    'standard':     'Standard',
+    'custom-giver': 'Custom, with giver credit',
+    'custom-anon':  'Custom, anonymous',
+  })[variant] || 'G.O.A.T. License';
+  const presentedBy = variant === 'custom-giver' && giverName ? giverName : '';
+  const shipTo = [shipAddrLine1, shipAddrLine2, [shipCity, [shipState, shipZip].filter(Boolean).join(' ')].filter(Boolean).join(', ')]
+    .filter(Boolean).join(', ');
+  const origin = (env.GOOFY_ORIGIN || 'https://goofylicenses.com').replace(/\/+$/, '');
+
+  const subject = `🐐 ${nominee}'s G.O.A.T. license is in the mail`;
+
+  const row = (label, value, mono) => `<tr>
+            <td style="padding:9px 0;border-bottom:1px solid #ddd6c5;font-size:14px;color:#4a4a4a;">${label}</td>
+            <td style="padding:9px 0;border-bottom:1px solid #ddd6c5;font-size:14px;color:#1a1a1a;text-align:right;${mono ? "font-family:'Courier New',monospace;" : ''}">${esc(value)}</td>
+          </tr>`;
+
+  const trackingBlock = tracking
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #1a1a1a;border-radius:4px;">
+            <tr><td style="padding:18px 20px;text-align:center;">
+              <div style="font-size:11px;letter-spacing:2px;color:#4a4a4a;text-transform:uppercase;">Tracking number</div>
+              <div style="margin:8px 0 14px;font-family:'Courier New',monospace;font-size:17px;font-weight:700;color:#1a1a1a;word-break:break-all;">${esc(tracking)}</div>
+              <a href="${esc(trackUrl)}" style="display:inline-block;background:#f5c542;color:#2a1a05;text-decoration:none;font-weight:700;font-size:15px;padding:13px 28px;border-radius:8px;">Track the package</a>
+              ${selfNominate ? '' : `<div style="margin-top:12px;font-size:13px;color:#4a4a4a;">It's a surprise, so tracking goes to you, not to ${esc(nominee)}.</div>`}
+            </td></tr>
+          </table>`
+    : `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #1a1a1a;border-radius:4px;">
+            <tr><td style="padding:16px 20px;text-align:center;font-size:14px;line-height:1.6;color:#333333;">
+              Sealed, stamped and sent by USPS mail. Stamp mail doesn't come with tracking, so allow a few business days.
+            </td></tr>
+          </table>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#e7e2d6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#e7e2d6;padding:24px 0;">
+    <tr><td align="center" style="padding:0 12px;">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;background:#fffdf7;border:1px solid #1a1a1a;border-radius:4px;">
+        <tr><td style="padding:34px 40px 8px;text-align:center;">
+          <img src="${esc(origin)}/goofy/images/seal-email.png" width="96" height="96" alt="Certified G.O.A.T. seal" style="display:block;margin:0 auto 18px;border:0;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:15px;letter-spacing:3px;color:#1a1a1a;">THE COUNCIL OF G.O.A.T. AFFAIRS</div>
+          <div style="width:120px;height:1px;background:#1a1a1a;margin:18px auto;line-height:1px;font-size:1px;">&nbsp;</div>
+          <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:26px;line-height:1.25;color:#1a1a1a;">The certification is in the mail.</h1>
+          <p style="margin:14px 0 0;font-size:16px;line-height:1.6;color:#333333;">${esc(nominee)}'s G.O.A.T. license kit has left the chambers and is on its way.</p>
+        </td></tr>
+        <tr><td style="padding:22px 40px 6px;">
+          ${trackingBlock}
+        </td></tr>
+        <tr><td style="padding:14px 40px 6px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+          ${row('Filing no.', orderId || '', true)}
+          ${row('Honor', honorLabel)}
+          ${row('Nominee', nominee)}
+          ${presentedBy ? row('Presented by', presentedBy) : ''}
+          ${shipTo ? row('Ships to', shipTo) : ''}
+          </table>
+        </td></tr>
+        <tr><td style="padding:18px 40px 34px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#1a1a1a;border-radius:4px;">
+            <tr><td style="padding:18px 20px;text-align:center;">
+              <div style="font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:16px;color:#fffdf7;">Know another legend?</div>
+              <div style="margin-top:6px;font-size:14px;line-height:1.5;color:#e6e1d4;">The kit carries a QR code. Scan it to nominate the next one, or head to <a href="${esc(origin)}/goat" style="color:#f5c542;">goofylicenses.com/goat</a>.</div>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;">
+        <tr><td style="padding:18px 20px;text-align:center;font-size:12px;line-height:1.6;color:#4a4a4a;">
+          <strong style="color:#1a1a1a;">Goofy Licenses</strong> · goofylicenses.com<br>
+          Novelty licenses for entertainment. Not a real government document.<br>
+          Questions? Reply to this email, a clerk reads every message.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text =
+`The certification is in the mail.
+
+${nominee}'s G.O.A.T. license kit has left the chambers and is on its way.
+
+${tracking ? `Tracking number: ${tracking}\nTrack it: ${trackUrl}${selfNominate ? '' : `\nIt's a surprise, so tracking goes to you, not to ${nominee}.`}` : 'Sealed, stamped and sent by USPS mail. Stamp mail does not come with tracking.'}
+
+Filing no.: ${orderId || ''}
+Honor: ${honorLabel}
+Nominee: ${nominee}${presentedBy ? `\nPresented by: ${presentedBy}` : ''}${shipTo ? `\nShips to: ${shipTo}` : ''}
+
+Know another legend? The kit carries a QR code. Scan it to nominate the next one: ${origin}/goat
+
+Questions? Reply to this email.
+
+The Council of G.O.A.T. Affairs (Goofy Licenses)`;
+
+  return sendEmail(env, {
+    to: customerEmail, subject, html, text,
+    fromName: LINE_FROM_NAME.goat,
+    customArgs: { order_id: orderId, email_type: 'goofy_shipped' },
   });
 }
 

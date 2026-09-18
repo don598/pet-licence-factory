@@ -9,6 +9,7 @@ import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { readRefCookie, normalizeCode } from '../_shared/affiliate.js';
 import { PRICES, GOOFY_PRICES } from '../_shared/pricing.js';
+import { lineOfBrand } from '../_shared/lines.js';
 
 // PRICES (US cents) is the canonical source of truth — see
 // functions/_shared/pricing.js. The client mirror is public/pricing.js.
@@ -55,8 +56,9 @@ export async function onRequest(context) {
     recipientCount = 0,
   } = body;
 
-  // Brand gate: ONLY the exact string 'goofy' takes the Goofy path.
-  const isGoofy = brand === 'goofy';
+  // Brand gate: ONLY the G.O.A.T. line ('goat', or the legacy 'goofy' the
+  // builder still sends) takes the Goofy path. Everything else is PLC.
+  const isGoofy = !!brand && lineOfBrand(brand) === 'goat';
   const GOOFY_VARIANTS = ['standard', 'custom-giver', 'custom-anon'];
   const gVariant = GOOFY_VARIANTS.includes(variant) ? variant : 'standard';
   // Headcount: explicit ids win, then the count hint. Clamped 1–5 (matches
@@ -295,7 +297,7 @@ export async function onRequest(context) {
         discount_earned: String(discountEarned),
         affiliate_ref:   ref || '',
         // ── Goofy Licenses (additive keys; empty on PLC orders) ──
-        brand:           isGoofy ? 'goofy' : 'plc',
+        brand:           isGoofy ? 'goat' : 'plc',
         variant:         isGoofy ? gVariant : '',
         src:             isGoofy ? String(src || '').slice(0, 120) : '',
         recipient_name:  isGoofy ? String(recipientName || '').slice(0, 100) : '',

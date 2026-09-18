@@ -5,7 +5,8 @@
 // ---------------------------------------------------------------------------
 
 import { getDb } from '../_shared/db.js';
-import { sendShippingNotificationEmail, sendStampShippedEmail, sendOrderConfirmationEmail } from '../_shared/email.js';
+import { sendShippingNotificationEmail, sendStampShippedEmail, sendOrderConfirmationEmail, sendGoofyConfirmationEmail, sendGoofyShippedEmail } from '../_shared/email.js';
+import { lineOfOrder, WAITLIST_LINES } from '../_shared/lines.js';
 import { createAndBuyLabel } from '../_shared/easypost.js';
 import { attributeOrder, getPaymentIntentId, createCompCoupon } from '../_shared/affiliate.js';
 import Stripe from 'stripe';
@@ -34,6 +35,51 @@ function verifyToken(request, env) {
   } catch {
     return null;
   }
+}
+
+// ── Product lines ───────────────────────────────────────────────────────────
+// The line-specific columns are added lazily by submit-order / stripe-webhook
+// the first time a Goofy order comes through. Probe which exist (cached once
+// they all do) so list queries never reference a column that isn't there yet.
+const LINE_COLS = ['brand', 'variant', 'recipient_name', 'giver_name', 'src', 'batch_id', 'self_nominate'];
+let lineColsSql = null;
+async function lineColumns(db) {
+  if (lineColsSql) return lineColsSql;
+  const r = await db.query(
+    `SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'pet_orders' AND column_name = ANY($1)`,
+    [LINE_COLS]
+  );
+  const have = new Set(r.rows.map((x) => x.column_name));
+  const sql = LINE_COLS.map((c) => (have.has(c) ? `p.${c}` : `NULL AS ${c}`)).join(', ');
+  if (have.size === LINE_COLS.length) lineColsSql = sql;
+  return sql;
+}
+
+// Customer emails are per line: a goat-line order must never get a Pet
+// License Factory email. Maps an order row onto the Goofy email templates.
+// Goofy rows keep the builder's recipient address in addr_line1/addr_line2
+// when Stripe didn't collect a separate shipping address.
+function goofyEmailFields(order, overrides = {}) {
+  const hasShip = !!order.ship_addr_line1;
+  return {
+    orderId:        order.order_id,
+    customerEmail:  order.customer_email,
+    customerName:   order.customer_name,
+    recipientName:  order.recipient_name || order.pet_first_name,
+    giverName:      order.giver_name,
+    variant:        order.variant,
+    selfNominate:   order.self_nominate === true,
+    shippingOption: order.shipping_option,
+    total:          order.total,
+    shipAddrLine1:  hasShip ? order.ship_addr_line1 : order.addr_line1,
+    shipAddrLine2:  hasShip ? order.ship_addr_line2 : order.addr_line2,
+    shipCity:       hasShip ? order.ship_city : '',
+    shipState:      hasShip ? order.ship_state : '',
+    shipZip:        hasShip ? order.ship_zip : '',
+    shipCountry:    hasShip ? order.ship_country : '',
+    ...overrides,
+  };
 }
 
 // Whitelist of columns that admin can update on pet_orders
@@ -143,12 +189,14 @@ export async function onRequest(context) {
                        GROUP BY e.email_type
                      ) t
                   ) AS email_by_type,
-                  c.name AS affiliate_creator_name
+                  c.name AS affiliate_creator_name,
+                  ${await lineColumns(db)}
            FROM pet_orders p
            LEFT JOIN affiliate_creators c ON c.id = p.affiliate_creator_id
            ORDER BY p.created_at DESC LIMIT $1`,
           [limit]
         );
+        for (const row of result.rows) row.line = lineOfOrder(row);
         return json(200, { orders: result.rows });
       }
 
@@ -163,6 +211,7 @@ export async function onRequest(context) {
           [id]
         );
         if (result.rows.length === 0) return json(404, { error: 'Order not found' });
+        result.rows[0].line = lineOfOrder(result.rows[0]);
         return json(200, { order: result.rows[0] });
       }
 
@@ -197,14 +246,12 @@ export async function onRequest(context) {
         values.push(id);
 
         const upd = await db.query(
-          `UPDATE pet_orders SET ${setClauses.join(', ')} WHERE id = $${paramIdx}
-           RETURNING order_id, pet_first_name, pet_last_name, customer_email, customer_name,
-                     shipping_option, tracking_number, status, pack_count, add_on, chip_size, total,
-                     ship_addr_line1, ship_addr_line2, ship_city, ship_state, ship_zip, ship_country`,
+          `UPDATE pet_orders SET ${setClauses.join(', ')} WHERE id = $${paramIdx} RETURNING *`,
           values
         );
 
         const row = upd.rows[0];
+        const isGoat = lineOfOrder(row) === 'goat';
         let emailSent = false;
 
         // Shipping notification trigger: tracking number just got set
@@ -212,14 +259,18 @@ export async function onRequest(context) {
         const crossedThreshold = !priorTracking && newTracking;
         if (crossedThreshold && row?.customer_email) {
           try {
-            await sendShippingNotificationEmail(env, {
-              orderId:        row.order_id,
-              customerEmail:  row.customer_email,
-              petFirstName:   row.pet_first_name,
-              petLastName:    row.pet_last_name,
-              trackingNumber: row.tracking_number,
-              shippingOption: row.shipping_option,
-            });
+            if (isGoat) {
+              await sendGoofyShippedEmail(env, goofyEmailFields(row, { trackingNumber: row.tracking_number }));
+            } else {
+              await sendShippingNotificationEmail(env, {
+                orderId:        row.order_id,
+                customerEmail:  row.customer_email,
+                petFirstName:   row.pet_first_name,
+                petLastName:    row.pet_last_name,
+                trackingNumber: row.tracking_number,
+                shippingOption: row.shipping_option,
+              });
+            }
             emailSent = true;
           } catch (e) {
             console.error('Shipping email failed (non-fatal):', e);
@@ -234,12 +285,16 @@ export async function onRequest(context) {
         const justProcessed = body.notify === true && priorStatus !== 'processed' && row?.status === 'processed';
         if (justProcessed && row?.shipping_option === 'stamp' && row?.customer_email) {
           try {
-            await sendStampShippedEmail(env, {
-              orderId:       row.order_id,
-              customerEmail: row.customer_email,
-              petFirstName:  row.pet_first_name,
-              petLastName:   row.pet_last_name,
-            });
+            if (isGoat) {
+              await sendGoofyShippedEmail(env, goofyEmailFields(row, { trackingNumber: '' }));
+            } else {
+              await sendStampShippedEmail(env, {
+                orderId:       row.order_id,
+                customerEmail: row.customer_email,
+                petFirstName:  row.pet_first_name,
+                petLastName:   row.pet_last_name,
+              });
+            }
             emailSent = true;
           } catch (e) {
             console.error('Stamp shipped email failed (non-fatal):', e);
@@ -336,26 +391,30 @@ export async function onRequest(context) {
         // 5. Send the confirmation email (non-fatal).
         if (order.customer_email) {
           try {
-            await sendOrderConfirmationEmail(env, {
-              orderId:        order.order_id,
-              customerEmail:  order.customer_email,
-              customerName:   order.customer_name,
-              petFirstName:   order.pet_first_name,
-              petLastName:    order.pet_last_name,
-              packCount:      order.pack_count,
-              addOn:          order.add_on,
-              chipSize:       order.chip_size,
-              shippingOption: order.shipping_option,
-              // order.total is the client-submitted full price; a freebie was
-              // actually $0, so don't show "$14.90" on a free creator order.
-              total:          isFreebie ? 'Free' : order.total,
-              shipAddrLine1:  order.ship_addr_line1,
-              shipAddrLine2:  order.ship_addr_line2,
-              shipCity:       order.ship_city,
-              shipState:      order.ship_state,
-              shipZip:        order.ship_zip,
-              shipCountry:    order.ship_country,
-            });
+            if (lineOfOrder(order) === 'goat') {
+              await sendGoofyConfirmationEmail(env, goofyEmailFields(order, { total: isFreebie ? 'Free' : order.total }));
+            } else {
+              await sendOrderConfirmationEmail(env, {
+                orderId:        order.order_id,
+                customerEmail:  order.customer_email,
+                customerName:   order.customer_name,
+                petFirstName:   order.pet_first_name,
+                petLastName:    order.pet_last_name,
+                packCount:      order.pack_count,
+                addOn:          order.add_on,
+                chipSize:       order.chip_size,
+                shippingOption: order.shipping_option,
+                // order.total is the client-submitted full price; a freebie was
+                // actually $0, so don't show "$14.90" on a free creator order.
+                total:          isFreebie ? 'Free' : order.total,
+                shipAddrLine1:  order.ship_addr_line1,
+                shipAddrLine2:  order.ship_addr_line2,
+                shipCity:       order.ship_city,
+                shipState:      order.ship_state,
+                shipZip:        order.ship_zip,
+                shipCountry:    order.ship_country,
+              });
+            }
           } catch (err) {
             console.error('force_fulfill confirmation email failed (non-fatal):', err);
           }
@@ -468,14 +527,18 @@ export async function onRequest(context) {
         // Fire shipping-notification email — tracking just transitioned empty → set
         if (order.customer_email) {
           try {
-            await sendShippingNotificationEmail(env, {
-              orderId:        order.order_id,
-              customerEmail:  order.customer_email,
-              petFirstName:   order.pet_first_name,
-              petLastName:    order.pet_last_name,
-              trackingNumber: result.tracking_number,
-              shippingOption: order.shipping_option,
-            });
+            if (lineOfOrder(order) === 'goat') {
+              await sendGoofyShippedEmail(env, goofyEmailFields(order, { trackingNumber: result.tracking_number }));
+            } else {
+              await sendShippingNotificationEmail(env, {
+                orderId:        order.order_id,
+                customerEmail:  order.customer_email,
+                petFirstName:   order.pet_first_name,
+                petLastName:    order.pet_last_name,
+                trackingNumber: result.tracking_number,
+                shippingOption: order.shipping_option,
+              });
+            }
           } catch (e) {
             console.error('Shipping email failed (non-fatal):', e);
           }
@@ -490,6 +553,26 @@ export async function onRequest(context) {
           carrier:         result.carrier,
           service:         result.service,
         });
+      }
+
+      // ── Waitlists (coming-soon lines + suggestion box) ─────────────────
+      // Rows come from /api/waitlist. The table is created lazily on the first
+      // signup, so a missing table just means "no signups yet".
+      case 'list_waitlist': {
+        const counts = Object.fromEntries(WAITLIST_LINES.map((l) => [l, 0]));
+        try {
+          const c = await db.query(`SELECT line, COUNT(*)::int AS n FROM plf_waitlist GROUP BY line`);
+          for (const r of c.rows) counts[r.line] = r.n;
+          const e = await db.query(
+            `SELECT id, line, email, idea, source, created_at FROM plf_waitlist
+              ORDER BY created_at DESC LIMIT 500`
+          );
+          const total = Object.values(counts).reduce((a, b) => a + b, 0);
+          return json(200, { counts, total, entries: e.rows });
+        } catch (err) {
+          if (err && err.code === '42P01') return json(200, { counts, total: 0, entries: [] });
+          throw err;
+        }
       }
 
       // ── Tasks ───────────────────────────────────────────────────────────
@@ -725,7 +808,12 @@ export async function onRequest(context) {
 
         let sendResult;
         try {
-          sendResult = await sendOrderConfirmationEmail(env, {
+          sendResult = lineOfOrder(order) === 'goat'
+            ? await sendGoofyConfirmationEmail(env, goofyEmailFields(order, {
+                customerEmail: target,
+                total: order.affiliate_is_freebie ? 'Free' : order.total,
+              }))
+            : await sendOrderConfirmationEmail(env, {
             orderId:        order.order_id,
             customerEmail:  target,
             customerName:   order.customer_name,

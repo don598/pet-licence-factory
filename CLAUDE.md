@@ -49,6 +49,10 @@ For serverless functions locally, use `wrangler pages dev public` with a `.env` 
 /
 ├── public/                     # Production site root (deployed via Cloudflare Pages)
 │   ├── index.html              # Desktop landing page (starfield, factory preview, card showcase)
+│   ├── lines.js                # Product-line registry (window.GOOFY_LINES): names, prices, links,
+│   │                           #   colors, live/soon. Feeds the Goofy homepage + Command Station
+│   ├── goofy-home/             # goofylicenses.com house homepage (index.html) + coming-soon page
+│   │                           #   (soon.html), shared home.css/home.js; routed by _middleware.js
 │   ├── mobile-welcome.html     # Mobile landing page (touch-optimised welcome)
 │   ├── game.html               # Desktop licence builder (5 stations + checkout)
 │   ├── mobile.html             # Mobile licence builder
@@ -75,13 +79,16 @@ For serverless functions locally, use `wrangler pages dev public` with a `.env` 
 │           └── oliver-pawsley.png
 │
 ├── functions/                  # Cloudflare Pages Functions (serverless backend)
+│   ├── _middleware.js          # Host routing for the two domains (see "Goofy Licenses house brand")
 │   ├── _shared/
+│   │   ├── lines.js            # Server mirror of public/lines.js (ids, status, sender names)
 │   │   └── db.js               # Shared pg connection helper (via Cloudflare Hyperdrive)
 │   └── api/
 │       ├── admin-api.js        # Admin API (JWT auth, order/task CRUD via pg)
 │       ├── create-checkout-session.js  # Stripe Checkout session creator
 │       ├── submit-order.js     # Order submission (generates order ID, validates, inserts into RDS)
 │       ├── stripe-webhook.js   # Stripe webhook handler (updates RDS on payment)
+│       ├── waitlist.js         # Coming-soon notify-me + "suggest a license" signups (plf_waitlist)
 │       ├── free-licence.js     # Free digital licence email-capture; also stashes the rendered
 │       │                       #   card PNG in R2 (abandon/lead-<id>.png) for the abandonment cron
 │       └── send-abandonment.js # Card-abandonment nudge: selects free-licence leads 2–72h old who
@@ -170,6 +177,8 @@ For serverless functions locally, use `wrangler pages dev public` with a `.env` 
 - **Audio system:** `music-toggle.js` creates a Web Audio context on first user interaction. Plays an ambient sine-wave pad (A3 + E4) with a slow LFO breathing effect, plus a triangle-wave melody arpeggio sequencer. Exposes `window.PLFMusic` API for melody replacement. The `tools/daw.html` Music Studio provides a full DAW for composing new chiptune tracks.
 - **Goofy - **Goofy Licenses (GOAT line):** Builder lives at `public/goofy/index.html`. Canonical public URL is `https://goofylicenses.com/goat/` — `public/_redirects` rewrites `/goat/*` → `/goofy/*` (200, URL stays) and 301s the singular `goofylicense.com` → plural. All image/asset refs in the builder are root-absolute (`/goofy/images/…`) so the rewrite works. QR destinations are configured in `public/goofy/qr-config.js` (`window.GOOFY_QR`: origin, `/line` path, `?src=` trackers) — never hardcode QR URLs elsewhere. `?src=` landings show the Right-of-Nomination modal, then the standard honor → recipient+address → $4.95 checkout flow. `src` is captured by `plf-track.js` into `plf_attr` and logged on the order. Print-ready QR PNGs are generated at `public/goofy/qr.html` (per-batch nomination URLs + fixed licence URL). The 6×4 Council certificate print page is `public/goofy/certificate.html` (URL-param fed: `?name=` `?variant=` `?o=` `?src=`, includes the viral-loop QR).
 
+- **Goofy Licenses house brand (umbrella, 2026-09-18):** goofylicenses.com is the house brand; each product is a "line" listed in `public/lines.js` (client: copy, prices, links, colors, `live`/`soon`) mirrored by `functions/_shared/lines.js` (server: ids, status, per-line email sender name). Lines today: `plc` (Pet Driver's License, live), `goat` (G.O.A.T., live), `forklift` + `clown` (soon, waitlist only). Adding a line = an entry in both registries + its builder + its email templates; the homepage tiles, coming-soon page, Command Station line switcher and Mac widget pick it up. **Routing** is `functions/_middleware.js` (Pages ignores host-based `_redirects` rules, so the old singular-domain rule never worked): goofylicenses.com `/` serves `public/goofy-home/`, `/pet` serves the PLF homepage with URL kept (canonical Link header → petlicensefactory.com), `/forklift` `/clown` serve `goofy-home/soon.html`, and every other PLF page reached via the Goofy domain gets a canonical header pointing at petlicensefactory.com; `www.goofylicenses.com`, `goofylicense.com`, `www.goofylicense.com` 301 to goofylicenses.com; G.O.A.T. pages (`/goat*`, `/goofy/*` HTML, not assets) opened on petlicensefactory.com 301 to goofylicenses.com; `/api/*` is never redirected. petlicensefactory.com stays the default for PLF (ads, TikTok Shop, creator + gift links, emails). **Orders:** `pet_orders.brand` holds the line id (`plc` | `goat`; legacy `goofy` = goat; always read it via `lineOfBrand` / `lineOfOrder`). admin-api `list_orders`/`get_order` return `line` plus the Goofy columns (probed via information_schema because those columns are added lazily on the first Goofy order); ship/fulfil/resend emails are line-aware (goat orders get `sendGoofyShippedEmail` / `sendGoofyConfirmationEmail`, signed "The Council of G.O.A.T. Affairs", never a PLF email). **Waitlists:** `/api/waitlist` → `plf_waitlist` (lazy table; dedup per line+email; honeypot; 10/hour per hashed IP), read by admin-api `list_waitlist`.
+
 ## Environment Variables
 
 All secrets are stored in Cloudflare Pages environment variables (dashboard or `wrangler pages secret put`) and locally in `.env`. See `.env.example` for the full list:
@@ -187,6 +196,7 @@ All secrets are stored in Cloudflare Pages environment variables (dashboard or `
 | `SENDGRID_FROM_EMAIL` | Sender email address for SendGrid |
 | `SENDGRID_FROM_NAME` | Sender display name for SendGrid |
 | `ABANDON_CRON_SECRET` | Shared secret guarding `/api/send-abandonment`. Must be set on BOTH the Pages project AND the `plf-abandon-cron` Worker (same value). |
+| `GOOFY_ORIGIN` | Optional. Origin used for links/images in Goofy emails (default `https://goofylicenses.com`). |
 | `SENDGRID_ASM_GROUP_ID` | Optional. Numeric SendGrid suppression-group id for the abandonment email's one-click unsubscribe. If absent, the email falls back to SendGrid subscription tracking (`[unsubscribe]` token). |
 
 Note: Cloudflare Hyperdrive is configured in `wrangler.toml` with binding `HYPERDRIVE` and handles the RDS connection pooling.

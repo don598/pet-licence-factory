@@ -2008,6 +2008,164 @@ html, body {
 #affTemplateForm { padding: 22px 24px 20px; }
 #affTemplateForm textarea { font-family: 'SF Mono', Menlo, Consolas, monospace; line-height: 1.55; }
 
+/* ── Product lines (Goofy Licenses house brand) ──────────────────────
+   Line colors come from window.GOOFY_LINES (public/lines.js) and are set
+   inline; these rules only handle layout. */
+.cs-sidebar { overflow-y: auto; }
+.line-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  color: var(--text-soft);
+  font-size: 13px; font-weight: 500;
+  border-radius: var(--r-md);
+  background: none; border: none;
+  text-align: left; width: 100%;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: all .15s;
+}
+.line-item:hover { color: var(--text); background: var(--surface2); }
+.line-item.is-active { color: var(--text); background: var(--accent-soft); font-weight: 700; }
+.line-item .line-dot {
+  width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+  display: inline-block; box-sizing: border-box;
+}
+.line-item .line-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line-item .line-count {
+  margin-left: auto;
+  background: var(--surface3); color: var(--text-soft);
+  font-size: 10.5px; font-weight: 700;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  min-width: 24px; text-align: center;
+}
+.line-item.is-active .line-count { background: var(--accent); color: var(--accent-on); }
+.line-item.is-soon, .line-item:disabled { cursor: default; opacity: .6; }
+.line-item.is-soon:hover { background: none; color: var(--text-soft); }
+.line-item .line-soon {
+  margin-left: auto;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); border: 1px dashed var(--border); padding: 1px 6px; border-radius: 6px;
+}
+
+/* Line chip (PET / GOAT) — ink text on the line's tint */
+.line-chip {
+  display: inline-flex; align-items: center;
+  padding: 3px 8px; border-radius: 6px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+  white-space: nowrap; line-height: 1.3;
+}
+.orders-table th.line-col, .orders-table td.line-col { width: 72px; padding-right: 4px; }
+.orders-table .name-sub { color: var(--muted); font-size: 11.5px; font-weight: 500; margin-left: 6px; }
+
+/* Per-line breakdown chips under stat numbers ("Pet 3 · GOAT 1") */
+.line-split { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.line-split:empty { display: none; }
+.line-split .ls-chip {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.line-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.line-table th {
+  text-align: right; font-size: 11px; font-weight: 600; color: var(--muted);
+  padding: 0 0 8px; border-bottom: 1px solid var(--divider);
+}
+.line-table th:first-child, .line-table td:first-child { text-align: left; }
+.line-table td {
+  text-align: right; padding: 9px 0; border-bottom: 1px solid var(--divider);
+  font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text);
+}
+.line-table tr:last-child td { border-bottom: none; }
+
+/* Order modal: line chip beside the title + G.O.A.T. nomination panel */
+.modal-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.goat-panel {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--goat-dot, #A86E0A);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.goat-panel-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.goat-panel-note { font-size: 12px; color: var(--muted); font-weight: 500; }
+.goat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; }
+.goat-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.goat-field .gf-k { font-size: 11px; color: var(--muted); font-weight: 600; }
+.goat-field .gf-v { font-size: 14px; color: var(--text); font-weight: 700; word-break: break-word; }
+.goat-field .gf-v.mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12.5px; }
+.goat-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.goat-cert-btn { padding: 12px 20px; font-size: 13.5px; }
+.goat-cert-hint { font-size: 11.5px; color: var(--muted); }
+.goat-photo-cap { font-size: 11px; color: var(--muted); padding: 8px 10px 10px; }
+
+/* Print preview: note for non-pet orders (never printed) */
+.label-line-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 18px; border-bottom: 1px solid var(--border);
+  background: var(--surface); font-size: 12.5px; color: var(--text-soft);
+}
+.label-line-bar:empty { display: none; }
+.label-line-bar .btn { padding: 7px 12px; font-size: 12px; }
+@media print {
+  .label-preview-backdrop .label-line-bar { display: none !important; }
+}
+
+/* Envelope sticker for non-pet lines — plain, no PLF branding */
+.label-envelope.neutral .env-order {
+  position: absolute; bottom: 0.25in; left: 0.3in;
+  font-size: 8pt; color: #888; letter-spacing: .5px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+}
+.label-envelope.neutral .env-to {
+  font-size: 10pt; color: #555; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
+}
+
+/* ── Waitlists view ── */
+.wl-shell { padding: 0 28px 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.wl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.wl-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 16px 18px;
+  box-shadow: var(--sh-card);
+  display: flex; flex-direction: column; gap: 6px;
+  text-align: left; font-family: var(--sans); color: var(--text);
+  cursor: pointer; transition: transform .15s, box-shadow .15s;
+}
+.wl-card:hover { transform: translateY(-2px); }
+.wl-card.is-line { background: var(--ln-tint); color: var(--ln-ink); border-color: transparent; }
+.wl-card.is-active { box-shadow: 0 0 0 2px var(--ln-dot, var(--accent)); }
+.wl-card .wl-k { font-size: 12px; font-weight: 700; opacity: .85; }
+.wl-card .wl-v { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; }
+.wl-card .wl-s { font-size: 11.5px; opacity: .75; line-height: 1.4; }
+[data-theme="dark"] .wl-card.is-line {
+  background: color-mix(in srgb, var(--ln-dot) 18%, var(--surface));
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--ln-dot) 40%, transparent);
+}
+.wl-note {
+  background: var(--surface); border: 1px dashed var(--border); border-radius: var(--r-lg);
+  padding: 28px 20px; text-align: center; color: var(--muted); font-size: 13px;
+}
+.wl-table-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); overflow: auto; box-shadow: var(--sh-card);
+}
+.wl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wl-table th {
+  text-align: left; font-size: 11px; font-weight: 600; color: var(--muted);
+  padding: 12px 14px; border-bottom: 1px solid var(--divider); white-space: nowrap;
+}
+.wl-table td {
+  padding: 12px 14px; border-bottom: 1px solid var(--divider);
+  color: var(--text); font-weight: 500; vertical-align: top;
+}
+.wl-table tr:last-child td { border-bottom: none; }
+.wl-table td.wl-idea { white-space: pre-wrap; word-break: break-word; max-width: 420px; color: var(--text-soft); }
+.wl-table td.wl-date, .wl-table td.wl-src { white-space: nowrap; color: var(--muted); font-size: 12px; }
+.wl-table td.wl-email { word-break: break-all; }
+.wl-table tr.empty td { text-align: center; color: var(--muted); padding: 40px 14px; }
+
 /* ════════════════════════════════════════════════════════════════════
    MOBILE / RESPONSIVE LAYER
    Additive only — desktop layout above is untouched. Goal: make the
@@ -2268,6 +2426,29 @@ html, body {
   .modal-header { padding: 16px; position: sticky; top: 0; z-index: 5; }
   .modal-body { padding: 16px; }
   .detail-key { width: 92px; }
+
+  /* Product lines: the switcher rides in the nav strip as pills (coming-
+     soon lines are sidebar-only on desktop). */
+  .line-item { width: auto; flex-shrink: 0; padding: 9px 12px; border-radius: var(--r-pill); min-height: 40px; }
+  .line-item.is-soon { display: none; }
+  .orders-table td[data-label="Line"] { padding-right: 36px; }
+  .orders-table th.line-col, .orders-table td.line-col { width: auto; }
+  .goat-grid { grid-template-columns: 1fr 1fr; }
+  .wl-shell { padding-left: 12px; padding-right: 12px; }
+  .wl-cards { grid-template-columns: 1fr 1fr; }
+  .wl-table thead { display: none; }
+  .wl-table, .wl-table tbody { display: block; width: 100%; }
+  .wl-table tr { display: block; padding: 8px 14px; border-bottom: 1px solid var(--divider); }
+  .wl-table td {
+    display: flex; justify-content: space-between; gap: 14px;
+    padding: 5px 0; border: none; text-align: right; max-width: none;
+  }
+  .wl-table td[data-label]::before {
+    content: attr(data-label); flex: 0 0 auto;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); text-align: left;
+  }
+  .wl-table tr.empty td { display: block; text-align: center; }
 }
 
 /* ── Narrow phones (≤ 420px): final tightening ─────────────────────── */
@@ -2284,6 +2465,9 @@ html, body {
   </style>
   <!-- Canonical client pricing (window.PLF_PRICES) — keep in sync with functions/_shared/pricing.js -->
   <script src="pricing.js"></script>
+  <!-- Product-line registry (window.GOOFY_LINES): names, colors, lineOf(order).
+       Drives the line switcher, order chips, per-line stats and waitlists. -->
+  <script src="/lines.js"></script>
 </head>
 <body>
 
@@ -2332,7 +2516,17 @@ html, body {
           <span class="nav-icon">🎟</span><span>Affiliate</span>
           <span class="nav-count" id="nav-affiliate-count">—</span>
         </button>
+        <button class="nav-item" data-view="waitlists" onclick="switchView('waitlists')" title="Signups for coming-soon lines + the suggestion box">
+          <span class="nav-icon">📝</span><span>Waitlists</span>
+          <span class="nav-count" id="nav-waitlists-count">—</span>
+        </button>
       </div>
+
+      <!-- Product-line switcher: filters the orders table + stats. Counts are
+           orders to ship (paid, not yet processed). Rendered by renderLineNav()
+           from window.GOOFY_LINES; coming-soon lines are listed but disabled. -->
+      <div class="sidebar-section-label">Lines</div>
+      <div class="sidebar-nav" id="line-nav" aria-label="Product lines"></div>
 
       <div class="sidebar-section-label">Tools</div>
       <div class="sidebar-nav">
@@ -2393,7 +2587,7 @@ html, body {
         <div class="page-header">
           <div>
             <h1 class="page-title">Dashboard</h1>
-            <div class="page-subtitle">Plan, prioritize, and ship every pet licence.</div>
+            <div class="page-subtitle" id="orders-subtitle">Plan, prioritize, and ship every pet licence.</div>
           </div>
           <div class="page-actions">
             <button class="btn-primary" onclick="loadAll()"><span>↻</span> Refresh</button>
@@ -2406,21 +2600,25 @@ html, body {
             <div class="stat-label">Total Revenue</div>
             <div class="stat-value" id="stat-revenue">$—</div>
             <div class="stat-trend"><span class="trend-chip" style="background:rgba(255,255,255,.18);color:#fff">Paid orders</span></div>
+            <div class="line-split" id="split-revenue"></div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Orders This Week</div>
             <div class="stat-value blue" id="stat-week">—</div>
             <div class="stat-trend"><span class="trend-chip">Last 7 days</span></div>
+            <div class="line-split" id="split-week"></div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Orders This Month</div>
             <div class="stat-value purple" id="stat-month">—</div>
             <div class="stat-trend"><span class="trend-chip">Last 30 days</span></div>
+            <div class="line-split" id="split-month"></div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Total Orders</div>
             <div class="stat-value" id="stat-total">—</div>
             <div class="stat-trend"><span class="trend-chip">All time</span></div>
+            <div class="line-split" id="split-total"></div>
           </div>
         </div>
 
@@ -2449,8 +2647,9 @@ html, body {
                 <thead>
                   <tr>
                     <th class="cb-col"><input type="checkbox" id="select-all-cb" onclick="toggleSelectAll(this.checked)"></th>
+                    <th class="line-col" onclick="setSort('line')">Line <span class="sort-icon">↕</span></th>
                     <th onclick="setSort('created_at')">Date <span class="sort-icon">↕</span></th>
-                    <th onclick="setSort('pet_first_name')">Pet Name <span class="sort-icon">↕</span></th>
+                    <th onclick="setSort('pet_first_name')"><span id="name-col-label">Pet Name</span> <span class="sort-icon">↕</span></th>
                     <th>Customer</th>
                     <th onclick="setSort('shipping_option')">Shipping <span class="sort-icon">↕</span></th>
                     <th onclick="setSort('affiliate_coupon_code')">Affiliate <span class="sort-icon">↕</span></th>
@@ -2459,7 +2658,7 @@ html, body {
                   </tr>
                 </thead>
                 <tbody id="orders-tbody">
-                  <tr><td colspan="8" class="loading-row"><span class="spinner"></span> Loading orders…</td></tr>
+                  <tr><td colspan="9" class="loading-row"><span class="spinner"></span> Loading orders…</td></tr>
                 </tbody>
               </table>
             </div>
@@ -2583,6 +2782,34 @@ html, body {
             <button class="aff-icon-btn" onclick="affCloseDrawer()" title="Close">✕</button>
           </div>
           <div class="aff-drawer-body" id="affDrawerBody"></div>
+        </div>
+      </section>
+
+      <!-- ─────────── Waitlists view (read-only) ─────────── -->
+      <section class="cs-view" id="view-waitlists">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Waitlists</h1>
+            <div class="page-subtitle">Signups for coming-soon lines, plus ideas from the suggestion box. Read-only.</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn-secondary" onclick="loadWaitlist()"><span>↻</span> Refresh</button>
+          </div>
+        </div>
+        <div class="wl-shell">
+          <div class="wl-cards" id="wl-cards">
+            <div class="wl-note"><span class="spinner"></span> Loading waitlists…</div>
+          </div>
+          <div class="wl-table-wrap">
+            <table class="wl-table">
+              <thead>
+                <tr><th>Line</th><th>Email</th><th>Idea</th><th>Source</th><th>Signed up</th></tr>
+              </thead>
+              <tbody id="wl-tbody">
+                <tr class="empty"><td colspan="5">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -2741,7 +2968,10 @@ html, body {
 
     <div class="modal-header">
       <div>
-        <div class="modal-title" id="modal-title">ORDER DETAIL</div>
+        <div class="modal-title-row">
+          <span class="line-chip" id="modal-line-chip" style="display:none"></span>
+          <div class="modal-title" id="modal-title">ORDER DETAIL</div>
+        </div>
         <div class="modal-sub"  id="modal-sub"></div>
       </div>
       <button class="modal-close" onclick="closeModal()">✕</button>
@@ -2794,12 +3024,27 @@ html, body {
         </div>
       </div>
 
+      <!-- G.O.A.T. nomination panel — only shown for goat-line orders. The
+           certificate prints from its own page (/goofy/certificate), never
+           from the PLF print-docs flow. -->
+      <div id="goat-panel" class="goat-panel" style="display:none">
+        <div class="goat-panel-head">
+          <span class="line-chip" id="goat-panel-chip">G.O.A.T. LICENSE</span>
+          <span class="goat-panel-note">Council fulfilment: license card + 6×4 certificate</span>
+        </div>
+        <div class="goat-grid" id="goat-grid"></div>
+        <div class="goat-actions">
+          <a class="btn btn-accent goat-cert-btn" id="goat-cert-btn" href="#" target="_blank" rel="noopener">🖨 Print certificate 6×4</a>
+          <span class="goat-cert-hint">Opens the certificate page in a new tab, pre-filled for this order.</span>
+        </div>
+      </div>
+
       <!-- Pet + Customer info grid (collapsible, closed by default) -->
       <div class="modal-grid">
         <details class="detail-section" id="pet-info-section">
           <summary>
             <span class="chevron">▶</span>
-            <span class="section-title">Pet & Licence Info</span>
+            <span class="section-title" id="pet-info-title">Pet & Licence Info</span>
             <span class="summary-hint" id="pet-info-hint"></span>
           </summary>
           <div id="pet-info-rows"></div>
@@ -2816,7 +3061,7 @@ html, body {
 
       <!-- Printout preview -->
       <div class="licence-section">
-        <div class="section-title">Printout Preview</div>
+        <div class="section-title" id="licence-section-title">Printout Preview</div>
         <div class="licence-canvas-wrap" id="licence-preview">
           <div class="licence-placeholder">Click "Generate" to render the licence card</div>
         </div>
@@ -3049,6 +3294,9 @@ html, body {
       </div>
       <button class="modal-close" onclick="closeLabelPreview()">✕</button>
     </div>
+    <!-- Non-pet orders in the batch (e.g. G.O.A.T.): address label only, plus a
+         link to their own certificate page. Hidden when printing. -->
+    <div class="label-line-bar" id="label-line-bar"></div>
     <div class="label-preview-area" id="label-preview-area">
       <div class="loading-row"><span class="spinner"></span> Preparing labels…</div>
     </div>
@@ -3239,6 +3487,154 @@ let sortKey       = 'created_at';
 let sortAsc       = false;
 let openOrderId   = null;  // db id of currently open order
 let currentView   = 'orders';
+let ordersLoaded  = false; // true once list_orders has answered (line counts show "—" until then)
+
+// ── Product lines (Goofy Licenses house brand) ───────────────────────────────
+// The registry is /lines.js (window.GOOFY_LINES): names, short labels, colors,
+// status, and lineOf(order). This tiny fallback only keeps the dashboard
+// usable if that script ever fails to load (GOOFY- ids still read as GOAT).
+const LINES_REG = window.GOOFY_LINES || {
+  list: [
+    { id: 'plc',  name: "Pet Driver's License", short: 'Pet',  status: 'live', color: { ink: '#3B2FA8', tint: '#ECE9FB', dot: '#5B4FD6' } },
+    { id: 'goat', name: 'G.O.A.T. License',     short: 'GOAT', status: 'live', certificateUrl: '/goofy/certificate', color: { ink: '#7A4F05', tint: '#F5EAD0', dot: '#A86E0A' } },
+  ],
+  get(id)   { return this.list.find(l => l.id === id) || null; },
+  live()    { return this.list.filter(l => l.status === 'live'); },
+  soon()    { return this.list.filter(l => l.status === 'soon'); },
+  lineOf(o) { return o && /^GOOFY-/i.test(String(o.order_id || '')) ? 'goat' : 'plc'; },
+};
+
+// Selected line filter: 'all' or a LIVE line id. Remembered per browser.
+let currentLine = (function () {
+  try {
+    const v = localStorage.getItem('plf_line');
+    const l = v && v !== 'all' ? LINES_REG.get(v) : null;
+    if (l && l.status === 'live') return v;
+  } catch {}
+  return 'all';
+})();
+
+// Waitlists view state (list_waitlist). null data + error = not available yet.
+let waitlistData   = null;
+let waitlistError  = null;
+let waitlistFilter = 'all';
+
+// Line an order belongs to — ALWAYS derive via the registry (falls back to
+// brand, then the GOOFY- id prefix) since older API rows may lack `line`.
+function lineOf(o)      { return LINES_REG.lineOf(o); }
+function lineInfo(id)   { return LINES_REG.get(id); }
+function isPetOrder(o)  { return lineOf(o) === 'plc'; }
+function isGoatOrder(o) { return lineOf(o) === 'goat'; }
+
+// "To ship" = paid but not yet printed/processed (same set as the Paid tab).
+function isToShip(o) { return (o.status || '').trim() === 'paid'; }
+
+// Orders under the current line filter ('all' = every line).
+function lineScopedOrders() {
+  return currentLine === 'all' ? allOrders : allOrders.filter(o => lineOf(o) === currentLine);
+}
+
+// PET / GOAT chip — the line's ink on its tint, straight from the registry.
+function lineChipHtml(id, label) {
+  const l = lineInfo(id) || lineInfo('plc') || { id, name: id, short: id, color: {} };
+  const c = l.color || {};
+  return `<span class="line-chip" style="color:${esc(c.ink || 'inherit')};background:${esc(c.tint || 'transparent')}" title="${esc(l.name || '')}">${esc(String(label || l.short || l.id).toUpperCase())}</span>`;
+}
+
+// ── G.O.A.T. order helpers ──
+const GOAT_VARIANT_LABELS = {
+  'standard':     'Standard',
+  'custom-giver': 'Custom, with giver credit',
+  'custom-anon':  'Custom, anonymous',
+};
+function goatVariantLabel(v) { return GOAT_VARIANT_LABELS[v] || (v ? String(v) : 'Standard'); }
+function goatVariantShort(v) { return v && v !== 'standard' ? 'Custom' : 'Standard'; }
+function goatRecipient(o) {
+  return String((o && (o.recipient_name || [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' '))) || '').trim();
+}
+function goatGiverText(o) {
+  if (o.variant === 'custom-anon') return o.giver_name ? `${o.giver_name} (anonymous, not credited)` : 'Anonymous';
+  return o.giver_name || '—';
+}
+function isTruthyFlag(v) { return v === true || v === 't' || v === 'true' || v === 1; }
+
+// Who an order is "for": the pet on a pet licence, the nominee on a G.O.A.T.
+function orderDisplayName(o) {
+  if (!o) return '';
+  if (isGoatOrder(o)) return goatRecipient(o);
+  return [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' ');
+}
+
+// Pre-filled 6×4 certificate page for a G.O.A.T. order (empty params omitted).
+function goatCertificateUrl(o) {
+  const base = (lineInfo('goat') || {}).certificateUrl || '/goofy/certificate';
+  const qs = [['name', goatRecipient(o)], ['variant', o.variant], ['o', o.order_id], ['src', o.src]]
+    .filter(([, v]) => v != null && String(v).trim() !== '')
+    .map(([k, v]) => k + '=' + encodeURIComponent(String(v).trim()))
+    .join('&');
+  return base + (qs ? '?' + qs : '');
+}
+
+// ── Line switcher (sidebar) ──
+function renderLineNav() {
+  const nav = document.getElementById('line-nav');
+  if (!nav) return;
+  const live = LINES_REG.live();
+  const toShip = {};
+  let toShipAll = 0;
+  allOrders.forEach(o => {
+    if (!isToShip(o)) return;
+    const id = lineOf(o);
+    toShip[id] = (toShip[id] || 0) + 1;
+    toShipAll++;
+  });
+  const cnt = n => ordersLoaded ? String(n) : '—';
+  const n = live.length || 1;
+  const allDot = 'background:conic-gradient(' + live.map((l, i) =>
+    `${(l.color && l.color.dot) || '#999'} ${(i / n * 100).toFixed(1)}% ${((i + 1) / n * 100).toFixed(1)}%`).join(',') + ')';
+  let html = `<button type="button" class="line-item${currentLine === 'all' ? ' is-active' : ''}" data-line="all" onclick="setLine('all')" title="Every line · ${cnt(toShipAll)} to ship (paid, not yet processed)">
+      <span class="line-dot" style="${esc(allDot)}"></span><span class="line-name">All lines</span><span class="line-count">${cnt(toShipAll)}</span></button>`;
+  html += live.map(l => `<button type="button" class="line-item${currentLine === l.id ? ' is-active' : ''}" data-line="${esc(l.id)}" onclick="setLine('${esc(l.id)}')" title="${esc(l.name)} · ${cnt(toShip[l.id] || 0)} to ship">
+      <span class="line-dot" style="background:${esc((l.color && l.color.dot) || '#999')}"></span><span class="line-name">${esc(l.name)}</span><span class="line-count">${cnt(toShip[l.id] || 0)}</span></button>`).join('');
+  html += LINES_REG.soon().map(l => `<button type="button" class="line-item is-soon" disabled title="${esc(l.name)} is coming soon (collecting waitlist signups)">
+      <span class="line-dot" style="border:1.5px solid ${esc((l.color && l.color.dot) || '#999')}"></span><span class="line-name">${esc(l.name)}</span><span class="line-soon">Soon</span></button>`).join('');
+  nav.innerHTML = html;
+}
+
+// Switch the line filter. Applies to the orders table, the stat cards and the
+// Stats view; from any other view it jumps to Orders.
+function setLine(id) {
+  if (id !== 'all') {
+    const l = lineInfo(id);
+    if (!l || l.status !== 'live') return;
+  }
+  currentLine = id;
+  try { localStorage.setItem('plf_line', id); } catch {}
+  if (currentView !== 'orders' && currentView !== 'stats') switchView('orders');
+  applyLineChrome();
+  updateAnalytics();   // re-renders the line nav + Stats view too
+  renderTable();
+}
+
+// Line-aware wording on the Orders view.
+function applyLineChrome() {
+  const lbl = document.getElementById('name-col-label');
+  if (lbl) lbl.textContent = currentLine === 'plc' ? 'Pet Name' : currentLine === 'goat' ? 'Recipient' : 'Name';
+  const sub = document.getElementById('orders-subtitle');
+  if (sub) sub.textContent = currentLine === 'plc'
+    ? 'Plan, prioritize, and ship every pet licence.'
+    : currentLine === 'all'
+      ? 'Plan, prioritize, and ship every licence, across all lines.'
+      : `Plan, prioritize, and ship every ${(lineInfo(currentLine) || {}).name || 'licence'}.`;
+  const search = document.getElementById('search-input');
+  if (search) search.placeholder = currentLine === 'plc'
+    ? 'Search pet name or customer email…'
+    : currentLine === 'goat'
+      ? 'Search recipient, giver, QR batch or email…'
+      : 'Search pet / recipient name or customer email…';
+}
+applyLineChrome();
+renderLineNav();
 
 // ── Theme ────────────────────────────────────────────────────────────────────
 function applyThemeButton() {
@@ -3283,6 +3679,8 @@ function switchView(name) {
   // Always re-fetch on switch so submissions made while the page sat open
   // come into view without a hard reload.
   if (name === 'affiliate' && isTokenValid()) affLoad();
+  // Waitlists: same pattern — re-fetch on every switch, only when signed in.
+  if (name === 'waitlists' && isTokenValid()) loadWaitlist();
 }
 (function restoreLastView() {
   try {
@@ -3293,30 +3691,103 @@ function switchView(name) {
 
 // ── Load All ─────────────────────────────────────────────────────────────────
 async function loadAll() {
-  await Promise.all([loadOrders(), loadTasks()]);
+  await Promise.all([loadOrders(), loadTasks(), loadWaitlist()]);
 }
 
 async function loadOrders() {
   const tbody = document.getElementById('orders-tbody');
-  tbody.innerHTML = '<tr><td colspan="8"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="9"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
 
   let data;
   try {
     const res = await adminAPI('list_orders', { limit: 500 });
     data = res.orders || [];
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
     return;
   }
 
   allOrders = data;
+  ordersLoaded = true;
   updateAnalytics();
   renderTable();
 
   document.getElementById('last-sync').textContent = 'Synced ' + new Date().toLocaleTimeString();
 
-  // Kick off background BG-removal pre-run (non-blocking)
-  setTimeout(() => preRunBgQueue(allOrders), 500);
+  // Kick off background BG-removal pre-run (non-blocking). Pet orders only:
+  // other lines never go through the pet-licence cutout pipeline.
+  setTimeout(() => preRunBgQueue(allOrders.filter(isPetOrder)), 500);
+}
+
+// ── Waitlists (coming-soon lines + suggestion box) — read-only ───────────────
+// admin-api list_waitlist → { counts: {forklift, clown, suggest}, total,
+// entries: [{ id, line, email, idea, source, created_at }] } (newest first).
+// Any error (incl. an older server without the action) → "not available yet".
+// NB: the first statement must be the API call — loadAll() can run before the
+// waitlist state below the auth check is initialised.
+async function loadWaitlist() {
+  let res = null, err = null;
+  try { res = await adminAPI('list_waitlist'); } catch (e) { err = e; }
+  if (!err && (!res || !Array.isArray(res.entries))) err = new Error('Unexpected response');
+  if (err) {
+    waitlistData = null;
+    waitlistError = (err && err.message) || 'Unavailable';
+  } else {
+    const entries = res.entries;
+    const counts = Object.assign({}, res.counts || {});
+    // Fill any count the server left out from the entries themselves.
+    LINES_REG.soon().map(l => l.id).concat('suggest').forEach(id => {
+      if (counts[id] == null) counts[id] = entries.filter(e => e.line === id).length;
+    });
+    waitlistData = { counts, entries, total: Number.isFinite(+res.total) && res.total != null ? +res.total : entries.length };
+    waitlistError = null;
+  }
+  renderWaitlist();
+}
+
+function setWaitlistFilter(id) { waitlistFilter = id; renderWaitlist(); }
+
+function waitlistLineChip(id) {
+  if (lineInfo(id)) return lineChipHtml(id);
+  const label = id === 'suggest' ? 'IDEA' : String(id || '—').toUpperCase();
+  return `<span class="line-chip" style="color:var(--text-soft);background:var(--surface3)">${esc(label)}</span>`;
+}
+
+function renderWaitlist() {
+  const nav   = document.getElementById('nav-waitlists-count');
+  const cards = document.getElementById('wl-cards');
+  const tbody = document.getElementById('wl-tbody');
+  if (!waitlistData) {
+    if (nav) nav.textContent = '—';
+    if (cards) cards.innerHTML = `<div class="wl-note"><strong>Waitlists not available yet.</strong>`
+      + `<div style="font-size:11.5px;margin-top:6px">${esc(waitlistError || '')}</div></div>`;
+    if (tbody) tbody.innerHTML = '<tr class="empty"><td colspan="5">Waitlists not available yet</td></tr>';
+    return;
+  }
+  const { counts, entries, total } = waitlistData;
+  if (nav) nav.textContent = total;
+
+  const defs = [{ id: 'all', label: 'All signups', value: total, sub: 'Every waitlist + the suggestion box' }]
+    .concat(LINES_REG.soon().map(l => ({ id: l.id, label: l.name, value: counts[l.id] || 0, sub: l.blurb || 'Coming soon', line: l })))
+    .concat([{ id: 'suggest', label: 'Suggestion box', value: counts.suggest || 0, sub: 'Ideas for the next license' }]);
+  if (cards) cards.innerHTML = defs.map(c => {
+    const col = c.line && c.line.color;
+    const style = col ? `--ln-ink:${col.ink};--ln-tint:${col.tint};--ln-dot:${col.dot}` : '';
+    return `<button type="button" class="wl-card${c.line ? ' is-line' : ''}${waitlistFilter === c.id ? ' is-active' : ''}" style="${esc(style)}" onclick="setWaitlistFilter('${esc(c.id)}')" title="Show ${esc(c.label)} entries">`
+      + `<span class="wl-k">${esc(c.label)}</span><span class="wl-v">${esc(c.value)}</span><span class="wl-s">${esc(c.sub)}</span></button>`;
+  }).join('');
+
+  const rows = waitlistFilter === 'all' ? entries : entries.filter(e => (e.line || '') === waitlistFilter);
+  const dash = '<span style="color:var(--muted)">—</span>';
+  if (tbody) tbody.innerHTML = rows.length
+    ? rows.map(e => `<tr>
+        <td data-label="Line">${waitlistLineChip(e.line)}</td>
+        <td class="wl-email" data-label="Email">${e.email ? esc(e.email) : dash}</td>
+        <td class="wl-idea" data-label="Idea">${e.idea ? esc(e.idea) : dash}</td>
+        <td class="wl-src" data-label="Source">${e.source ? esc(e.source) : dash}</td>
+        <td class="wl-date" data-label="Signed up">${esc(fmtDate(e.created_at))}</td>
+      </tr>`).join('')
+    : `<tr class="empty"><td colspan="5">No signups yet${waitlistFilter !== 'all' ? ' on this list' : ''}</td></tr>`;
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
@@ -3333,28 +3804,57 @@ function orderAmountLabel(o) { if (isAffiliateFreebie(o)) return 'Free'; if (!o.
 // a real order and shouldn't be listed or counted as one.
 function isIncompleteCheckout(o) { return (o.status || '') === 'pending'; }
 
-function updateAnalytics() {
-  const now       = Date.now();
+// Headline numbers for a set of orders (the stat cards above the table).
+function analyticsFor(orders, now) {
   const weekMs    = 7  * 24 * 60 * 60 * 1000;
   const monthMs   = 30 * 24 * 60 * 60 * 1000;
   const paidStats = ['paid', 'processed', 'shipped', 'complete'];
 
   // Counts reflect REAL orders only — abandoned-cart shells (incomplete
   // checkouts) are excluded so they never inflate the order numbers.
-  const realOrders  = allOrders.filter(o => !isIncompleteCheckout(o));
+  const realOrders  = orders.filter(o => !isIncompleteCheckout(o));
 
-  const revenue     = realOrders.filter(o => paidStats.includes(o.status)).reduce((s, o) => s + orderRevenue(o), 0);
-  const thisWeek    = realOrders.filter(o => new Date(o.created_at).getTime() >= now - weekMs).length;
-  const thisMonth   = realOrders.filter(o => new Date(o.created_at).getTime() >= now - monthMs).length;
+  return {
+    revenue: realOrders.filter(o => paidStats.includes(o.status)).reduce((s, o) => s + orderRevenue(o), 0),
+    week:    realOrders.filter(o => new Date(o.created_at).getTime() >= now - weekMs).length,
+    month:   realOrders.filter(o => new Date(o.created_at).getTime() >= now - monthMs).length,
+    total:   realOrders.length,
+  };
+}
 
-  document.getElementById('stat-revenue').textContent = '$' + revenue.toFixed(2);
-  document.getElementById('stat-week').textContent    = thisWeek;
-  document.getElementById('stat-month').textContent   = thisMonth;
-  document.getElementById('stat-total').textContent   = realOrders.length;
+// "Pet 3 · GOAT 1" chips under a number — one per live line, line colors.
+function lineSplitHtml(per, fmt) {
+  return per.map(({ l, v }) =>
+    `<span class="ls-chip" style="color:${esc(l.color.ink)};background:${esc(l.color.tint)}" title="${esc(l.name)}">${esc(l.short)} ${esc(fmt(v))}</span>`
+  ).join('');
+}
+
+function updateAnalytics() {
+  const now = Date.now();
+  // Only the selected line's orders count; "All lines" adds a per-line split.
+  const m = analyticsFor(lineScopedOrders(), now);
+
+  document.getElementById('stat-revenue').textContent = '$' + m.revenue.toFixed(2);
+  document.getElementById('stat-week').textContent    = m.week;
+  document.getElementById('stat-month').textContent   = m.month;
+  document.getElementById('stat-total').textContent   = m.total;
+
+  const per = (currentLine === 'all' && ordersLoaded)
+    ? LINES_REG.live().map(l => ({ l, v: analyticsFor(allOrders.filter(o => lineOf(o) === l.id), now) }))
+    : [];
+  const split = (id, fmt) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = lineSplitHtml(per, fmt);
+  };
+  split('split-revenue', v => '$' + v.revenue.toFixed(2));
+  split('split-week',    v => v.week);
+  split('split-month',   v => v.month);
+  split('split-total',   v => v.total);
 
   const navOrders = document.getElementById('nav-orders-count');
-  if (navOrders) navOrders.textContent = realOrders.length;
+  if (navOrders) navOrders.textContent = m.total;
 
+  renderLineNav();   // to-ship counts move with every status change
   if (currentView === 'stats') renderStats();
 }
 
@@ -3362,52 +3862,83 @@ function updateAnalytics() {
 function renderStats() {
   const container = document.getElementById('stats-content');
   if (!container) return;
-  if (!allOrders.length) {
-    container.innerHTML = '<div class="stats-empty">No orders yet. Stats will appear once your first order comes through.</div>';
+  // Scope everything to the selected line. Pet-only sections (pack, chip,
+  // decal) only ever count pet orders; G.O.A.T.-only sections only GOAT.
+  const scoped = lineScopedOrders();
+  if (!scoped.length) {
+    container.innerHTML = (currentLine === 'all' || !allOrders.length)
+      ? '<div class="stats-empty">No orders yet. Stats will appear once your first order comes through.</div>'
+      : `<div class="stats-empty">No ${esc((lineInfo(currentLine) || {}).name || '')} orders yet. Switch to All lines to see everything.</div>`;
     return;
   }
+  const showPet    = currentLine === 'all' || currentLine === 'plc';
+  const showGoat   = currentLine === 'all' || currentLine === 'goat';
+  const petOrders  = scoped.filter(isPetOrder);
+  const goatOrders = scoped.filter(isGoatOrder);
 
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
   const paidStatuses = ['paid', 'processed', 'shipped', 'complete'];
-  const paid = allOrders.filter(o => paidStatuses.includes(o.status));
+  const paid = scoped.filter(o => paidStatuses.includes(o.status));
 
   const totalRevenue = paid.reduce((s, o) => s + orderRevenue(o), 0);
   const avgOrder     = paid.length ? totalRevenue / paid.length : 0;
   const revLast30    = paid.filter(o => new Date(o.created_at).getTime() >= now - 30 * day)
                             .reduce((s, o) => s + orderRevenue(o), 0);
-  const conversion   = allOrders.length ? (paid.length / allOrders.length) * 100 : 0;
+  const conversion   = scoped.length ? (paid.length / scoped.length) * 100 : 0;
+
+  // Per-line money split (All lines only): "Pet $84.93 · GOAT $13.90"
+  const perLine = currentLine === 'all'
+    ? LINES_REG.live().map(l => {
+        const os = allOrders.filter(o => lineOf(o) === l.id);
+        const p  = os.filter(o => paidStatuses.includes(o.status));
+        return { l, os, p,
+          rev:   p.reduce((s, o) => s + orderRevenue(o), 0),
+          rev30: p.filter(o => new Date(o.created_at).getTime() >= now - 30 * day).reduce((s, o) => s + orderRevenue(o), 0) };
+      })
+    : [];
+  const splitRev   = perLine.length ? `<div class="line-split">${lineSplitHtml(perLine.map(x => ({ l: x.l, v: x.rev })),   v => '$' + v.toFixed(2))}</div>` : '';
+  const splitRev30 = perLine.length ? `<div class="line-split">${lineSplitHtml(perLine.map(x => ({ l: x.l, v: x.rev30 })), v => '$' + v.toFixed(2))}</div>` : '';
 
   // Repeat customers
   const emailCounts = {};
-  allOrders.forEach(o => {
+  scoped.forEach(o => {
     const e = (o.customer_email || '').trim().toLowerCase();
     if (e) emailCounts[e] = (emailCounts[e] || 0) + 1;
   });
   const repeatCount = Object.values(emailCounts).filter(c => c > 1).length;
   const uniqueCustomers = Object.keys(emailCounts).length;
 
-  // Pack, decal, shipping, chip
-  const pack1     = allOrders.filter(o => Number(o.pack_count) === 1).length;
-  const pack2     = allOrders.filter(o => Number(o.pack_count) === 2).length;
-  const withDecal = allOrders.filter(o => o.add_on === 'car_decal').length;
+  // Pack, decal, chip — pet licence products only
+  const pack1     = petOrders.filter(o => Number(o.pack_count) === 1).length;
+  const pack2     = petOrders.filter(o => Number(o.pack_count) === 2).length;
+  const withDecal = petOrders.filter(o => o.add_on === 'car_decal').length;
 
   const shipCounts = { stamp: 0, standard: 0, priority: 0 };
-  allOrders.forEach(o => {
+  scoped.forEach(o => {
     const opt = (o.shipping_option || 'stamp').toLowerCase();
     if (opt in shipCounts) shipCounts[opt]++;
   });
 
   const chipCounts = { classic: 0, mini: 0 };
-  allOrders.forEach(o => {
+  petOrders.forEach(o => {
     const c = (o.chip_size || '').toLowerCase();
     if (c in chipCounts) chipCounts[c]++;
   });
 
+  // G.O.A.T. — variant mix + QR batches (src)
+  const goatDot = ((lineInfo('goat') || {}).color || {}).dot || 'var(--amber)';
+  const variantCounts = { 'standard': 0, 'custom-giver': 0, 'custom-anon': 0 };
+  goatOrders.forEach(o => { const v = o.variant || 'standard'; variantCounts[v] = (variantCounts[v] || 0) + 1; });
+  const variantShort = { 'standard': 'Standard', 'custom-giver': 'Custom + giver', 'custom-anon': 'Custom (anon)' };
+  const srcCounts = {};
+  goatOrders.forEach(o => { const s = String(o.src || '').trim() || '(no batch)'; srcCounts[s] = (srcCounts[s] || 0) + 1; });
+  const topSrc = Object.entries(srcCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
   // Status breakdown
   const statusOrder = ['pending', 'paid', 'processed', 'shipped', 'complete', 'cancelled'];
   const statusCounts = Object.fromEntries(statusOrder.map(s => [s, 0]));
-  allOrders.forEach(o => {
+  scoped.forEach(o => {
     const s = o.status || 'pending';
     if (s in statusCounts) statusCounts[s]++;
     else statusCounts[s] = (statusCounts[s] || 0) + 1;
@@ -3415,7 +3946,7 @@ function renderStats() {
 
   // Top states
   const stateCounts = {};
-  allOrders.forEach(o => {
+  scoped.forEach(o => {
     const s = (o.ship_state || '').trim().toUpperCase();
     if (s) stateCounts[s] = (stateCounts[s] || 0) + 1;
   });
@@ -3427,7 +3958,7 @@ function renderStats() {
     const d = new Date(now - i * day);
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const dayEnd = dayStart + day;
-    const count = allOrders.filter(o => {
+    const count = scoped.filter(o => {
       const t = new Date(o.created_at).getTime();
       return t >= dayStart && t < dayEnd;
     }).length;
@@ -3466,6 +3997,7 @@ function renderStats() {
       <div class="stat-card">
         <div class="stat-label">Revenue (Paid)</div>
         <div class="stat-value green">${fmtMoney(totalRevenue)}</div>
+        ${splitRev}
       </div>
       <div class="stat-card">
         <div class="stat-label">Avg Order Value</div>
@@ -3474,6 +4006,7 @@ function renderStats() {
       <div class="stat-card">
         <div class="stat-label">Revenue · 30 Days</div>
         <div class="stat-value green">${fmtMoney(revLast30)}</div>
+        ${splitRev30}
       </div>
       <div class="stat-card">
         <div class="stat-label">Paid Conversion</div>
@@ -3504,27 +4037,46 @@ function renderStats() {
         </div>
       </div>
 
+      ${perLine.length ? `
+      <div class="stats-section">
+        <h3>By Product Line</h3>
+        <table class="line-table">
+          <thead><tr><th>Line</th><th>Orders</th><th>To ship</th><th>Paid</th><th>Revenue</th></tr></thead>
+          <tbody>
+            ${perLine.map(x => `<tr>
+              <td>${lineChipHtml(x.l.id)}</td>
+              <td>${x.os.filter(o => !isIncompleteCheckout(o)).length}</td>
+              <td>${x.os.filter(isToShip).length}</td>
+              <td>${x.p.length}</td>
+              <td>${fmtMoney(x.rev)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : ''}
+
       <div class="stats-section">
         <h3>Status Pipeline</h3>
         ${Object.entries(statusCounts)
           .filter(([, v]) => v > 0)
-          .map(([k, v]) => barRow(k, v, allOrders.length, statusColors[k]))
+          .map(([k, v]) => barRow(k, v, scoped.length, statusColors[k]))
           .join('') || '<div style="color:var(--muted);font-size:12px">No status data</div>'}
       </div>
 
+      ${showPet ? `
       <div class="stats-section">
         <h3>Pack Size</h3>
         ${barRow('1-Pack', pack1, pack1 + pack2 || 1)}
         ${barRow('2-Pack', pack2, pack1 + pack2 || 1, 'var(--blue)')}
-      </div>
+      </div>` : ''}
 
       <div class="stats-section">
         <h3>Shipping Mix</h3>
-        ${barRow('📬 Stamp',    shipCounts.stamp,    allOrders.length)}
-        ${barRow('📦 Standard', shipCounts.standard, allOrders.length, 'var(--blue)')}
-        ${barRow('🚀 Priority', shipCounts.priority, allOrders.length, 'var(--purple)')}
+        ${barRow('📬 Stamp',    shipCounts.stamp,    scoped.length)}
+        ${barRow('📦 Standard', shipCounts.standard, scoped.length, 'var(--blue)')}
+        ${barRow('🚀 Priority', shipCounts.priority, scoped.length, 'var(--purple)')}
       </div>
 
+      ${showPet ? `
       <div class="stats-section">
         <h3>Chip Size Preference</h3>
         ${barRow('Classic', chipCounts.classic, chipCounts.classic + chipCounts.mini || 1)}
@@ -3533,9 +4085,24 @@ function renderStats() {
 
       <div class="stats-section">
         <h3>Car Decal Attach Rate</h3>
-        ${barRow('With Decal', withDecal, allOrders.length, 'var(--pink)')}
-        ${barRow('No Decal',   allOrders.length - withDecal, allOrders.length)}
+        ${barRow('With Decal', withDecal, petOrders.length, 'var(--pink)')}
+        ${barRow('No Decal',   petOrders.length - withDecal, petOrders.length)}
+      </div>` : ''}
+
+      ${showGoat && (currentLine === 'goat' || goatOrders.length) ? `
+      <div class="stats-section">
+        <h3>G.O.A.T. Variant Mix</h3>
+        ${Object.entries(variantCounts)
+          .map(([k, v]) => barRow(variantShort[k] || k, v, goatOrders.length || 1, goatDot))
+          .join('')}
       </div>
+
+      <div class="stats-section">
+        <h3>G.O.A.T. QR Batches</h3>
+        ${topSrc.length
+          ? topSrc.map(([s, c]) => barRow(s, c, topSrc[0][1], goatDot)).join('')
+          : '<div style="color:var(--muted);font-size:12px">No QR batch data yet</div>'}
+      </div>` : ''}
 
       <div class="stats-section">
         <h3>Top Ship-To States</h3>
@@ -3563,7 +4130,7 @@ function setSort(key) {
     if (icon) icon.textContent = '↕';
   });
   const ths = document.querySelectorAll('.orders-table th');
-  const keyMap = { created_at: 1, pet_first_name: 2, shipping_option: 4, affiliate_coupon_code: 5, status: 6, total: 7 };
+  const keyMap = { line: 1, created_at: 2, pet_first_name: 3, shipping_option: 5, affiliate_coupon_code: 6, status: 7, total: 8 };
   const idx = keyMap[sortKey];
   if (idx !== undefined && ths[idx]) {
     ths[idx].classList.add('sorted');
@@ -3575,7 +4142,7 @@ function setSort(key) {
 
 function renderTable() {
   const search = (document.getElementById('search-input').value || '').toLowerCase();
-  let rows = allOrders.slice();
+  let rows = lineScopedOrders().slice();   // line switcher first, then status tabs
 
   // Filter by status. The "All" view hides abandoned-cart shells (incomplete
   // checkouts) so they don't read as orders; the "Incomplete" tab shows them.
@@ -3590,12 +4157,19 @@ function renderTable() {
     (o.customer_name   || '').toLowerCase().includes(search) ||
     (o.affiliate_coupon_code || '').toLowerCase().includes(search) ||
     (o.affiliate_creator_name || '').toLowerCase().includes(search) ||
-    (o.order_id        || '').toLowerCase().includes(search)
+    (o.order_id        || '').toLowerCase().includes(search) ||
+    (o.recipient_name  || '').toLowerCase().includes(search) ||
+    (o.giver_name      || '').toLowerCase().includes(search) ||
+    (o.src             || '').toLowerCase().includes(search)
   );
 
-  // Sort
+  // Sort. Line sorts by line id; the name column sorts G.O.A.T. rows by the
+  // recipient they're shown under.
+  const sortVal = o => sortKey === 'line' ? lineOf(o)
+    : (sortKey === 'pet_first_name' && isGoatOrder(o)) ? goatRecipient(o)
+    : (o[sortKey] || '');
   rows.sort((a, b) => {
-    let va = a[sortKey] || '', vb = b[sortKey] || '';
+    let va = sortVal(a), vb = sortVal(b);
     if (sortKey === 'total') { va = parseTotal(va); vb = parseTotal(vb); }
     else if (sortKey === 'created_at') { va = new Date(va); vb = new Date(vb); }
     const cmp = va < vb ? -1 : va > vb ? 1 : 0;
@@ -3604,15 +4178,22 @@ function renderTable() {
 
   const tbody = document.getElementById('orders-tbody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr class="empty"><td colspan="8">No orders found</td></tr>';
+    tbody.innerHTML = '<tr class="empty"><td colspan="9">No orders found</td></tr>';
     return;
   }
+
+  // Name cell: the pet for pet licences (unchanged); the nominee + variant
+  // for G.O.A.T. orders (never "a pet named after the recipient").
+  const nameCell = o => isGoatOrder(o)
+    ? `<td data-label="Recipient" onclick="openOrder(${o.id})" title="${esc(goatVariantLabel(o.variant))}"><span>${esc(goatRecipient(o) || '—')}<span class="name-sub">${esc(goatVariantShort(o.variant))}</span></span></td>`
+    : `<td data-label="Pet" onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>`;
 
   tbody.innerHTML = rows.map(o => `
     <tr>
       <td class="cb-col" onclick="event.stopPropagation()"><input type="checkbox" class="order-cb" data-id="${o.id}" ${selectedOrderIds.has(o.id) ? 'checked' : ''} onclick="toggleOrderSelected(${o.id}, this.checked)"></td>
+      <td class="line-col" data-label="Line" onclick="openOrder(${o.id})">${lineChipHtml(lineOf(o))}</td>
       <td data-label="Date" onclick="openOrder(${o.id})" title="${o.created_at}">${fmtDate(o.created_at)}</td>
-      <td data-label="Pet" onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>
+      ${nameCell(o)}
       <td class="cust-td" data-label="Customer" onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}"><span class="cust-cell"><span class="cust-email">${esc(o.customer_email || '—')}</span>${renderEmailMarker(o)}</span></td>
       <td data-label="Shipping" onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
       <td data-label="Affiliate" onclick="openOrder(${o.id})">${renderAffiliateMarker(o)}</td>
@@ -3664,6 +4245,10 @@ function emailTypeMeta(key) {
     case 'address_issue': return { icon: '⚠', label: 'Address issue' };
     case 'stamp_shipped': return { icon: '📬', label: 'Shipping confirmation' };
     case 'shipping':      return { icon: '📦', label: 'Shipping confirmation' };
+    // G.O.A.T. orders get Council-branded emails (line-aware server templates)
+    case 'goofy_confirmation': return { icon: '✉', label: 'Council confirmation' };
+    case 'goofy_shipped':      return { icon: '📬', label: 'Council shipping notice' };
+    case 'goofy_recovery':     return { icon: '↩', label: 'Council checkout recovery' };
     default:              return { icon: '✉', label: 'Email' };
   }
 }
@@ -3672,7 +4257,7 @@ function emailTypeMeta(key) {
 // first), so the chip reflects the most recent email in the order's lifecycle.
 function latestEmail(o) {
   const by = (o && o.email_by_type) || {};
-  for (const key of ['shipping', 'stamp_shipped', 'address_issue', 'confirmation']) {
+  for (const key of ['shipping', 'goofy_shipped', 'stamp_shipped', 'address_issue', 'goofy_confirmation', 'confirmation', 'goofy_recovery']) {
     if (by[key] && by[key].status) return { type: key, d: by[key] };
   }
   if (o && o.email_status) {
@@ -3688,7 +4273,7 @@ function openEmailActivity(id) {
   if (!o) return;
   const by = o.email_by_type || {};
   let rows = '';
-  for (const key of ['confirmation', 'address_issue', 'stamp_shipped', 'shipping']) {
+  for (const key of ['goofy_recovery', 'confirmation', 'goofy_confirmation', 'address_issue', 'stamp_shipped', 'goofy_shipped', 'shipping']) {
     const d = by[key];
     if (!d || !d.status) continue;
     const meta = emailTypeMeta(key), v = emailStatusView(d);
@@ -3707,7 +4292,7 @@ function openEmailActivity(id) {
   }
   if (!rows) rows = '<div class="ea-empty">No email activity recorded yet.</div>';
   const m = ensureEmailActivityModal();
-  m.querySelector('.ea-sub').textContent = o.customer_email || `${o.pet_first_name || ''} ${o.pet_last_name || ''}`.trim() || ('Order ' + (o.order_id || o.id));
+  m.querySelector('.ea-sub').textContent = o.customer_email || orderDisplayName(o).trim() || ('Order ' + (o.order_id || o.id));
   m.querySelector('.ea-body').innerHTML = rows;
   m.classList.add('open');
 }
@@ -3739,7 +4324,7 @@ async function openStripeContact(id) {
   const o = allOrders.find(r => String(r.id) === String(id));
   if (!o) return;
   const m = ensureStripeContactModal();
-  m.querySelector('.ea-sub').textContent = o.customer_email || `${o.pet_first_name || ''} ${o.pet_last_name || ''}`.trim() || ('Order ' + (o.order_id || o.id));
+  m.querySelector('.ea-sub').textContent = o.customer_email || orderDisplayName(o).trim() || ('Order ' + (o.order_id || o.id));
   m.querySelector('.ea-body').innerHTML = '<div class="ea-empty"><span class="spinner"></span> Loading Stripe contact info…</div>';
   m.classList.add('open');
   try {
@@ -3915,10 +4500,15 @@ function updatePhotoSourceUI() {
   const badge = document.getElementById('replacement-badge');
   if (!row) return;
   const o = modalOrder;
+  // Non-pet lines (G.O.A.T.): photo view/download only — no die-cut, and no
+  // replace (it would only feed the pet-licence renderer).
+  const petLine = !o || isPetOrder(o);
   row.style.display = (o && o.photo_url) ? 'flex' : 'none';
   if (badge) badge.style.display = (o && o.active_photo_url) ? 'inline-flex' : 'none';
   const dc = document.getElementById('gen-diecut-btn');
-  if (dc) dc.style.display = (o && effectivePhoto(o)) ? 'inline-flex' : 'none';
+  if (dc) dc.style.display = (o && effectivePhoto(o) && petLine) ? 'inline-flex' : 'none';
+  const rp = document.getElementById('replace-photo-btn');
+  if (rp) rp.style.display = petLine ? '' : 'none';
 }
 
 // Download a photo data URL as a file. which: 'original' (default) | 'current'.
@@ -4382,6 +4972,7 @@ function downloadDieCut() {
 // applied, otherwise auto-removes the background first (like the card flow).
 async function generateDieCut() {
   const o = modalOrder; if (!o) return;
+  if (!isPetOrder(o)) return;   // die-cut stickers are a pet-licence product
   _dcSourceName = null;   // order-based die-cut → name from the order id
   const btn = document.getElementById('gen-diecut-btn');
   const prev = btn ? btn.textContent : '';
@@ -4448,10 +5039,34 @@ async function uploadCustomDieCut(file) {
   showToast('Ready — clean up edges, set the border, then download ✓', 'ok');
 }
 
+// Preview area for non-pet orders (G.O.A.T.): the customer's photo for custom
+// licenses (view + download), otherwise a note. Never a rendered pet card.
+function lineOrderPreviewHtml(o) {
+  const ph = effectivePhoto(o);
+  if (ph && /^(data:image\/|https?:\/\/|\/)/i.test(ph)) {
+    return `<div style="display:flex;flex-direction:column;align-items:center;padding-top:12px">`
+      + `<img src="${esc(ph)}" alt="Photo for ${esc(orderDisplayName(o) || 'this order')}" style="max-height:320px;border-radius:8px">`
+      + `<div class="goat-photo-cap">Customer photo for the custom license. Download it below.</div></div>`;
+  }
+  const custom = o.variant && o.variant !== 'standard';
+  return `<div class="licence-placeholder">${custom ? 'Custom license, but no photo on file.' : 'Standard license: no customer photo.'}`
+    + ` Print the certificate from the button above; Print Address Label prints a plain envelope label only.</div>`;
+}
+
 // Build the always-visible quick-stats strip: chip size, total item count, and
 // a breakdown of each item (licence stickers + any decal add-on).
 function orderQuickStatsHtml(o) {
   if (!o) return '';
+  if (isGoatOrder(o)) {
+    // A G.O.A.T. kit: one license card + one 6×4 Council certificate.
+    const gp = (k, v, cls = '') => `<span class="oqs-chip ${cls}"><span class="oqs-k">${k}</span> ${esc(v)}</span>`;
+    return [
+      gp('Variant', goatVariantShort(o.variant)),
+      gp('Items', '2', 'oqs-total'),
+      gp('', '1× G.O.A.T. License card'),
+      gp('', '1× Council certificate (6×4)'),
+    ].join('');
+  }
   const pack = parseInt(o.pack_count) || 1;
   const items = [{ name: `Licence Sticker (${pack === 2 ? '2-Pack' : '1-Pack'})`, qty: pack }];
   if (o.add_on === 'car_decal') items.push({ name: '4×4" Car Decal', qty: 1 });
@@ -4486,23 +5101,92 @@ async function openOrder(dbId) {
   } catch { showToast('Could not load order details', 'err'); return; }
   if (!order) { showToast('Could not load order details', 'err'); return; }
   modalOrder = order;
+  // Product line. G.O.A.T. (any non-pet line) gets its own panel + certificate
+  // and never the pet licence generator / die-cut / PLF printouts.
+  const lineId = lineOf(order);
+  const goat   = lineId === 'goat';
+  const petLine = lineId === 'plc';
 
   // Keep the print button honest: only promise the shipping email when this
   // order will actually send it (a paid stamp order). Otherwise it is a reprint.
+  // Non-pet orders print a plain address label only (no PLF receipt/cert).
   const psBtn = document.getElementById('print-single-btn');
   if (psBtn) {
     const st = (order.status || '').trim();
+    const what = petLine ? 'Docs' : 'Address Label';
     psBtn.textContent = printWillEmail(order)
-      ? '🖨 Print Docs & Send Shipping Confirmation Email'
-      : (['processed', 'shipped', 'complete'].includes(st) ? '🖨 Reprint Docs (email already sent)' : '🖨 Print Docs (no email)');
+      ? `🖨 Print ${what} & Send Shipping Confirmation Email`
+      : (['processed', 'shipped', 'complete'].includes(st) ? `🖨 Reprint ${what} (email already sent)` : `🖨 Print ${what} (no email)`);
   }
 
-  // Header
-  const petName = [order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet';
+  // Header — the pet for pet licences, the nominee for G.O.A.T.
+  const petName = goat
+    ? (goatRecipient(order) || 'Unknown Recipient')
+    : ([order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet');
   document.getElementById('modal-title').textContent = petName.toUpperCase();
   document.getElementById('modal-sub').textContent   = order.order_id + ' · ' + fmtDate(order.created_at);
+  const lineChip = document.getElementById('modal-line-chip');
+  const lineMeta = lineInfo(lineId);
+  if (lineChip && lineMeta) {
+    lineChip.textContent = String(lineMeta.short || lineMeta.id).toUpperCase();
+    lineChip.title = lineMeta.name;
+    lineChip.style.color = (lineMeta.color && lineMeta.color.ink) || '';
+    lineChip.style.background = (lineMeta.color && lineMeta.color.tint) || '';
+    lineChip.style.display = '';
+  } else if (lineChip) {
+    lineChip.style.display = 'none';
+  }
 
-  // Pet info rows
+  // G.O.A.T. nomination panel (recipient / variant / giver / QR batch …) +
+  // the pre-filled "Print certificate 6×4" link.
+  const goatPanel = document.getElementById('goat-panel');
+  if (goatPanel) {
+    goatPanel.style.display = goat ? '' : 'none';
+    if (goat) {
+      const gl = lineInfo('goat') || {};
+      const gc = gl.color || {};
+      goatPanel.style.setProperty('--goat-dot', gc.dot || '#A86E0A');
+      const chip = document.getElementById('goat-panel-chip');
+      if (chip) {
+        chip.textContent = String(gl.name || 'G.O.A.T. License').toUpperCase();
+        chip.style.color = gc.ink || '';
+        chip.style.background = gc.tint || '';
+      }
+      const fields = [
+        ['Recipient',    goatRecipient(order) || '—'],
+        ['Variant',      goatVariantLabel(order.variant)],
+        ['Nominated by', goatGiverText(order)],
+        ['QR batch',     order.src || '—', true],
+      ];
+      if (order.batch_id) fields.push(['Batch ID', order.batch_id, true]);
+      if (isTruthyFlag(order.self_nominate)) fields.push(['Self-nominated', 'Yes, nominated themselves']);
+      document.getElementById('goat-grid').innerHTML = fields.map(([k, v, mono]) =>
+        `<div class="goat-field"><span class="gf-k">${esc(k)}</span><span class="gf-v${mono ? ' mono' : ''}">${esc(v)}</span></div>`).join('');
+      const certBtn = document.getElementById('goat-cert-btn');
+      if (certBtn) certBtn.href = goatCertificateUrl(order);
+    }
+  }
+
+  // Pet info rows (G.O.A.T.: nomination + order rows instead)
+  const infoTitle = document.getElementById('pet-info-title');
+  if (infoTitle) infoTitle.textContent = petLine ? 'Pet & Licence Info' : 'Nomination & Order Info';
+  if (!petLine) {
+    document.getElementById('pet-info-rows').innerHTML = [
+      ['Order ID',     order.order_id],
+      ['Line',         (lineMeta && lineMeta.name) || lineId],
+      ['Recipient',    goatRecipient(order)],
+      ['Variant',      goatVariantLabel(order.variant)],
+      ['Nominated by', goatGiverText(order)],
+      ['QR Batch',     order.src],
+      ['Batch ID',     order.batch_id],
+      ['Self-nominated', isTruthyFlag(order.self_nominate) ? 'Yes' : 'No'],
+      ['Shipping',     fmtShipping(order.shipping_option)],
+      ['Affiliate',    isAffiliateOrder(order)
+        ? `${isAffiliateFreebie(order) ? 'Creator sample' : 'Affiliate order'} · ${affiliateCreator(order)}${affiliateCode(order) ? ' · ' + affiliateCode(order) : ''}`
+        : 'Direct order'],
+      ['Total',        orderAmountLabel(order)],
+    ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${esc(k)}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
+  } else
   document.getElementById('pet-info-rows').innerHTML = [
     ['Order ID',    order.order_id],
     ['First Name',  order.pet_first_name],
@@ -4531,9 +5215,9 @@ async function openOrder(dbId) {
   // Customer info rows
   const addr = [order.ship_addr_line1, order.ship_addr_line2, order.ship_city, order.ship_state, order.ship_zip, order.ship_country].filter(Boolean).join(', ') || '—';
   document.getElementById('customer-info-rows').innerHTML = [
-    ['Name',          order.customer_name],
+    [petLine ? 'Name' : 'Purchaser', order.customer_name],
     ['Email',         order.customer_email],
-    ['Address',       addr],
+    [petLine ? 'Address' : 'Ship to', addr],
     ['Stripe ID',     order.stripe_payment_id],
     ['Tracking #',    order.tracking_number],
   ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
@@ -4610,8 +5294,9 @@ async function openOrder(dbId) {
   // Summary hints on the collapsed section headers
   const petSummary = [order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ')
     || '(no name)';
-  document.getElementById('pet-info-hint').textContent =
-    `${petSummary} · ${order.pack_count || 1}-Pack${order.add_on === 'car_decal' ? ' + Decal' : ''}`;
+  document.getElementById('pet-info-hint').textContent = petLine
+    ? `${petSummary} · ${order.pack_count || 1}-Pack${order.add_on === 'car_decal' ? ' + Decal' : ''}`
+    : `${goatRecipient(order) || '(no name)'} · ${goatVariantLabel(order.variant)}`;
   const custSummary = order.customer_name || order.customer_email || '(not captured)';
   const cityState = [order.ship_city, order.ship_state].filter(Boolean).join(', ');
   document.getElementById('customer-info-hint').textContent =
@@ -4630,9 +5315,16 @@ async function openOrder(dbId) {
   _photoTransform = defaultPhotoTransform();
   _photoEnhance = false;
   _photoEnhanceAmount = 1;
-  document.getElementById('licence-preview').innerHTML = '<div class="licence-placeholder">Click "Generate" to render the licence card</div>';
+  const licTitle = document.getElementById('licence-section-title');
+  if (licTitle) licTitle.textContent = petLine ? 'Printout Preview' : 'Photo & Printouts';
+  document.getElementById('licence-preview').innerHTML = petLine
+    ? '<div class="licence-placeholder">Click "Generate" to render the licence card</div>'
+    : lineOrderPreviewHtml(order);
   document.getElementById('dl-btn').style.display = 'none';
   document.getElementById('edit-photo-btn').style.display = 'none';
+  // The pet licence generator never runs for other lines (it would render a
+  // pet card for a G.O.A.T. nominee).
+  document.getElementById('gen-btn').style.display = petLine ? '' : 'none';
   document.getElementById('gen-btn').disabled = false;
   document.getElementById('gen-btn').textContent = '⚙ Generate Card';
 
@@ -4938,6 +5630,12 @@ function drawTextField(ctx, f, text, color, fontFamily, minFs) {
 
 async function generateLicence() {
   if (!modalOrder) return;
+  // Pet licence card only. Other lines (G.O.A.T.) keep their photo/note view —
+  // guards the replace/revert/editor paths that call this after a change.
+  if (!isPetOrder(modalOrder)) {
+    document.getElementById('licence-preview').innerHTML = lineOrderPreviewHtml(modalOrder);
+    return;
+  }
   const btn = document.getElementById('gen-btn');
   btn.disabled    = true;
   btn.textContent = '⌛ Rendering…';
@@ -5089,7 +5787,7 @@ async function generateLicence() {
 }
 
 function downloadLicence() {
-  if (!licenceCanvas || !modalOrder) return;
+  if (!licenceCanvas || !modalOrder || !isPetOrder(modalOrder)) return;
   const a    = document.createElement('a');
   const name = `PLF-${modalOrder.order_id || 'order'}-${(modalOrder.pet_first_name || 'pet').toUpperCase()}.png`;
   a.download = name;
@@ -5386,6 +6084,39 @@ function renderEnvelopeLabel(o) {
   `;
 }
 
+// Envelope sticker for non-pet lines (G.O.A.T.). renderEnvelopeLabel above is
+// PLF-branded (sender name, "For: <pet>", pixel logo + paw), so these orders
+// get a plain one: return address only, the nominee as addressee (the address
+// is the recipient's mailing address), and a short order ref for matching.
+function renderNeutralEnvelopeLabel(o) {
+  const addressee = (isGoatOrder(o) ? goatRecipient(o) : '') || o.customer_name || orderDisplayName(o) || '';
+  const line1 = o.ship_addr_line1 || '';
+  const line2 = o.ship_addr_line2 || '';
+  const cityLine = [o.ship_city, o.ship_state].filter(Boolean).join(', ') + (o.ship_zip ? ' ' + o.ship_zip : '');
+  const country = (o.ship_country && o.ship_country !== 'US') ? o.ship_country : '';
+  const senderCity = [SENDER_ADDRESS.city, SENDER_ADDRESS.state].filter(Boolean).join(', ') + (SENDER_ADDRESS.zip ? ' ' + SENDER_ADDRESS.zip : '');
+  return `
+    <div class="label-page landscape label-envelope neutral">
+      <div class="env-sender">
+        ${SENDER_ADDRESS.line1 ? esc(SENDER_ADDRESS.line1) + '<br>' : ''}
+        ${SENDER_ADDRESS.line2 ? esc(SENDER_ADDRESS.line2) + '<br>' : ''}
+        ${esc(senderCity)}
+      </div>
+      <div class="env-center">
+        <div class="env-to">Deliver to</div>
+        <div class="env-customer">${esc(addressee)}</div>
+        <div class="env-addr">
+          ${line1 ? esc(line1) + '<br>' : ''}
+          ${line2 ? esc(line2) + '<br>' : ''}
+          ${cityLine ? esc(cityLine) : ''}
+          ${country ? '<br>' + esc(country) : ''}
+        </div>
+      </div>
+      <div class="env-order">#${esc((o.order_id || '').split('-').pop() || '—')}</div>
+    </div>
+  `;
+}
+
 function renderCertificateLabel(o) {
   const petName = [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' ') || 'Unknown Pet';
   const petType = pickPetType(o);
@@ -5539,6 +6270,8 @@ async function openLabelPreview(orderIds) {
   const modal = document.getElementById('label-preview-modal');
   const area  = document.getElementById('label-preview-area');
   const sub   = document.getElementById('label-preview-sub');
+  const lineBar = document.getElementById('label-line-bar');
+  if (lineBar) lineBar.innerHTML = '';
   modal.classList.add('open');
   area.innerHTML = '<div class="loading-row"><span class="spinner"></span> Loading orders…</div>';
   sub.textContent = `${orderIds.length} order${orderIds.length === 1 ? '' : 's'} · fetching details…`;
@@ -5563,9 +6296,23 @@ async function openLabelPreview(orderIds) {
   // them to "processed" (printing is the only thing that does).
   _labelPreviewIds = orders.map(o => o.id);
 
-  // Render all labels — address then receipt per order
-  area.innerHTML = orders.map(o => renderEnvelopeLabel(o) + renderReceiptLabel(o) + renderCertificateLabel(o)).join('');
-  sub.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'} · ${orders.length * 2} labels`;
+  // Render all labels — address then receipt per order. Only PET orders get
+  // the PLF envelope + receipt + driving certificate; other lines (G.O.A.T.)
+  // get a plain address label, and their certificate prints from its own page.
+  const otherOrders = orders.filter(o => !isPetOrder(o));
+  area.innerHTML = orders.map(o => isPetOrder(o)
+    ? renderEnvelopeLabel(o) + renderReceiptLabel(o) + renderCertificateLabel(o)
+    : renderNeutralEnvelopeLabel(o)).join('');
+  const nLabels = (orders.length - otherOrders.length) * 2 + otherOrders.length;
+  sub.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'} · ${nLabels} label${nLabels === 1 ? '' : 's'}`
+    + (otherOrders.length ? ` · ${otherOrders.length} G.O.A.T. (address label only)` : '');
+  if (lineBar) {
+    const goats = otherOrders.filter(isGoatOrder);
+    lineBar.innerHTML = otherOrders.length
+      ? `<span>${lineChipHtml('goat')} <strong>${otherOrders.length} G.O.A.T. order${otherOrders.length === 1 ? '' : 's'}</strong>: plain address label only here (no PLF receipt or certificate). Print each certificate from its own page:</span>`
+        + goats.map(o => `<a class="btn btn-accent" href="${esc(goatCertificateUrl(o))}" target="_blank" rel="noopener" title="${esc(o.order_id || '')}">🖨 Certificate 6×4 · ${esc(goatRecipient(o) || o.order_id || '')}</a>`).join('')
+      : '';
+  }
 
   // Honest "Print All" label: how many of these orders will actually email.
   const nEmail = orders.filter(printWillEmail).length;

@@ -50,7 +50,7 @@ export async function onRequest(context) {
     const result = await db.query(
       `SELECT recipient_name
        FROM pet_orders
-       WHERE order_id = $1 AND brand = 'goofy'
+       WHERE order_id = $1 AND brand IN ('goat', 'goofy')
        LIMIT 1`,
       [orderId]
     );

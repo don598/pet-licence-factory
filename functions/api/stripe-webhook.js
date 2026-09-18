@@ -13,6 +13,7 @@ import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { sendOrderConfirmationEmail, sendCheckoutRecoveryEmail, sendGoofyConfirmationEmail, sendGoofyRecoveryEmail } from '../_shared/email.js';
 import { attributeOrder } from '../_shared/affiliate.js';
+import { lineOfBrand } from '../_shared/lines.js';
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -136,7 +137,8 @@ export async function onRequest(context) {
   // Batch note: a Goofy multi-nominee checkout carries its sibling row ids
   // in metadata.order_ids. The extras ride along in $14 (empty for every
   // PLC order, so the PLC path matches exactly one row, as before).
-  const batchExtraIds = (session.metadata?.brand === 'goofy' && session.metadata?.order_ids
+  const isGoatSession = lineOfBrand(session.metadata?.brand) === 'goat';
+  const batchExtraIds = (isGoatSession && session.metadata?.order_ids
     ? String(session.metadata.order_ids).split(',')
     : []).map((s) => s.trim()).filter((s) => /^GOOFY-/i.test(s) && s !== orderId).slice(0, 4);
   let orderRow;
@@ -205,7 +207,7 @@ export async function onRequest(context) {
          updated_at     = NOW()
        WHERE order_id = $6`,
       [
-        session.metadata?.brand === 'goofy' ? 'goofy' : '',
+        isGoatSession ? 'goat' : '',
         (session.metadata?.src || '').slice(0, 120),
         (session.metadata?.variant || '').slice(0, 40),
         (session.metadata?.recipient_name || '').slice(0, 100),
@@ -277,7 +279,7 @@ export async function onRequest(context) {
   // new sessions); the PLC call below is unchanged.
   // For a 100%-off creator freebie, show "Free" rather than the client total.
   try {
-    if (session.metadata?.brand === 'goofy') {
+    if (isGoatSession) {
       await sendGoofyConfirmationEmail(env, {
         orderId:        orderRow.order_id,
         customerEmail:  orderRow.customer_email,
@@ -391,7 +393,7 @@ async function handleSessionExpired(session, db, env) {
         `SELECT brand, recipient_name FROM pet_orders WHERE order_id = $1 LIMIT 1`,
         [orderId]
       );
-      if ((b.rows[0]?.brand || '').trim() === 'goofy') {
+      if (lineOfBrand(b.rows[0]?.brand) === 'goat') {
         goofyRecipient = b.rows[0]?.recipient_name || claimed.pet_first_name || '';
       }
     } catch (brandErr) {

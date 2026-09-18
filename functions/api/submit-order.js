@@ -8,6 +8,7 @@
 
 import { getDb } from '../_shared/db.js';
 import { GOOFY_PRICES } from '../_shared/pricing.js';
+import { lineOfBrand } from '../_shared/lines.js';
 
 const CORS_HEADERS = {
   'Content-Type': 'application/json',
@@ -80,13 +81,14 @@ export async function onRequest(context) {
     console.warn('submit-order: brand-column DDL failed (non-fatal):', ddlErr);
   }
 
-  // Brand gate: ONLY the exact string 'goofy' takes the Goofy path.
-  // Everything else (including missing) is PLC, unchanged.
-  const brand = body.brand === 'goofy' ? 'goofy' : 'plc';
+  // Brand gate: ONLY the G.O.A.T. line ('goat', or the legacy 'goofy' the
+  // builder still sends) takes the Goofy path. Everything else (including
+  // missing) is PLC, unchanged. Stored as the line id: 'goat'.
+  const brand = body.brand && lineOfBrand(body.brand) === 'goat' ? 'goat' : 'plc';
 
   // Generate order ID server-side (brand-prefixed so the two are
   // distinguishable at a glance in the dashboard and inboxes).
-  const orderId = (brand === 'goofy' ? 'GOOFY-' : 'PLF-') + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+  const orderId = (brand === 'goat' ? 'GOOFY-' : 'PLF-') + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase();
 
   // Validate photo size (750KB limit for base64 data URLs)
   const photoUrl = body.photo || null;
@@ -102,7 +104,7 @@ export async function onRequest(context) {
   // recipients[] (one entry per kit); each becomes its own row sharing a
   // batch_id so the webhook/fulfilment can treat them as one checkout.
   // Legacy single shape {recipientName, photo} is wrapped automatically.
-  if (brand === 'goofy') {
+  if (brand === 'goat') {
     const GOOFY_VARIANTS = ['standard', 'custom-giver', 'custom-anon'];
     const variant = GOOFY_VARIANTS.includes(body.variant) ? body.variant : 'standard';
     const isCustom = variant !== 'standard';
@@ -169,7 +171,7 @@ export async function onRequest(context) {
           [
             orderIds[i],
             'pending',
-            'goofy',
+            'goat',
             s(body.src),
             variant,
             r.name,
