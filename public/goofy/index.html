@@ -260,7 +260,11 @@ button{ -webkit-tap-highlight-color:transparent; }
 .field input{width:100%;background:var(--bg2);border:2px solid var(--line);border-radius:10px;color:var(--cream);font-size:15px;padding:12px 13px;font-family:inherit}
 .field input:focus{outline:none;border-color:var(--gold)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:520px){.grid2{grid-template-columns:1fr}}
+@media(max-width:520px){.grid2{grid-template-columns:1fr;gap:16px}}
+/* Stacked fields (the address form): a clear gap above each label so it
+   reads as belonging to the input below it, not the one above. */
+.field + .field, .field + .grid2, .grid2 + .field{margin-top:16px}
+.grid2 > .field + .field{margin-top:0}   /* side-by-side (City / State): the grid gap spaces them */
 .req{color:var(--gold)}
 /* Presented-by switch (credit ↔ anonymous) */
 .giver-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg2);border:2px solid var(--line);border-radius:12px;padding:4px;margin-bottom:10px}
