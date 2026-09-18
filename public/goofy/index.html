@@ -424,14 +424,11 @@ footer a{color:var(--gold)}
           <span class="vt"><b>📜 Standard</b><span>Generic certified kit. No photo, no names — pure bureaucracy.</span></span>
           <span class="vp">$4.95<small>PROCESSING FEE</small></span>
         </div>
-        <div class="opt-card" data-variant="custom-giver" role="button" tabindex="0">
-          <img src="/goofy/images/product-custom-giver.png" alt="Custom G.O.A.T. license with giver credit"/>
-          <span class="vt"><b>🌟 Custom, with giver credit</b><span>Their photo &amp; name on the licence. Presented by you.</span></span>
-          <span class="vp">$8.95<small>PROCESSING FEE</small></span>
-        </div>
-        <div class="opt-card" data-variant="custom-anon" role="button" tabindex="0">
-          <img src="/goofy/images/product-custom-anon.png" alt="Custom anonymous G.O.A.T. license"/>
-          <span class="vt"><b>🕵️ Custom, anonymous</b><span>Their photo &amp; name on the licence. No giver named.</span></span>
+        <!-- One Custom card: credit vs anonymous is the Presented-by switch
+             inside the nominees step (custom-giver ↔ custom-anon). -->
+        <div class="opt-card" data-variant="custom" role="button" tabindex="0">
+          <img src="/goofy/images/product-custom-giver.png" alt="Custom G.O.A.T. license with their photo and name"/>
+          <span class="vt"><b>🌟 Custom</b><span>Their photo &amp; name on the licence. Presented by you, or stay anonymous.</span></span>
           <span class="vp">$8.95<small>PROCESSING FEE</small></span>
         </div>
       </div>
@@ -1017,6 +1014,13 @@ function updateReframeBtn(){
   if (btn) btn.classList.toggle('show', show);
 }
 
+/* "custom" (the single Custom option card, or ?variant=custom) opens with
+   giver credit, unless they'd already switched to anonymous this visit. */
+function resolveVariant(v){
+  if (v !== 'custom') return v;
+  return state.variant === 'custom-anon' ? 'custom-anon' : 'custom-giver';
+}
+
 /* Presented-by switch state (custom-giver ↔ custom-anon). */
 function syncGiverSeg(v){
   Array.prototype.forEach.call(document.querySelectorAll('.giver-seg [data-giver]'), function(b){
@@ -1302,7 +1306,7 @@ function validateStep(n){
   if (key === 'nominees') {
     if (!namesValid()) { showErr('Every nominee needs a name — one kit each. 📁'); return false; }
     if (!photosValid()) { showErr('Every Custom nominee needs a photo 📸 (or switch to Standard).'); return false; }
-    if (state.variant === 'custom-giver' && !$('fGiver').value.trim()) { showErr('“Presented by” needs your name — or switch to Anonymous. 🕵️'); return false; }
+    if (state.variant === 'custom-giver' && !$('fGiver').value.trim()) { showErr('Add your name under “Presented by”, or pick Stay anonymous. 🕵️'); return false; }
   }
   if (key === 'recipient') {
     if (!namesValid()) { showErr('Every nominee needs a name — every nomination is a new file. 📁'); return false; }
@@ -1372,7 +1376,7 @@ function checkout(){
   if (!namesValid()) { go(stepPosFor(isCustom ? 'nominees' : 'recipient'), 'b'); showErr('Every nominee needs a name. 📁'); return; }
   if (isCustom && !photosValid()) { go(stepPosFor('nominees'), 'b'); showErr('Every Custom nominee needs a photo 📸'); return; }
   if (!addressValid()) { go(stepPosFor(isCustom ? 'address' : 'recipient'), 'b'); showErr('Full mailing address, please. 📬'); return; }
-  if (state.variant === 'custom-giver' && !giver) { go(stepPosFor('nominees'), 'b'); showErr('“Presented by” needs your name — or switch to Anonymous. 🕵️'); return; }
+  if (state.variant === 'custom-giver' && !giver) { go(stepPosFor('nominees'), 'b'); showErr('Add your name under “Presented by”, or pick Stay anonymous. 🕵️'); return; }
   checking = true;
   var btn = $('checkoutBtn'); btn.disabled = true;
   var per = feeTotal(), total = per * noms.length;
@@ -1430,7 +1434,7 @@ function checkout(){
 function wireStatic(){
   // Option cards (pre-wizard choice).
   Array.prototype.forEach.call(document.querySelectorAll('#optionsBlock .opt-card'), function(el){
-    function choose(){ selectVariant(el.dataset.variant, true); }
+    function choose(){ selectVariant(resolveVariant(el.dataset.variant), true); }
     el.addEventListener('click', choose);
     el.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); } });
   });
@@ -1748,7 +1752,7 @@ function wireStatic(){
   })();
   // No wizard on page load — just the carousel + options. A ?variant= deep
   // link (or QR) opens its steps immediately; otherwise the buyer picks.
-  var pre = (qs.get('variant') || '').toLowerCase();
+  var pre = resolveVariant((qs.get('variant') || '').toLowerCase());
   if (VALID[pre]) {
     selectVariant(pre, false);
   } else {
