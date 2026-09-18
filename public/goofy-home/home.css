@@ -39,11 +39,21 @@ img{display:block;max-width:100%}
 .hero p{margin:0;font-size:20px;line-height:1.55;color:var(--muted);max-width:560px}
 .hero-ctas{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}
 .hero-note{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--muted)}
-.fan{position:relative;height:470px}
-.fan img{position:absolute;width:440px;max-width:78%;aspect-ratio:1011/638;object-fit:cover;border-radius:20px;box-shadow:0 24px 48px rgba(29,33,64,.28)}
-.fan .c1{left:0;top:36px;transform:rotate(-7deg)}
-.fan .c2{right:0;top:170px;transform:rotate(5deg)}
-.stamp{position:absolute;right:36px;top:30px;transform:rotate(-12deg);border:6px double var(--stamp);color:var(--stamp);font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.1em;padding:6px 18px;border-radius:6px;background:rgba(244,239,228,.88)}
+.fan{position:relative;height:470px;perspective:1200px}
+/* Hero cards. At rest the transform is exactly the old 2D rotate (tilt vars
+   are 0); home.js springs --rx/--ry from 0 under the cursor, so the motion
+   starts from the resting pose with no jump, and never straightens the card. */
+.fan .card{position:absolute;display:block;width:440px;max-width:78%;aspect-ratio:1011/638;border-radius:20px;overflow:hidden;
+  --rx:0deg;--ry:0deg;--sx:0px;--sy:0px;--g:0;--gx:50%;--gy:50%;
+  transform:rotateX(var(--rx)) rotateY(var(--ry)) rotate(var(--base));
+  box-shadow:var(--sx) calc(24px + var(--sy)) 48px rgba(29,33,64,.28)}
+.fan .card img{width:100%;height:100%;object-fit:cover}
+.fan .card .glare{position:absolute;inset:0;pointer-events:none;opacity:var(--g);
+  background:radial-gradient(circle at var(--gx) var(--gy),rgba(255,255,255,.42),rgba(255,255,255,0) 58%)}
+.fan .card:focus-visible{outline-offset:4px}
+.fan .c1{left:0;top:36px;--base:-7deg}
+.fan .c2{right:0;top:170px;--base:5deg}
+.stamp{position:absolute;right:36px;top:30px;transform:rotate(-12deg);border:6px double var(--stamp);color:var(--stamp);font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:.1em;padding:6px 18px;border-radius:6px;background:rgba(244,239,228,.88);pointer-events:none}
 
 /* License tiles */
 .licenses{display:flex;flex-direction:column;gap:28px;padding:8px var(--gutter) 100px}
@@ -120,7 +130,7 @@ img{display:block;max-width:100%}
   .hero-ctas{flex-direction:column}
   .hero-ctas .btn{width:100%}
   .fan{height:260px;order:2}
-  .fan img{width:270px;max-width:70%;border-radius:14px}
+  .fan .card{width:270px;max-width:70%;border-radius:14px}
   .fan .c1{top:8px}
   .fan .c2{top:76px}
   .stamp{right:6px;top:4px;font-size:20px;border-width:5px;padding:4px 12px}

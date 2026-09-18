@@ -94,7 +94,72 @@
     $('gridLive').innerHTML = L.live().map(liveTile).join('');
   }
 
-  if ($('soonPage')) renderSoon(); else if ($('gridLive')) renderHome();
+  // Hero cards: under the cursor a card tilts toward it in 3D (plus a soft
+  // glare), springing from its resting pose with zero starting velocity, so
+  // there is no visible "switch on" moment and it never leaves its spot or
+  // straightens. Clicking goes to that line's page (plain links). Hover is
+  // tested against the resting shape, not the tilted one, so the edges don't
+  // flicker as the card moves under the pointer.
+  function heroTilt(){
+    var fan = $('fan');
+    if (!fan || !window.matchMedia) return;
+    if (!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+    if (matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+    var MAX_X = 9, MAX_Y = 11, K = 110, C = 2 * Math.sqrt(K);   // critically damped
+    var cards = Array.prototype.map.call(fan.querySelectorAll('.card'), function(el){
+      return { el: el, base: parseFloat(getComputedStyle(el).getPropertyValue('--base')) || 0,
+        s: { rx: [0, 0, 0], ry: [0, 0, 0], g: [0, 0, 0], gx: [50, 0, 50], gy: [50, 0, 50] } };   // [value, velocity, target]
+    });
+    var raf = 0, last = 0;
+    function local(card, px, py){
+      var f = fan.getBoundingClientRect(), el = card.el;
+      var w = el.offsetWidth, h = el.offsetHeight;
+      var dx = px - (f.left + el.offsetLeft + w / 2), dy = py - (f.top + el.offsetTop + h / 2);
+      var a = -card.base * Math.PI / 180, lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+      return { inside: Math.abs(lx) <= w / 2 && Math.abs(ly) <= h / 2, nx: dx / (w / 2), ny: dy / (h / 2), u: lx / w + 0.5, v: ly / h + 0.5 };
+    }
+    function aim(p){
+      var hit = null;
+      if (p) for (var i = cards.length - 1; i >= 0; i--) { var q = local(cards[i], p.x, p.y); if (q.inside) { hit = { card: cards[i], q: q }; break; } }
+      cards.forEach(function(c){
+        var s = c.s, on = hit && hit.card === c;
+        s.rx[2] = on ? -Math.max(-1, Math.min(1, hit.q.ny)) * MAX_X : 0;
+        s.ry[2] = on ? Math.max(-1, Math.min(1, hit.q.nx)) * MAX_Y : 0;
+        s.g[2] = on ? 1 : 0;
+        if (on) {
+          if (s.g[0] < 0.02) { s.gx[0] = hit.q.u * 100; s.gy[0] = hit.q.v * 100; }   // glare invisible: place it, don't slide it in
+          s.gx[2] = hit.q.u * 100; s.gy[2] = hit.q.v * 100;
+        }
+      });
+      if (!raf) { last = 0; raf = requestAnimationFrame(tick); }
+    }
+    function step(v, dt){ v[1] += ((v[2] - v[0]) * K - v[1] * C) * dt; v[0] += v[1] * dt; }
+    function tick(t){
+      var dt = last ? Math.min((t - last) / 1000, 1 / 30) : 1 / 60, busy = false;
+      last = t;
+      cards.forEach(function(c){
+        var s = c.s, st = c.el.style;
+        ['rx', 'ry', 'g', 'gx', 'gy'].forEach(function(k){
+          step(s[k], dt);
+          if (Math.abs(s[k][2] - s[k][0]) > 0.01 || Math.abs(s[k][1]) > 0.01) busy = true;
+        });
+        var rest = !busy && s.g[2] === 0;
+        st.setProperty('--rx', (rest ? 0 : s.rx[0]).toFixed(3) + 'deg');
+        st.setProperty('--ry', (rest ? 0 : s.ry[0]).toFixed(3) + 'deg');
+        st.setProperty('--sx', (-s.ry[0] / MAX_Y * 10).toFixed(2) + 'px');
+        st.setProperty('--sy', (s.rx[0] / MAX_X * 10).toFixed(2) + 'px');
+        st.setProperty('--g', Math.max(0, Math.min(1, s.g[0])).toFixed(3));
+        st.setProperty('--gx', s.gx[0].toFixed(1) + '%');
+        st.setProperty('--gy', s.gy[0].toFixed(1) + '%');
+      });
+      raf = busy ? requestAnimationFrame(tick) : 0;
+    }
+    fan.addEventListener('pointermove', function(e){ if (e.pointerType === 'mouse' || e.pointerType === 'pen') aim({ x: e.clientX, y: e.clientY }); });
+    fan.addEventListener('pointerleave', function(){ aim(null); });
+    window.addEventListener('blur', function(){ aim(null); });
+  }
+
+  if ($('soonPage')) renderSoon(); else if ($('gridLive')) { renderHome(); heroTilt(); }
   if ($('footLines')) $('footLines').innerHTML += L.list.map(function(l){
     return l.status === 'live'
       ? '<a href="' + esc(l.url) + '">' + esc(l.name) + '</a>'
