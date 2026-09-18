@@ -285,9 +285,24 @@ export async function onRequest(context) {
       },
       // Charge immediately on checkout. Stripe collects + lightly validates the
       // shipping address; we ship what the customer entered (no USPS gate).
+      // G.O.A.T. charges carry a short statement suffix ("<PREFIX>* GOAT") so
+      // the bank line matches what they bought; kept short so prefix + suffix
+      // stays inside the 22-character card statement limit.
       payment_intent_data: {
         capture_method: 'automatic',
+        ...(isGoofy ? { statement_descriptor_suffix: 'GOAT' } : {}),
       },
+      // The Stripe account is the Pet License Factory business; for G.O.A.T.
+      // checkouts show the house brand at the top of the page instead (Stripe
+      // still uses the account name on its own receipts and terms).
+      ...(isGoofy ? {
+        branding_settings: {
+          display_name:     'Goofy Licenses',
+          background_color: '#F4EFE4',
+          button_color:     '#1D2140',
+          border_style:     'rounded',
+        },
+      } : {}),
       metadata: {
         order_id:        orderId,
         pet_first_name:  (petData.petFirstName || '').slice(0, 100),

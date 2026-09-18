@@ -5,7 +5,7 @@
 // Production overrides this via the SENDGRID_FROM_EMAIL env var.
 // ---------------------------------------------------------------------------
 
-import { LINE_FROM_NAME } from './lines.js';
+import { LINE_SENDER } from './lines.js';
 
 const SENDGRID_ENDPOINT = 'https://api.sendgrid.com/v3/mail/send';
 
@@ -31,9 +31,10 @@ export function esc(v) {
 // ── Low-level send ───────────────────────────────────────────────────────────
 // `attachments` (optional): array of SendGrid attachment objects, each
 // { content (pure base64, no data: prefix), type, filename, disposition, content_id }.
-// `fromName` (optional) overrides the sender display name for one send, so a
-// product line can sign its own mail (the G.O.A.T. line signs as the Council).
-export async function sendEmail(env, { to, subject, html, text, replyTo, fromName: fromNameOverride, customArgs, attachments, asmGroupId, subscriptionTracking }) {
+// `sender` (optional, { name, email } from LINE_SENDER) overrides the from
+// name + address for one send, so a product line mails from its own domain
+// (the G.O.A.T. line sends as the Council from hello@goofylicenses.com).
+export async function sendEmail(env, { to, subject, html, text, replyTo, sender, customArgs, attachments, asmGroupId, subscriptionTracking }) {
   const apiKey = env.SENDGRID_API_KEY;
   if (!apiKey) {
     console.warn('[SendGrid] No SENDGRID_API_KEY set — skipping email to', to);
@@ -44,9 +45,9 @@ export async function sendEmail(env, { to, subject, html, text, replyTo, fromNam
     return { skipped: true };
   }
 
-  const fromEmail = env.SENDGRID_FROM_EMAIL || DEFAULT_FROM_EMAIL;
-  const fromName  = fromNameOverride || env.SENDGRID_FROM_NAME || DEFAULT_FROM_NAME;
-  const replyEmail = replyTo || env.SENDGRID_REPLY_TO || DEFAULT_REPLY_TO;
+  const fromEmail = (sender && sender.email) || env.SENDGRID_FROM_EMAIL || DEFAULT_FROM_EMAIL;
+  const fromName  = (sender && sender.name) || env.SENDGRID_FROM_NAME || DEFAULT_FROM_NAME;
+  const replyEmail = replyTo || (sender && sender.email) || env.SENDGRID_REPLY_TO || DEFAULT_REPLY_TO;
 
   // custom_args are echoed back verbatim on every Event Webhook event, so we
   // tag each send with the order_id (+ email_type) to join events to orders.
@@ -368,7 +369,7 @@ Questions? Just reply to this email.
 
 — The Council of G.O.A.T. Affairs (Goofy Licenses)`;
 
-  return sendEmail(env, { to: customerEmail, subject, html, text, fromName: LINE_FROM_NAME.goat, customArgs: { order_id: orderId, email_type: 'goofy_confirmation' } });
+  return sendEmail(env, { to: customerEmail, subject, html, text, sender: LINE_SENDER.goat, customArgs: { order_id: orderId, email_type: 'goofy_confirmation' } });
 }
 
 // ── Stamp-mail shipped (called when admin flips a stamp order to 'printed') ──
@@ -907,7 +908,7 @@ Unsubscribe: ${unsubHref}
 
   return sendEmail(env, {
     to, subject, html, text,
-    fromName: LINE_FROM_NAME.goat,
+    sender: LINE_SENDER.goat,
     customArgs: { email_type: 'goofy_recovery', order_id: orderId },
     asmGroupId,
     subscriptionTracking: !asmGroupId,
@@ -1030,7 +1031,7 @@ The Council of G.O.A.T. Affairs (Goofy Licenses)`;
 
   return sendEmail(env, {
     to: customerEmail, subject, html, text,
-    fromName: LINE_FROM_NAME.goat,
+    sender: LINE_SENDER.goat,
     customArgs: { order_id: orderId, email_type: 'goofy_shipped' },
   });
 }

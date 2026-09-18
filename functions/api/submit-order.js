@@ -77,6 +77,7 @@ export async function onRequest(context) {
     await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS giver_name TEXT`);
     await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS batch_id TEXT`);
     await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS self_nominate BOOLEAN DEFAULT FALSE`);
+    await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS photo_crop TEXT`);
   } catch (ddlErr) {
     console.warn('submit-order: brand-column DDL failed (non-fatal):', ddlErr);
   }
@@ -120,9 +121,15 @@ export async function onRequest(context) {
       ? body.recipients
       : [{ name: body.recipientName, photo: body.photo }];
     // Cap the headcount so one checkout can't bloat the table or the body.
+    // crop: the builder's { cx, cy, zoom } for the photo box, kept (clamped)
+    // so Command Station re-prints frame the photo as the customer did.
+    const num = (v, lo, hi, d) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : d);
     recips = recips.slice(0, 5).map((r) => ({
       name: s(r && r.name),
       photo: (r && r.photo) || null,
+      crop: r && r.photo && r.crop && typeof r.crop === 'object'
+        ? JSON.stringify({ cx: num(r.crop.cx, 0, 1, 0.5), cy: num(r.crop.cy, 0, 1, 0.5), zoom: num(r.crop.zoom, 0.2, 8, 1) })
+        : null,
     }));
 
     // Mandatory address collection: every nomination is a new lead.
@@ -161,12 +168,12 @@ export async function onRequest(context) {
             order_id, status, brand, src, variant, recipient_name, giver_name, batch_id, self_nominate,
             pet_first_name, pet_last_name, dl_number, dob, exp_date, iss_date,
             addr_line1, addr_line2, sex, height, weight, eyes, lic_class, restrict, signature,
-            photo_url, pack_count, total, chip_size, add_on, pet_species
+            photo_url, pack_count, total, chip_size, add_on, pet_species, photo_crop
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9,
             $10, $11, $12, $13, $14, $15,
             $16, $17, $18, $19, $20, $21, $22, $23, $24,
-            $25, $26, $27, $28, $29, $30
+            $25, $26, $27, $28, $29, $30, $31
           )`,
           [
             orderIds[i],
@@ -194,6 +201,7 @@ export async function onRequest(context) {
             null,
             null,
             'goat',
+            r.crop,
           ]
         );
       }

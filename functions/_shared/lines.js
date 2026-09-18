@@ -20,9 +20,13 @@ export const WAITLIST_LINES = Object.values(LINES)
   .map((l) => l.id)
   .concat('suggest');
 
-// Sender name for customer emails, per line.
-export const LINE_FROM_NAME = {
-  goat: 'The Council of G.O.A.T. Affairs',
+// Who customer emails come from, per line (lines not listed use the default
+// Pet License Factory sender). goofylicenses.com is domain-authenticated in
+// SendGrid (em5789 + s1/s2 DKIM CNAMEs in Cloudflare DNS), and Cloudflare
+// Email Routing forwards hello@goofylicenses.com to contact@creditcardart.com,
+// so replies land in the same inbox as everything else.
+export const LINE_SENDER = {
+  goat: { name: 'The Council of G.O.A.T. Affairs', email: 'hello@goofylicenses.com' },
 };
 
 export function lineOfBrand(brand) {

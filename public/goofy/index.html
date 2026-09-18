@@ -102,10 +102,17 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 /* per-variant overlay visibility (JS also drives display — belt & suspenders) */
 .card-frame[data-variant="standard"] .gov,.card-frame[data-variant="standard"] #ov-photo{display:none !important}
 .card-frame[data-variant="custom-anon"] #ov-giver{display:none !important}
+/* Custom QR: live-generated over the blank template (bg-custom-* has no baked
+   QR) at the exact baked-QR geometry of the product art — x851 y33 126×127
+   on the 1010×638 card. Standard keeps its baked QR, so no overlay there. */
+#ov-qr{position:absolute;background:#fff;border-radius:2px;overflow:hidden;aspect-ratio:1/1}
+#ov-qr img{width:100%;height:100%;display:block}
+.card-frame[data-variant="standard"] #ov-qr{display:none !important}
 .card-frame.bump{animation:pop .35s ease}
 @keyframes pop{0%{transform:scale(.97)}60%{transform:scale(1.012)}100%{transform:scale(1)}}
 /* per-variant overlay visibility */
 .card-frame[data-variant="standard"] .gov{display:none}
+.card-frame[data-variant="standard"] #ov-qr{display:none}
 .card-frame[data-variant="custom-anon"] #ov-giver{display:none}
 .card-caption{margin-top:11px;text-align:center;font-size:12.5px;color:var(--muted);font-weight:700}
 /* ── Carousel (images only, no CTAs) ── */
@@ -379,6 +386,7 @@ footer a{color:var(--gold)}
         <div class="card-frame" id="cardFrame" data-variant="standard">
           <img class="tpl" id="cardTpl" src="/goofy/images/product-standard.png" alt="G.O.A.T. license"/>
           <div class="gov" id="ov-photo"><img id="petImg" alt="" draggable="false"/><span class="ph" id="ovPhotoPh">Nominee<br/>photo</span></div>
+          <div id="ov-qr" aria-hidden="true"><img id="qrImg" alt="Scan to nominate the next legend"/></div>
         </div>
       </div>
       <div class="card-caption" id="cardCaption">★ Live preview — the Standard kit, certified &amp; generic.</div>
@@ -562,6 +570,7 @@ footer a{color:var(--gold)}
 
 <script src="/goofy/qr-config.js"></script>
 <script src="/goofy/pricing.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="/affiliate-tracker.js"></script>
 <script src="/pixels.js"></script>
 <script src="/plf-track.js" defer></script>
@@ -593,6 +602,9 @@ if (!srcParam) {
 /* ── Card geometry (measured, px on 1010×638) ── */
 var TW = 1010, TH = 638;
 var PHOTO_BOX = { x:41, y:90, w:303, h:407 };
+/* Live QR overlay box — measured off the product art (baked QR at x851 y33
+   126×127 on 1010×638). Blank templates leave this corner empty for it. */
+var QR_BOX = { x:851, y:33, w:126, h:127 };
 /* Name boxes hug the measured script extents on the card art (the printed
    GOAT-0001 ID number is left exactly as printed — no overlay). */
 var FIELDS = {
@@ -637,6 +649,12 @@ function buildOverlays(){
   ovPhoto.style.top = pct(PHOTO_BOX.y, TH);
   ovPhoto.style.width = pct(PHOTO_BOX.w, TW);
   ovPhoto.style.height = pct(PHOTO_BOX.h, TH);
+  var ovQr = $('ov-qr');
+  if (ovQr) {
+    ovQr.style.left = pct(QR_BOX.x, TW);
+    ovQr.style.top = pct(QR_BOX.y, TH);
+    ovQr.style.width = pct(QR_BOX.w, TW);
+  }
   Object.keys(FIELDS).forEach(function(k){
     var f = FIELDS[k];
     var el = document.createElement('div');
@@ -670,6 +688,31 @@ function bump(){ frame.classList.remove('bump'); void frame.offsetWidth; frame.c
 
 function feeTotal(){ return state.variant === 'standard' ? PRICES.standard : PRICES.custom; }
 
+/* ── Custom QR overlay (per-variant, live-generated) ──
+   Blank templates ship with an empty QR corner; the QR is generated in the
+   browser from GOOFY_QR so the destination is never hardcoded. Preview uses
+   the generic licence tracker; fulfilment re-renders per order via
+   QR.licenceUrl(orderId) (see qr.html). Never hardcode QR URLs here. */
+var lastQrDataUrl = '';
+function licenceQrDataUrl(){
+  var Q = window.GOOFY_QR || {};
+  var url = (Q.licenceUrl ? Q.licenceUrl() : 'https://goofylicenses.com/goat?src=license-qr');
+  var qr = qrcode(0, 'M');
+  qr.addData(url); qr.make();
+  return qr.createDataURL(6, 1);
+}
+function renderQr(isCustom){
+  var box = $('ov-qr'), img = $('qrImg');
+  if (!box || !img) return;
+  if (!isCustom) { box.style.display = 'none'; return; }
+  try {
+    if (typeof qrcode === 'undefined') { box.style.display = 'none'; return; }
+    lastQrDataUrl = licenceQrDataUrl();
+    if (img.getAttribute('src') !== lastQrDataUrl) img.setAttribute('src', lastQrDataUrl);
+    box.style.display = '';
+  } catch (e) { box.style.display = 'none'; }
+}
+
 function refreshPreview(){
   var isCustom = state.variant !== 'standard';
   var nom = activeNom();
@@ -679,6 +722,7 @@ function refreshPreview(){
   if (gEl) gEl.textContent = (state.variant === 'custom-giver') ? (giver || 'Your Name') : '';
   var ph = $('ovPhotoPh');
   if (ph) ph.style.display = nom.photo ? 'none' : '';
+  renderQr(isCustom);
   layout();
 }
 
@@ -1214,6 +1258,29 @@ function buildSnapshot(cb){
           x.fillText(gName, gF.x + gF.w / 2, gF.y + gF.h - 6);
         }
       }
+      finish();
+    }
+    // Custom snapshot gets the same live QR as the preview, composited over
+    // the blank template's empty QR corner (per-order QR is re-rendered at
+    // fulfilment via QR.licenceUrl(orderId) — see qr.html).
+    function finish(){
+      if (isCustom) {
+        var qrUrl = lastQrDataUrl;
+        if (!qrUrl) { try { qrUrl = licenceQrDataUrl(); } catch (e) { qrUrl = ''; } }
+        if (qrUrl) {
+          var qi = new Image();
+          qi.onload = function(){
+            try {
+              x.fillStyle = '#ffffff'; x.fillRect(QR_BOX.x, QR_BOX.y, QR_BOX.w, QR_BOX.h);
+              x.drawImage(qi, QR_BOX.x, QR_BOX.y, QR_BOX.w, QR_BOX.h);
+            } catch (e) {}
+            cb(c.toDataURL('image/jpeg', 0.85));
+          };
+          qi.onerror = function(){ cb(c.toDataURL('image/jpeg', 0.85)); };
+          qi.src = qrUrl;
+          return;
+        }
+      }
       cb(c.toDataURL('image/jpeg', 0.85));
     }
     function fitScript(ctx, txt, maxW, start){
@@ -1275,7 +1342,10 @@ function checkout(){
   var orderBody = {
     brand:'goofy', variant:state.variant, src:srcParam,
     recipients:noms.map(function(nom){
-      return { name:nom.name.trim(), photo:((isCustom && nom.photo) ? nom.photo : null) };
+      // crop = the zoom/position the customer set, so a re-print from Command
+      // Station (card-render.js) frames the photo exactly as they saw it.
+      var hasPhoto = !!(isCustom && nom.photo);
+      return { name:nom.name.trim(), photo:(hasPhoto ? nom.photo : null), crop:(hasPhoto ? nom.crop : null) };
     }),
     recipientName:first, giverName:(state.variant === 'custom-giver' ? giver : ''),
     licenceNo:LICENCE_NO, selfNominate:state.selfNominate,

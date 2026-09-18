@@ -2098,6 +2098,8 @@ html, body {
 .goat-cert-btn { padding: 12px 20px; font-size: 13.5px; }
 .goat-cert-hint { font-size: 11.5px; color: var(--muted); }
 .goat-photo-cap { font-size: 11px; color: var(--muted); padding: 8px 10px 10px; }
+.goat-card-preview { display: flex; flex-direction: column; align-items: center; padding-top: 12px; }
+.goat-card-preview img { width: 100%; max-width: 520px; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 
 /* Print preview: note for non-pet orders (never printed) */
 .label-line-bar {
@@ -2468,6 +2470,10 @@ html, body {
   <!-- Product-line registry (window.GOOFY_LINES): names, colors, lineOf(order).
        Drives the line switcher, order chips, per-line stats and waitlists. -->
   <script src="/lines.js"></script>
+  <!-- G.O.A.T. license card re-print: QR destinations + generator + renderer -->
+  <script src="/goofy/qr-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <script src="/goofy/card-render.js"></script>
 </head>
 <body>
 
@@ -3035,6 +3041,7 @@ html, body {
         <div class="goat-grid" id="goat-grid"></div>
         <div class="goat-actions">
           <a class="btn btn-accent goat-cert-btn" id="goat-cert-btn" href="#" target="_blank" rel="noopener">🖨 Print certificate 6×4</a>
+          <button type="button" class="btn goat-card-btn" id="goat-card-btn" onclick="downloadGoatCard()" disabled>⬇ License card PNG</button>
           <span class="goat-cert-hint">Opens the certificate page in a new tab, pre-filled for this order.</span>
         </div>
       </div>
@@ -5042,6 +5049,12 @@ async function uploadCustomDieCut(file) {
 // Preview area for non-pet orders (G.O.A.T.): the customer's photo for custom
 // licenses (view + download), otherwise a note. Never a rendered pet card.
 function lineOrderPreviewHtml(o) {
+  // G.O.A.T.: the printable license card, re-rendered from the order by
+  // /goofy/card-render.js (filled in by renderGoatCardPreview once drawn).
+  if (isGoatOrder(o) && window.GoofyCard) {
+    return `<div class="goat-card-preview" id="goat-card-preview"><div class="licence-placeholder">Rendering the license card…</div></div>`
+      + `<div class="goat-photo-cap" style="text-align:center">Print-ready card (1010×638, CR80). Download it with "License card PNG" above.</div>`;
+  }
   const ph = effectivePhoto(o);
   if (ph && /^(data:image\/|https?:\/\/|\/)/i.test(ph)) {
     return `<div style="display:flex;flex-direction:column;align-items:center;padding-top:12px">`
@@ -5051,6 +5064,44 @@ function lineOrderPreviewHtml(o) {
   const custom = o.variant && o.variant !== 'standard';
   return `<div class="licence-placeholder">${custom ? 'Custom license, but no photo on file.' : 'Standard license: no customer photo.'}`
     + ` Print the certificate from the button above; Print Address Label prints a plain envelope label only.</div>`;
+}
+
+// Draw the G.O.A.T. license card for the open order and enable its download.
+// Uses the customer's saved photo crop (photo_crop) when the order has one.
+let goatCardCanvas = null;
+async function renderGoatCardPreview(o) {
+  goatCardCanvas = null;
+  const btn = document.getElementById('goat-card-btn');
+  if (btn) btn.disabled = true;
+  const box = document.getElementById('goat-card-preview');
+  if (!box || !o || !isGoatOrder(o) || !window.GoofyCard) return;
+  const orderId = o.order_id;
+  try {
+    const canvas = await window.GoofyCard.render({
+      variant:       o.variant,
+      recipientName: goatRecipient(o),
+      giverName:     o.giver_name,
+      photo:         effectivePhoto(o),
+      crop:          o.photo_crop,
+      orderId,
+    });
+    if (!modalOrder || modalOrder.order_id !== orderId) return;   // moved on
+    goatCardCanvas = canvas;
+    box.innerHTML = `<img src="${canvas.toDataURL('image/png')}" alt="G.O.A.T. license card for ${esc(goatRecipient(o) || orderId)}">`;
+    if (btn) btn.disabled = false;
+  } catch (err) {
+    box.innerHTML = `<div class="licence-placeholder">Couldn't render the license card: ${esc(err.message || err)}</div>`;
+  }
+}
+
+function downloadGoatCard() {
+  if (!goatCardCanvas || !modalOrder || !isGoatOrder(modalOrder)) return;
+  const who = String(goatRecipient(modalOrder) || 'goat').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toUpperCase() || 'GOAT';
+  const a = document.createElement('a');
+  a.download = `${modalOrder.order_id || 'GOOFY'}-${who}-card.png`;
+  a.href = goatCardCanvas.toDataURL('image/png');
+  a.click();
+  // Like the pet licence download, this never changes the order status.
 }
 
 // Build the always-visible quick-stats strip: chip size, total item count, and
@@ -5320,6 +5371,7 @@ async function openOrder(dbId) {
   document.getElementById('licence-preview').innerHTML = petLine
     ? '<div class="licence-placeholder">Click "Generate" to render the licence card</div>'
     : lineOrderPreviewHtml(order);
+  if (!petLine) renderGoatCardPreview(order);
   document.getElementById('dl-btn').style.display = 'none';
   document.getElementById('edit-photo-btn').style.display = 'none';
   // The pet licence generator never runs for other lines (it would render a
@@ -5634,6 +5686,7 @@ async function generateLicence() {
   // guards the replace/revert/editor paths that call this after a change.
   if (!isPetOrder(modalOrder)) {
     document.getElementById('licence-preview').innerHTML = lineOrderPreviewHtml(modalOrder);
+    renderGoatCardPreview(modalOrder);
     return;
   }
   const btn = document.getElementById('gen-btn');
