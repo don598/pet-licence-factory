@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PLF Command Station</title>
+  <title>Command Station · Goofy Licenses</title>
+  <link rel="icon" type="image/svg+xml" href="/goofy-home/favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&family=Cinzel:wght@700&family=Pinyon+Script&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Sacramento&family=Cinzel:wght@700&family=Pinyon+Script&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- Import map: resolve bare specifiers used by @imgly/background-removal -->
   <script type="importmap">
   {
@@ -61,23 +62,31 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Canvas */
-  --bg:        #f1f2f4;
+  /* Canvas: Goofy Licenses house paper + ink (same palette as goofylicenses.com) */
+  --bg:        #f7f4ec;
   --surface:   #ffffff;
-  --surface2:  #f6f8f6;
-  --surface3:  #eef1ee;
-  --border:    #e5e8e5;
-  --divider:   #eef0ed;
-  --text:      #111817;
-  --text-soft: #3a4a42;
-  --muted:     #7f8b85;
+  --surface2:  #fbf8f1;
+  --surface3:  #f1ecdf;
+  --border:    #e2dccb;
+  --divider:   #efeadf;
+  --text:      #1d2140;
+  --text-soft: #3a3f63;
+  --muted:     #686c88;
 
-  /* Brand */
-  --accent:        #0c5e32;   /* deep forest */
-  --accent-hover:  #094a27;
-  --accent-soft:   #e6f1ea;   /* tinted bg */
-  --accent-mint:   #4db27a;
-  --accent-on:     #ffffff;   /* text on filled accent */
+  /* Brand: navy ink, stamp red for emphasis */
+  --accent:        #1d2140;
+  --accent-hover:  #2a2f5a;
+  --accent-soft:   #e9e8f2;   /* tinted bg */
+  --accent-mint:   #6c74b8;
+  --accent-on:     #f4efe4;   /* text on filled accent */
+  --stamp:         #c0392b;
+
+  /* Sidebar is always ink-navy (both themes) */
+  --side-bg:     #1d2140;
+  --side-text:   #f4efe4;
+  --side-muted:  #aeb1cc;
+  --side-hover:  rgba(244,239,228,.08);
+  --side-active: rgba(244,239,228,.14);
 
   /* Status palette */
   --green:   #16a34a;
@@ -95,12 +104,14 @@
   --r-pill: 999px;
 
   /* Shadows */
-  --sh-card: 0 1px 0 rgba(15,23,42,.02), 0 1px 2px rgba(15,23,42,.04);
-  --sh-float: 0 6px 24px rgba(15,23,42,.08);
+  --sh-card: 0 1px 0 rgba(29,33,64,.03), 0 1px 2px rgba(29,33,64,.05);
+  --sh-float: 0 6px 24px rgba(29,33,64,.10);
 
-  /* Fonts */
-  --pixel: 'Press Start 2P', monospace;
-  --sans:  'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  /* Fonts: house display + body + mono (goofylicenses.com) */
+  --pixel:   'Press Start 2P', monospace;
+  --sans:    'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  --display: 'Bricolage Grotesque', 'IBM Plex Sans', system-ui, sans-serif;
+  --mono:    'IBM Plex Mono', ui-monospace, monospace;
 
   /* Back-compat aliases for legacy selectors */
   --accent2: var(--accent-hover);
@@ -108,20 +119,23 @@
 
 /* ── Dark Theme ─────────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --bg:        #0a120f;
-  --surface:   #0f1a15;
-  --surface2:  #13221b;
-  --surface3:  #1a2c23;
-  --border:    #1e3028;
-  --divider:   #18241e;
-  --text:      #e8f0ea;
-  --text-soft: #c9d6ce;
-  --muted:     #8aa39a;
+  --bg:        #10121c;
+  --surface:   #171a28;
+  --surface2:  #1d2132;
+  --surface3:  #262a40;
+  --border:    #2c3150;
+  --divider:   #22263a;
+  --text:      #f1eef7;
+  --text-soft: #cfd1e4;
+  --muted:     #9699b5;
 
-  --accent:        #2ecf5d;
-  --accent-hover:  #4dd977;
-  --accent-soft:   rgba(46,207,93,.14);
-  --accent-on:     #08140c;
+  --accent:        #f4efe4;
+  --accent-hover:  #ffffff;
+  --accent-soft:   rgba(244,239,228,.12);
+  --accent-on:     #1d2140;
+  --stamp:         #f2877b;
+
+  --side-bg:     #0b0d16;
 
   --sh-card:  0 1px 0 rgba(0,0,0,.25);
   --sh-float: 0 8px 30px rgba(0,0,0,.45);
@@ -353,7 +367,7 @@ html, body {
 .stat-card:hover .stat-arrow { background: var(--accent); color: var(--accent-on); }
 
 .stat-card.hero {
-  background: linear-gradient(145deg, #0d6b39 0%, #08421f 100%);
+  background: var(--accent);
   border-color: transparent;
   color: #fff;
 }
@@ -1321,7 +1335,7 @@ html, body {
   color: var(--accent-on);
   background: var(--accent);
   font-weight: 600;
-  box-shadow: 0 6px 20px -6px rgba(12,94,50,.5);
+  box-shadow: none;
 }
 .nav-item.active:hover { background: var(--accent-hover); }
 .nav-item .nav-icon {
@@ -2487,6 +2501,211 @@ html, body {
     font-size: 12px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Goofy Licenses house theme: the approved "Command Station, all lines"
+   mockup (navy sidebar, house fonts, per-line stat cards, grouped tabs,
+   docked order panel). Tokens are at the top of this sheet; this block
+   restyles the shell on top of the rules above. Layout-only desktop rules
+   sit in min-width queries so the phone layout above still applies.
+   ═══════════════════════════════════════════════════════════════════════ */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Auth */
+.auth-logo { font-family: var(--display); font-weight: 800; font-size: 26px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.auth-logo .auth-mark { display: block; margin-bottom: 8px; }
+.auth-logo span.auth-kicker { font-family: var(--mono); font-weight: 600; font-size: 11px; letter-spacing: .16em; margin: 0; }
+.auth-btn { border-radius: 10px; }
+
+/* Sidebar: ink navy in both themes */
+.cs-sidebar { background: var(--side-bg); border-right: 0; color: var(--side-text); }
+.sidebar-brand { display: flex; align-items: center; gap: 12px; padding: 2px 8px 22px; font-family: var(--sans); font-size: inherit; color: var(--side-text); line-height: 1.1; letter-spacing: 0; }
+.sidebar-brand .brand-mark { flex: 0 0 auto; }
+.sidebar-brand .brand-text { display: flex; flex-direction: column; gap: 5px; }
+.sidebar-brand .brand-kicker { font-family: var(--mono); font-weight: 500; font-size: 10.5px; letter-spacing: .16em; color: var(--side-muted); }
+.sidebar-brand .brand-name { font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: -.01em; }
+.sidebar-section-label { font-family: var(--mono); font-weight: 500; font-size: 10.5px; letter-spacing: .14em; color: var(--side-muted); }
+.nav-item { color: var(--side-text); font-size: 14.5px; border-radius: 8px; padding: 9px 10px; }
+.nav-item:hover { color: var(--side-text); background: var(--side-hover); }
+.nav-item.active, .nav-item.active:hover { color: var(--side-text); background: var(--side-active); font-weight: 600; box-shadow: none; }
+.nav-item .nav-count, .nav-item.active .nav-count { background: transparent; color: var(--side-muted); font-family: var(--mono); font-weight: 500; font-size: 12px; padding: 0; min-width: 0; }
+.nav-item.active .nav-count { color: var(--side-text); }
+.nav-item:focus-visible, .line-item:focus-visible { outline: 2px solid var(--side-text); outline-offset: 1px; }
+.line-item { color: var(--side-text); font-size: 14.5px; border-radius: 8px; padding: 9px 10px; }
+.line-item:hover { color: var(--side-text); background: var(--side-hover); }
+.line-item.is-active, .line-item.is-active:hover { color: #1d2140; background: #f4efe4; font-weight: 600; }
+.line-item .line-count, .line-item.is-active .line-count { background: transparent; color: inherit; font-family: var(--mono); font-weight: 500; font-size: 12.5px; padding: 0; }
+.line-item.is-soon, .line-item:disabled { color: var(--side-muted); opacity: 1; }
+.line-item.is-soon:hover { color: var(--side-muted); background: none; }
+.line-item .line-soon { font-family: var(--mono); font-weight: 500; font-size: 10.5px; letter-spacing: .08em; color: var(--side-muted); border: 0; padding: 0; }
+.sidebar-foot { margin-top: auto; padding: 16px 8px 0; font-size: 12.5px; color: var(--side-muted); }
+@media (min-width: 761px) {
+  .cs-sidebar { width: 248px; padding: 24px 16px; }
+  .cs-sidebar .nav-item .nav-icon { display: none; }
+}
+@media (max-width: 760px) {
+  .sidebar-brand, .sidebar-foot { display: none; }
+  .line-item { flex-shrink: 0; width: auto; border-radius: var(--r-pill); }
+  /* Orders header on a phone: crumb + title, then sync + refresh, then search */
+  .orders-header .page-title { font-size: 28px; line-height: 1; }
+  .orders-header .page-actions { align-items: center; }
+  .orders-header .sync-note { flex: 1 1 auto; align-items: flex-start; }
+  .page-actions .btn-icon { flex: 0 0 44px; width: 44px; height: 44px; padding: 0; }
+  .orders-header .cs-search { height: 44px; padding: 0 12px; }
+  /* Stat cards: 2 × 2, compact */
+  .analytics-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card { padding: 12px 14px; gap: 6px; }
+  .stat-label { font-size: 12px; }
+  .stat-value { font-size: 26px; }
+}
+
+/* Page headers (every view): mono crumb + display title */
+.page-crumb { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; color: var(--muted); margin-bottom: 6px; }
+.page-title { font-family: var(--display); font-weight: 800; letter-spacing: -.02em; }
+.btn-primary, .btn-secondary { border-radius: 10px; }
+.btn-secondary { border-width: 1.5px; }
+.btn-icon { padding: 0; width: 42px; height: 42px; justify-content: center; font-size: 16px; }
+.orders-header { align-items: center; }
+.sync-note { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.sync-note #bg-prerun-status { display: flex; align-items: center; gap: 6px; }
+.cs-search { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; }
+.cs-search .cs-search-icon { color: var(--muted); flex: 0 0 auto; }
+.cs-search input { font-size: 14.5px; min-width: 0; }
+.cs-search kbd { font-family: var(--mono); font-weight: 500; }
+@media (min-width: 761px) {
+  .orders-header { padding: 26px 28px 20px; }
+  .orders-header .page-title { font-size: 34px; line-height: 1; }
+  .orders-header .cs-search { width: 300px; height: 42px; padding: 0 12px; }
+}
+
+/* Stat cards */
+.analytics-row { gap: 14px; }
+.stat-card { text-align: left; font: inherit; color: inherit; border: 1.5px solid var(--border); border-radius: 12px; box-shadow: none; display: flex; flex-direction: column; gap: 8px; }
+button.stat-card { cursor: pointer; }
+.stat-card:hover { transform: none; }
+button.stat-card:hover { border-color: var(--accent); }
+button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stat-label { font-size: 13px; margin: 0; }
+.stat-value { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: -.02em; }
+.line-split { margin-top: 0; }
+.line-split .ls-chip, .line-chip { font-family: var(--mono); letter-spacing: .04em; }
+@media (min-width: 761px) { .analytics-row { padding: 0 28px 20px; } .stat-card { padding: 16px 18px; } }
+
+/* Status tabs: segmented control */
+.filter-tabs { background: var(--surface3); border-radius: 10px; padding: 3px; gap: 2px; }
+.filter-tab { border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--muted); padding: 8px 14px; }
+.filter-tab:hover { background: transparent; color: var(--text); }
+.filter-tab.active { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(29,33,64,.10); }
+.filter-tab .tab-count { font-family: var(--mono); font-size: 12.5px; margin-left: 2px; }
+.btn.btn-ghost { border-radius: 10px; }
+[data-theme="dark"] .filter-tabs { background: var(--surface2); }
+[data-theme="dark"] .filter-tab.active { background: var(--surface3); box-shadow: none; }
+
+/* Orders table */
+.orders-panel { border: 1.5px solid var(--border); border-radius: 12px; box-shadow: none; }
+.orders-table th { font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; }
+.orders-table td { font-size: 13.5px; }
+.orders-table .oid { font-family: var(--mono); font-size: 12.5px; color: var(--text-soft); }
+.orders-table td.for-col { max-width: 260px; }
+.for-col .for-wrap { display: block; min-width: 0; }
+.for-col .for-name { display: block; font-weight: 600; font-size: 14.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; }
+.for-col .for-sub { display: block; font-size: 12.5px; font-weight: 400; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
+.orders-table .num-col { font-family: var(--mono); font-size: 13.5px; }
+.orders-table .age-col { color: var(--muted); font-size: 13px; }
+.orders-table th.line-col, .orders-table td.line-col { width: 78px; }
+/* Customer: email on top, its delivery chip (one line) underneath, so a
+   Bounced flag never squeezes the address. */
+.orders-table .cust-cell { flex-direction: column; align-items: flex-start; gap: 4px; }
+.orders-table .cust-cell .cust-email { max-width: 100%; }
+.orders-table .cust-mail { display: flex; align-items: center; gap: 6px; max-width: 100%; }
+.orders-table .cust-mail:empty { display: none; }
+.orders-table .email-chip { flex-direction: row; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 7px; }
+.orders-table .email-chip .ec-sub { font-size: 10.5px; }
+@media (max-width: 760px) { .orders-table .cust-cell { align-items: flex-end; } }
+@media (min-width: 761px) {
+  .orders-table th, .orders-table td { padding-left: 12px; padding-right: 12px; }
+  .orders-table td.cust-td { max-width: 250px; }
+  .orders-table td.for-col { max-width: 230px; }
+}
+/* With the order panel docked there's less room: the panel shows the order
+   id, so the Order column steps aside until the screen is wide. */
+@media (min-width: 1440px) and (max-width: 1699px), (min-width: 761px) and (max-width: 1299px) {
+  .orders-table th.oid-col, .orders-table td.oid-col { display: none; }
+}
+@media (min-width: 761px) and (max-width: 1299px) {
+  .orders-table td.for-col { max-width: 190px; }
+  .orders-table td.cust-td { max-width: 200px; }
+  .orders-table .email-chip .ec-sub { display: none; }
+  .orders-table .stripe-contact-btn { padding: 2px 6px; font-size: 11px; }
+  .orders-table .stripe-contact-btn .sc-txt { display: none; }
+}
+@media (min-width: 1440px) and (max-width: 1599px) {
+  .orders-table td.for-col { max-width: 180px; }
+  .orders-table td.cust-td { max-width: 200px; }
+}
+/* Panel docked but the screen isn't huge: compact the customer column. The
+   chip keeps its status (Delivered / Bounced…); which email it was is in its
+   tooltip, the panel and the email-activity popup. */
+@media (min-width: 1600px) and (max-width: 1899px) {
+  .orders-table td.for-col { max-width: 200px; }
+  .orders-table td.cust-td { max-width: 220px; }
+}
+@media (min-width: 1440px) and (max-width: 1899px) {
+  .orders-table .email-chip .ec-sub { display: none; }
+  .orders-table .stripe-contact-btn { padding: 2px 6px; font-size: 11px; }
+  .orders-table .stripe-contact-btn .sc-txt { display: none; }
+}
+.orders-table tr.is-selected td { background: #fbf6e8; }
+.orders-table tr.is-selected td:first-child { box-shadow: inset 3px 0 0 var(--sel, var(--accent)); }
+[data-theme="dark"] .orders-table tr.is-selected td { background: rgba(244,239,228,.06); }
+.badge { font-family: var(--sans); }
+.badge-processed { background: var(--accent-soft); color: var(--accent); }
+@media (max-width: 760px) {
+  .orders-table td[data-label="Line"] { padding-right: 36px; }
+  .orders-table td.for-col { max-width: none; }
+  .for-col .for-name, .for-col .for-sub { white-space: normal; }
+  .for-col .for-wrap { min-width: 0; text-align: right; }
+  .orders-table tr.is-selected td { background: none; }
+  .orders-table tr.is-selected td:first-child { box-shadow: none; }
+}
+
+/* Docked order panel (≥1440px; below that a row opens the order window) */
+.order-pane { display: none; }
+@media (min-width: 1440px) {
+  .main-area { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: minmax(0, 1fr); gap: 20px; }
+  .order-pane { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; }
+}
+@media (min-width: 1600px) { .main-area { grid-template-columns: minmax(0, 1fr) 400px; } }
+@media (min-width: 1900px) { .main-area { grid-template-columns: minmax(0, 1fr) 440px; } }
+.op-empty { padding: 48px 24px; text-align: center; color: var(--muted); font-size: 14px; }
+.op-head { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 16px; border-bottom: 1.5px solid var(--divider); }
+.op-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.op-line { font-family: var(--mono); font-weight: 600; font-size: 11px; letter-spacing: .08em; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
+.op-id { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.op-name { margin: 0; font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1.05; letter-spacing: -.01em; color: var(--text); overflow-wrap: anywhere; }
+.op-sum { font-size: 14px; color: var(--muted); }
+.op-preview { display: flex; justify-content: center; align-items: center; min-height: 120px; padding: 16px 20px; background: var(--surface3); border-bottom: 1.5px solid var(--divider); }
+.op-card { display: block; width: 100%; max-width: 340px; border-radius: 12px; box-shadow: 0 8px 18px rgba(60,40,10,.2); }
+.op-photo { display: block; max-width: 100%; max-height: 260px; border-radius: 10px; box-shadow: 0 6px 16px rgba(60,40,10,.18); }
+.op-ph { font-size: 13px; color: var(--muted); text-align: center; }
+.op-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 16px 20px; border-bottom: 1.5px solid var(--divider); }
+.op-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.op-k { font-size: 12px; color: var(--muted); }
+.op-v { font-weight: 600; font-size: 14px; color: var(--text); overflow-wrap: anywhere; }
+.op-v.mono { font-family: var(--mono); font-size: 13px; }
+.op-actions { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-bottom: 1.5px solid var(--divider); }
+.op-actions .btn-primary, .op-actions .btn-secondary { width: 100%; justify-content: center; padding: 12px; font-size: 14px; text-decoration: none; text-align: center; }
+.op-actions .btn-secondary[disabled] { opacity: .5; cursor: default; }
+.op-actions-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.op-emails { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px 20px; }
+.op-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--muted); }
+.op-email { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--text); }
+.op-email-st { font-weight: 600; text-align: right; white-space: nowrap; }
+.op-email-st.email-ok { color: #14513d; }
+.op-email-st.email-sent { color: var(--muted); font-weight: 500; }
+.op-email-st.email-warn { color: var(--amber); }
+.op-email-st.email-bad { color: var(--red); }
+[data-theme="dark"] .op-email-st.email-ok { color: #7fd6ae; }
   </style>
   <!-- Canonical client pricing (window.PLF_PRICES) — keep in sync with functions/_shared/pricing.js -->
   <script src="pricing.js"></script>
@@ -2505,7 +2724,9 @@ html, body {
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">
-      🐾 PLF Command Station
+      <svg class="auth-mark" width="64" height="46" viewBox="3 11 58 42" aria-hidden="true"><rect x="5" y="13" width="54" height="38" rx="7" fill="#fff" stroke="#1d2140" stroke-width="3"/><rect x="11" y="19" width="19" height="26" rx="4" fill="#1d2140"/><circle cx="16.5" cy="29" r="2" fill="#fff"/><path d="M22 29.3q2.6-2.4 5.2 0" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M15.5 35.5q5 4.6 10 0" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><rect x="35" y="22" width="18" height="4" rx="2" fill="#1d2140"/><rect x="35" y="30" width="13" height="4" rx="2" fill="#1d2140"/><rect x="35" y="38" width="16" height="4" rx="2" fill="#c0392b"/></svg>
+      <span class="auth-kicker">GOOFY LICENSES</span>
+      Command Station
       <span>Admin access only</span>
     </div>
     <label for="pass-input">Password</label>
@@ -2524,12 +2745,17 @@ html, body {
     <!-- Left nav -->
     <nav class="cs-sidebar">
       <div class="sidebar-brand">
-        <span>PET</span>
-        <span>LICENCE</span>
-        <span>FACTORY</span>
+        <svg class="brand-mark" width="44" height="32" viewBox="3 11 58 42" aria-hidden="true"><rect x="5" y="13" width="54" height="38" rx="7" fill="#f4efe4"/><rect x="11" y="19" width="19" height="26" rx="4" fill="#1d2140"/><circle cx="16.5" cy="29" r="2" fill="#f4efe4"/><path d="M22 29.3q2.6-2.4 5.2 0" fill="none" stroke="#f4efe4" stroke-width="2" stroke-linecap="round"/><path d="M15.5 35.5q5 4.6 10 0" fill="none" stroke="#f4efe4" stroke-width="2.2" stroke-linecap="round"/><rect x="35" y="22" width="18" height="4" rx="2" fill="#1d2140"/><rect x="35" y="30" width="13" height="4" rx="2" fill="#1d2140"/><rect x="35" y="38" width="16" height="4" rx="2" fill="#c0392b"/></svg>
+        <span class="brand-text"><span class="brand-kicker">GOOFY LICENSES</span><span class="brand-name">Command Station</span></span>
       </div>
 
-      <div class="sidebar-section-label">Menu</div>
+      <!-- Product-line switcher: filters the orders table + stats. Counts are
+           orders to ship (paid, not yet processed). Rendered by renderLineNav()
+           from window.GOOFY_LINES; coming-soon lines are listed but disabled. -->
+      <div class="sidebar-section-label">Lines</div>
+      <div class="sidebar-nav" id="line-nav" aria-label="Product lines"></div>
+
+      <div class="sidebar-section-label">Workspace</div>
       <div class="sidebar-nav">
         <button class="nav-item active" data-view="orders" onclick="switchView('orders')">
           <span class="nav-icon">📦</span><span>Orders</span>
@@ -2542,8 +2768,8 @@ html, body {
           <span class="nav-icon">📋</span><span>Tasks</span>
           <span class="nav-count" id="nav-tasks-count">—</span>
         </button>
-        <button class="nav-item" data-view="affiliate" onclick="switchView('affiliate')">
-          <span class="nav-icon">🎟</span><span>Affiliate</span>
+        <button class="nav-item" data-view="affiliate" onclick="switchView('affiliate')" title="Creators and affiliate codes">
+          <span class="nav-icon">🎟</span><span>Creators</span>
           <span class="nav-count" id="nav-affiliate-count">—</span>
         </button>
         <button class="nav-item" data-view="waitlists" onclick="switchView('waitlists')" title="Signups for coming-soon lines + the suggestion box">
@@ -2551,12 +2777,6 @@ html, body {
           <span class="nav-count" id="nav-waitlists-count">—</span>
         </button>
       </div>
-
-      <!-- Product-line switcher: filters the orders table + stats. Counts are
-           orders to ship (paid, not yet processed). Rendered by renderLineNav()
-           from window.GOOFY_LINES; coming-soon lines are listed but disabled. -->
-      <div class="sidebar-section-label">Lines</div>
-      <div class="sidebar-nav" id="line-nav" aria-label="Product lines"></div>
 
       <div class="sidebar-section-label">Tools</div>
       <div class="sidebar-nav">
@@ -2579,89 +2799,64 @@ html, body {
         </button>
       </div>
 
-      <div class="sidebar-promo">
-        <div class="sidebar-promo-icon">🖨</div>
-        <div class="sidebar-promo-title">Print batch labels</div>
-        <div class="sidebar-promo-sub">Select multiple paid orders to print shipping docs at once.</div>
-        <button class="sidebar-promo-btn" onclick="switchView('orders')">Go to Orders</button>
-      </div>
+      <div class="sidebar-foot">Signed in as admin</div>
     </nav>
 
     <!-- Content area -->
     <div class="cs-content">
 
-      <!-- Top bar -->
-      <header class="cs-header">
-        <div class="cs-search">
-          <span class="cs-search-icon">🔍</span>
-          <input id="search-input" type="text" placeholder="Search pet name or customer email…" oninput="renderTable()" />
-          <kbd>⌘F</kbd>
-        </div>
-        <div class="cs-header-right">
-          <span id="bg-prerun-status" style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;"></span>
-          <span id="last-sync" style="font-size:11px;color:var(--muted);"></span>
-          <button class="cs-icon-btn" onclick="switchView('tasks')" title="Tasks">📋</button>
-          <button class="cs-icon-btn" onclick="loadAll()" title="Refresh">↻</button>
-          <div class="cs-user" onclick="switchView('stats')" title="Admin account">
-            <div class="cs-user-avatar">👤</div>
-            <div class="cs-user-meta">
-              <div class="cs-user-name">PLF Admin</div>
-              <div class="cs-user-email">command station</div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <!-- Orders view -->
+      <!-- Orders view: the approved "Command Station, all lines" layout —
+           crumb + title + search, per-line stat cards, grouped status tabs,
+           the orders table and (on wide screens) a docked order panel. -->
       <section class="cs-view active" id="view-orders">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Dashboard</h1>
-            <div class="page-subtitle" id="orders-subtitle">Plan, prioritize, and ship every pet licence.</div>
+        <div class="page-header orders-header">
+          <div class="ph-title">
+            <div class="page-crumb" id="orders-crumb">ALL LINES / ORDERS</div>
+            <h1 class="page-title">Orders</h1>
           </div>
           <div class="page-actions">
-            <button class="btn-primary" onclick="loadAll()"><span>↻</span> Refresh</button>
-            <button class="btn-secondary" onclick="switchView('stats')">View stats</button>
+            <span class="sync-note"><span id="bg-prerun-status"></span><span id="last-sync"></span></span>
+            <label class="cs-search" for="search-input">
+              <svg class="cs-search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+              <span class="sr-only">Search orders</span>
+              <input id="search-input" type="search" placeholder="Search name, order, email" oninput="renderTable()" />
+              <kbd>⌘F</kbd>
+            </label>
+            <button class="btn-secondary btn-icon" onclick="loadAll()" title="Refresh orders" aria-label="Refresh orders">↻</button>
           </div>
         </div>
 
         <div class="analytics-row">
-          <div class="stat-card hero">
-            <div class="stat-label">Total Revenue</div>
-            <div class="stat-value" id="stat-revenue">$—</div>
-            <div class="stat-trend"><span class="trend-chip" style="background:rgba(255,255,255,.18);color:#fff">Paid orders</span></div>
-            <div class="line-split" id="split-revenue"></div>
-          </div>
+          <button type="button" class="stat-card" onclick="setFilter('to_ship')" title="Paid, not yet printed/processed. Click to show them.">
+            <div class="stat-label">To ship</div>
+            <div class="stat-value" id="stat-toship">—</div>
+            <div class="line-split" id="split-toship"></div>
+          </button>
           <div class="stat-card">
-            <div class="stat-label">Orders This Week</div>
-            <div class="stat-value blue" id="stat-week">—</div>
-            <div class="stat-trend"><span class="trend-chip">Last 7 days</span></div>
+            <div class="stat-label">Paid orders, last 7 days</div>
+            <div class="stat-value" id="stat-week">—</div>
             <div class="line-split" id="split-week"></div>
           </div>
           <div class="stat-card">
-            <div class="stat-label">Orders This Month</div>
-            <div class="stat-value purple" id="stat-month">—</div>
-            <div class="stat-trend"><span class="trend-chip">Last 30 days</span></div>
-            <div class="line-split" id="split-month"></div>
+            <div class="stat-label">Revenue, last 7 days</div>
+            <div class="stat-value" id="stat-revenue">—</div>
+            <div class="line-split" id="split-revenue"></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-label">Total Orders</div>
-            <div class="stat-value" id="stat-total">—</div>
-            <div class="stat-trend"><span class="trend-chip">All time</span></div>
-            <div class="line-split" id="split-total"></div>
-          </div>
+          <button type="button" class="stat-card" onclick="switchView('waitlists')" title="Open the waitlists">
+            <div class="stat-label">Waitlist signups</div>
+            <div class="stat-value" id="stat-waitlist">—</div>
+            <div class="line-split" id="split-waitlist"></div>
+          </button>
         </div>
 
         <div class="main-area">
           <div class="orders-panel">
             <div class="panel-toolbar">
-              <div class="filter-tabs" id="filter-tabs">
-                <button class="filter-tab active" data-filter="all"       onclick="setFilter('all')">All</button>
-                <button class="filter-tab"        data-filter="pending"   onclick="setFilter('pending')" title="Abandoned / incomplete checkouts — not counted as orders">Incomplete</button>
-                <button class="filter-tab t-paid" data-filter="paid"      onclick="setFilter('paid')">Paid</button>
-                <button class="filter-tab t-proc" data-filter="processed" onclick="setFilter('processed')">Processed</button>
-                <button class="filter-tab t-ship" data-filter="shipped"   onclick="setFilter('shipped')">Shipped</button>
-                <button class="filter-tab t-done" data-filter="complete"  onclick="setFilter('complete')">Complete</button>
+              <div class="filter-tabs" id="filter-tabs" role="tablist" aria-label="Order status">
+                <button class="filter-tab" role="tab" data-filter="to_ship" onclick="setFilter('to_ship')" title="Paid, not yet printed/processed">To ship <span class="tab-count" id="tab-count-to_ship"></span></button>
+                <button class="filter-tab" role="tab" data-filter="shipped" onclick="setFilter('shipped')" title="Processed, shipped or complete">Shipped</button>
+                <button class="filter-tab" role="tab" data-filter="pending" onclick="setFilter('pending')" title="Abandoned / incomplete checkouts — not counted as orders">Unpaid</button>
+                <button class="filter-tab" role="tab" data-filter="all" onclick="setFilter('all')" title="Every order (except unfinished checkouts)">All</button>
               </div>
               <button class="btn btn-ghost" style="margin-left:auto" onclick="openGiftModal()" title="Create a 100%-off, single-use gift code">🎁 Gift code</button>
               <button class="btn btn-ghost" onclick="reconcileTotals(this)" title="Re-pull the actual charged amount from Stripe for every paid order and update its total (fixes gift/discount orders showing list price). No emails sent.">↻ Reconcile totals</button>
@@ -2676,23 +2871,31 @@ html, body {
               <table class="orders-table">
                 <thead>
                   <tr>
-                    <th class="cb-col"><input type="checkbox" id="select-all-cb" onclick="toggleSelectAll(this.checked)"></th>
-                    <th class="line-col" onclick="setSort('line')">Line <span class="sort-icon">↕</span></th>
-                    <th onclick="setSort('created_at')">Date <span class="sort-icon">↕</span></th>
-                    <th onclick="setSort('pet_first_name')"><span id="name-col-label">Pet Name</span> <span class="sort-icon">↕</span></th>
+                    <th class="cb-col"><input type="checkbox" id="select-all-cb" onclick="toggleSelectAll(this.checked)" aria-label="Select all"></th>
+                    <th class="line-col" data-sort="line" onclick="setSort('line')">Line <span class="sort-icon">↕</span></th>
+                    <th class="oid-col" data-sort="order_id" onclick="setSort('order_id')">Order <span class="sort-icon">↕</span></th>
+                    <th data-sort="pet_first_name" onclick="setSort('pet_first_name')"><span id="name-col-label">For</span> <span class="sort-icon">↕</span></th>
                     <th>Customer</th>
-                    <th onclick="setSort('shipping_option')">Shipping <span class="sort-icon">↕</span></th>
-                    <th onclick="setSort('affiliate_coupon_code')">Affiliate <span class="sort-icon">↕</span></th>
-                    <th onclick="setSort('status')">Status <span class="sort-icon">↕</span></th>
-                    <th onclick="setSort('total')">Amount <span class="sort-icon">↕</span></th>
+                    <th data-sort="status" onclick="setSort('status')">Status <span class="sort-icon">↕</span></th>
+                    <th class="num-col" data-sort="total" onclick="setSort('total')">Total <span class="sort-icon">↕</span></th>
+                    <th class="age-col sorted" data-sort="created_at" onclick="setSort('created_at')">Age <span class="sort-icon">↓</span></th>
                   </tr>
                 </thead>
                 <tbody id="orders-tbody">
-                  <tr><td colspan="9" class="loading-row"><span class="spinner"></span> Loading orders…</td></tr>
+                  <tr><td colspan="8" class="loading-row"><span class="spinner"></span> Loading orders…</td></tr>
                 </tbody>
               </table>
             </div>
           </div>
+
+          <!-- Docked order panel (wide screens): the selected row's card,
+               key details and quick actions. "Open full order" is the
+               existing order window with every tool. Rendered by
+               renderOrderPane(); hidden below 1440px, where a row click opens
+               the order window directly. -->
+          <aside class="order-pane" id="order-pane" aria-label="Selected order" aria-live="polite">
+            <div class="op-empty">Pick an order to see it here.</div>
+          </aside>
         </div>
       </section>
 
@@ -3513,7 +3716,8 @@ document.getElementById('pass-input').addEventListener('keydown', e => {
 
 // ── State ────────────────────────────────────────────────────────────────────
 let allOrders    = [];
-let currentFilter = 'all';
+let currentFilter = 'all';   // a key of STATUS_TABS; first load picks To ship when there is any
+let filterChosen  = false;   // true once the admin picks a tab (stop auto-picking)
 let sortKey       = 'created_at';
 let sortAsc       = false;
 let openOrderId   = null;  // db id of currently open order
@@ -3650,19 +3854,17 @@ function setLine(id) {
 // Line-aware wording on the Orders view.
 function applyLineChrome() {
   const lbl = document.getElementById('name-col-label');
-  if (lbl) lbl.textContent = currentLine === 'plc' ? 'Pet Name' : currentLine === 'goat' ? 'Recipient' : 'Name';
-  const sub = document.getElementById('orders-subtitle');
-  if (sub) sub.textContent = currentLine === 'plc'
-    ? 'Plan, prioritize, and ship every pet licence.'
-    : currentLine === 'all'
-      ? 'Plan, prioritize, and ship every licence, across all lines.'
-      : `Plan, prioritize, and ship every ${(lineInfo(currentLine) || {}).name || 'licence'}.`;
+  if (lbl) lbl.textContent = currentLine === 'plc' ? 'Pet' : currentLine === 'goat' ? 'Nominee' : 'For';
+  const crumb = document.getElementById('orders-crumb');
+  if (crumb) crumb.textContent = (currentLine === 'all'
+    ? 'All lines'
+    : ((lineInfo(currentLine) || {}).name || currentLine)).toUpperCase() + ' / ORDERS';
   const search = document.getElementById('search-input');
   if (search) search.placeholder = currentLine === 'plc'
-    ? 'Search pet name or customer email…'
+    ? 'Search pet, order or email'
     : currentLine === 'goat'
-      ? 'Search recipient, giver, QR batch or email…'
-      : 'Search pet / recipient name or customer email…';
+      ? 'Search nominee, giver, QR batch, email'
+      : 'Search name, order, email';
 }
 applyLineChrome();
 renderLineNav();
@@ -3727,19 +3929,25 @@ async function loadAll() {
 
 async function loadOrders() {
   const tbody = document.getElementById('orders-tbody');
-  tbody.innerHTML = '<tr><td colspan="9"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8"><div class="loading-row"><span class="spinner"></span> Loading…</div></td></tr>';
 
   let data;
   try {
     const res = await adminAPI('list_orders', { limit: 500 });
     data = res.orders || [];
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);padding:20px;text-align:center">Error loading orders: ${esc(err.message)}</td></tr>`;
     return;
   }
 
   allOrders = data;
   ordersLoaded = true;
+  paneFullCache.clear();   // statuses / photos may have changed
+  // First load: open on To ship when something is waiting, else All.
+  if (!filterChosen) {
+    currentFilter = lineScopedOrders().some(isToShip) ? 'to_ship' : 'all';
+    syncFilterTabs();
+  }
   updateAnalytics();
   renderTable();
 
@@ -3774,6 +3982,20 @@ async function loadWaitlist() {
     waitlistError = null;
   }
   renderWaitlist();
+  renderWaitlistStat();
+}
+
+// "Waitlist signups" stat card: coming-soon line signups (the suggestion box
+// is counted on the Waitlists view, not here), split per line.
+function renderWaitlistStat() {
+  const el = document.getElementById('stat-waitlist');
+  const sp = document.getElementById('split-waitlist');
+  if (!el) return;
+  if (!waitlistData) { el.textContent = '—'; if (sp) sp.innerHTML = ''; return; }
+  const soon = LINES_REG.soon();
+  const per = soon.map(l => ({ l, v: waitlistData.counts[l.id] || 0 }));
+  el.textContent = per.reduce((n, p) => n + p.v, 0);
+  if (sp) sp.innerHTML = lineSplitHtml(per.map(p => ({ l: Object.assign({}, p.l, { short: p.l.short || p.l.name }), v: p.v })), v => v);
 }
 
 function setWaitlistFilter(id) { waitlistFilter = id; renderWaitlist(); }
@@ -3835,20 +4057,20 @@ function orderAmountLabel(o) { if (isAffiliateFreebie(o)) return 'Free'; if (!o.
 // a real order and shouldn't be listed or counted as one.
 function isIncompleteCheckout(o) { return (o.status || '') === 'pending'; }
 
-// Headline numbers for a set of orders (the stat cards above the table).
+// Headline numbers for a set of orders (the stat cards above the table):
+// what's waiting to ship, and paid orders + revenue over the last 7 days.
+const PAID_STATUSES = ['paid', 'processed', 'shipped', 'complete'];
 function analyticsFor(orders, now) {
-  const weekMs    = 7  * 24 * 60 * 60 * 1000;
-  const monthMs   = 30 * 24 * 60 * 60 * 1000;
-  const paidStats = ['paid', 'processed', 'shipped', 'complete'];
-
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
   // Counts reflect REAL orders only — abandoned-cart shells (incomplete
   // checkouts) are excluded so they never inflate the order numbers.
-  const realOrders  = orders.filter(o => !isIncompleteCheckout(o));
-
+  const realOrders = orders.filter(o => !isIncompleteCheckout(o));
+  const paidWeek = realOrders.filter(o => PAID_STATUSES.includes(o.status)
+    && new Date(o.created_at).getTime() >= now - weekMs);
   return {
-    revenue: realOrders.filter(o => paidStats.includes(o.status)).reduce((s, o) => s + orderRevenue(o), 0),
-    week:    realOrders.filter(o => new Date(o.created_at).getTime() >= now - weekMs).length,
-    month:   realOrders.filter(o => new Date(o.created_at).getTime() >= now - monthMs).length,
+    toShip:  realOrders.filter(isToShip).length,
+    week:    paidWeek.length,
+    revenue: paidWeek.reduce((s, o) => s + orderRevenue(o), 0),
     total:   realOrders.length,
   };
 }
@@ -3865,10 +4087,10 @@ function updateAnalytics() {
   // Only the selected line's orders count; "All lines" adds a per-line split.
   const m = analyticsFor(lineScopedOrders(), now);
 
-  document.getElementById('stat-revenue').textContent = '$' + m.revenue.toFixed(2);
-  document.getElementById('stat-week').textContent    = m.week;
-  document.getElementById('stat-month').textContent   = m.month;
-  document.getElementById('stat-total').textContent   = m.total;
+  const dash = v => ordersLoaded ? v : '—';
+  document.getElementById('stat-toship').textContent  = dash(m.toShip);
+  document.getElementById('stat-week').textContent    = dash(m.week);
+  document.getElementById('stat-revenue').textContent = dash('$' + m.revenue.toFixed(2));
 
   const per = (currentLine === 'all' && ordersLoaded)
     ? LINES_REG.live().map(l => ({ l, v: analyticsFor(allOrders.filter(o => lineOf(o) === l.id), now) }))
@@ -3877,10 +4099,10 @@ function updateAnalytics() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = lineSplitHtml(per, fmt);
   };
-  split('split-revenue', v => '$' + v.revenue.toFixed(2));
+  split('split-toship',  v => v.toShip);
   split('split-week',    v => v.week);
-  split('split-month',   v => v.month);
-  split('split-total',   v => v.total);
+  split('split-revenue', v => '$' + v.revenue.toFixed(2));
+  renderWaitlistStat();
 
   const navOrders = document.getElementById('nav-orders-count');
   if (navOrders) navOrders.textContent = m.total;
@@ -4146,39 +4368,84 @@ function renderStats() {
 }
 
 // ── Filtering & Sorting ───────────────────────────────────────────────────────
+// Status tabs (the approved layout): grouped, not one tab per raw status.
+// The Status column still shows the exact status of every row.
+const STATUS_TABS = {
+  to_ship: o => isToShip(o),                                                // paid, not yet processed
+  shipped: o => ['processed', 'shipped', 'complete'].includes(o.status),
+  pending: o => isIncompleteCheckout(o),                                    // unfinished checkouts
+  all:     o => !isIncompleteCheckout(o),
+};
+function syncFilterTabs() {
+  document.querySelectorAll('.filter-tab').forEach(el => {
+    const on = el.dataset.filter === currentFilter;
+    el.classList.toggle('active', on);
+    el.setAttribute('aria-selected', String(on));
+  });
+}
 function setFilter(f) {
+  if (!STATUS_TABS[f]) f = 'all';
   currentFilter = f;
-  document.querySelectorAll('.filter-tab').forEach(el => el.classList.toggle('active', el.dataset.filter === f));
+  filterChosen = true;
+  if (currentView !== 'orders') switchView('orders');
+  syncFilterTabs();
   renderTable();
 }
 
 function setSort(key) {
   if (sortKey === key) { sortAsc = !sortAsc; }
   else { sortKey = key; sortAsc = false; }
-  document.querySelectorAll('.orders-table th').forEach(th => {
-    th.classList.remove('sorted');
+  document.querySelectorAll('.orders-table th[data-sort]').forEach(th => {
+    const on = th.dataset.sort === sortKey;
+    th.classList.toggle('sorted', on);
     const icon = th.querySelector('.sort-icon');
-    if (icon) icon.textContent = '↕';
+    if (icon) icon.textContent = on ? (sortAsc ? '↑' : '↓') : '↕';
   });
-  const ths = document.querySelectorAll('.orders-table th');
-  const keyMap = { line: 1, created_at: 2, pet_first_name: 3, shipping_option: 5, affiliate_coupon_code: 6, status: 7, total: 8 };
-  const idx = keyMap[sortKey];
-  if (idx !== undefined && ths[idx]) {
-    ths[idx].classList.add('sorted');
-    const icon = ths[idx].querySelector('.sort-icon');
-    if (icon) icon.textContent = sortAsc ? '↑' : '↓';
-  }
   renderTable();
 }
 
+// PLF-1726694400000-AB12 → PLF-1726…AB12 (full id in the tooltip).
+function shortOrderId(id) {
+  const s = String(id || '');
+  const dash = s.indexOf('-');
+  return s.length > 16 && dash > 0 ? s.slice(0, dash + 5) + '…' + s.slice(-4) : s;
+}
+// Compact age: 45m, 5h, 3d, then a date once it's over a week old.
+function fmtAge(ts) {
+  const t = new Date(ts).getTime();
+  if (!t) return '—';
+  const m = Math.max(0, (Date.now() - t) / 60000);
+  if (m < 60) return Math.max(1, Math.round(m)) + 'm';
+  if (m < 60 * 24) return Math.round(m / 60) + 'h';
+  if (m < 60 * 24 * 7) return Math.round(m / 1440) + 'd';
+  const d = new Date(t);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    + (d.getFullYear() !== new Date().getFullYear() ? ' ’' + String(d.getFullYear()).slice(2) : '');
+}
+// The line under the name: what was bought, how it ships, who referred it.
+function orderSubline(o) {
+  const bits = [];
+  if (isGoatOrder(o)) bits.push(goatVariantLabel(o.variant));
+  else {
+    const pack = parseInt(o.pack_count) || 1;
+    bits.push(pack === 2 ? '2-pack' : 'Single');
+    if (o.add_on === 'car_decal') bits.push('car decal');
+  }
+  if (o.shipping_option) bits.push(({ stamp: 'Stamp', standard: 'Standard', priority: 'Priority' })[o.shipping_option] || o.shipping_option);
+  if (isAffiliateOrder(o)) bits.push((isAffiliateFreebie(o) ? 'sample · ' : 'via ') + (affiliateCode(o) || affiliateCreator(o)));
+  return bits.join(' · ');
+}
+
+// Rows on screen right now (line switcher → status tab → search → sort).
+let visibleOrders = [];
 function renderTable() {
   const search = (document.getElementById('search-input').value || '').toLowerCase();
-  let rows = lineScopedOrders().slice();   // line switcher first, then status tabs
+  const scoped = lineScopedOrders();
+  const inTab = STATUS_TABS[currentFilter] || STATUS_TABS.all;
+  let rows = scoped.filter(inTab);
 
-  // Filter by status. The "All" view hides abandoned-cart shells (incomplete
-  // checkouts) so they don't read as orders; the "Incomplete" tab shows them.
-  if (currentFilter === 'all')      rows = rows.filter(o => !isIncompleteCheckout(o));
-  else if (currentFilter !== 'all') rows = rows.filter(o => o.status === currentFilter);
+  const tc = document.getElementById('tab-count-to_ship');
+  if (tc) { const n = scoped.filter(isToShip).length; tc.textContent = ordersLoaded && n ? n : ''; }
 
   // Search
   if (search) rows = rows.filter(o =>
@@ -4206,34 +4473,222 @@ function renderTable() {
     const cmp = va < vb ? -1 : va > vb ? 1 : 0;
     return sortAsc ? cmp : -cmp;
   });
+  visibleOrders = rows;
 
   const tbody = document.getElementById('orders-tbody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr class="empty"><td colspan="9">No orders found</td></tr>';
+    const empty = !ordersLoaded ? 'Loading…'
+      : search ? 'No orders match that search'
+      : currentFilter === 'to_ship' ? 'Nothing to ship. All caught up.'
+      : 'No orders here';
+    tbody.innerHTML = `<tr class="empty"><td colspan="8">${esc(empty)}</td></tr>`;
+    renderOrderPane(null);
+    updateBulkBar();
     return;
   }
 
-  // Name cell: the pet for pet licences (unchanged); the nominee + variant
-  // for G.O.A.T. orders (never "a pet named after the recipient").
-  const nameCell = o => isGoatOrder(o)
-    ? `<td data-label="Recipient" onclick="openOrder(${o.id})" title="${esc(goatVariantLabel(o.variant))}"><span>${esc(goatRecipient(o) || '—')}<span class="name-sub">${esc(goatVariantShort(o.variant))}</span></span></td>`
-    : `<td data-label="Pet" onclick="openOrder(${o.id})">${esc((o.pet_first_name || '') + ' ' + (o.pet_last_name || ''))}</td>`;
+  if (paneEnabled() && !rows.some(o => String(o.id) === String(selectedOrderId))) selectedOrderId = rows[0].id;
 
-  tbody.innerHTML = rows.map(o => `
-    <tr>
-      <td class="cb-col" onclick="event.stopPropagation()"><input type="checkbox" class="order-cb" data-id="${o.id}" ${selectedOrderIds.has(o.id) ? 'checked' : ''} onclick="toggleOrderSelected(${o.id}, this.checked)"></td>
-      <td class="line-col" data-label="Line" onclick="openOrder(${o.id})">${lineChipHtml(lineOf(o))}</td>
-      <td data-label="Date" onclick="openOrder(${o.id})" title="${o.created_at}">${fmtDate(o.created_at)}</td>
-      ${nameCell(o)}
-      <td class="cust-td" data-label="Customer" onclick="openOrder(${o.id})" title="${esc(o.customer_email || '')}"><span class="cust-cell"><span class="cust-email">${esc(o.customer_email || '—')}</span>${renderEmailMarker(o)}</span></td>
-      <td data-label="Shipping" onclick="openOrder(${o.id})">${fmtShipping(o.shipping_option)}</td>
-      <td data-label="Affiliate" onclick="openOrder(${o.id})">${renderAffiliateMarker(o)}</td>
-      <td data-label="Status" onclick="openOrder(${o.id})"><span class="badge badge-${o.status || 'pending'}">${o.status || 'pending'}</span></td>
-      <td data-label="Amount" onclick="openOrder(${o.id})">${orderAmountLabel(o)}</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = rows.map(o => {
+    const l = lineInfo(lineOf(o)) || {};
+    const sel = paneEnabled() && String(o.id) === String(selectedOrderId);
+    const who = orderDisplayName(o) || '—';
+    return `
+    <tr class="${sel ? 'is-selected' : ''}" data-id="${o.id}" style="--sel:${esc((l.color && l.color.dot) || 'var(--accent)')}" onclick="rowClick(${o.id})" ondblclick="openOrder(${o.id})">
+      <td class="cb-col" onclick="event.stopPropagation()"><input type="checkbox" class="order-cb" data-id="${o.id}" ${selectedOrderIds.has(o.id) ? 'checked' : ''} onclick="toggleOrderSelected(${o.id}, this.checked)" aria-label="Select ${esc(who)}"></td>
+      <td class="line-col" data-label="Line">${lineChipHtml(lineOf(o))}</td>
+      <td class="oid-col" data-label="Order"><span class="oid" title="${esc(o.order_id || '')}">${esc(shortOrderId(o.order_id))}</span></td>
+      <td class="for-col" data-label="${isGoatOrder(o) ? 'Nominee' : 'Pet'}"><span class="for-wrap"><span class="for-name">${esc(who)}</span><span class="for-sub">${esc(orderSubline(o))}</span></span></td>
+      <td class="cust-td" data-label="Customer" title="${esc(o.customer_email || '')}"><span class="cust-cell"><span class="cust-email">${esc(o.customer_email || '—')}</span><span class="cust-mail">${renderEmailMarker(o)}</span></span></td>
+      <td data-label="Status"><span class="badge badge-${esc(o.status || 'pending')}">${esc(o.status === 'paid' ? 'to ship' : (o.status || 'pending'))}</span></td>
+      <td class="num-col" data-label="Total">${esc(orderAmountLabel(o))}</td>
+      <td class="age-col" data-label="Age" title="${esc(fmtDate(o.created_at))}">${esc(fmtAge(o.created_at))}</td>
+    </tr>`;
+  }).join('');
   updateBulkBar();
+  renderOrderPane(rows.find(o => String(o.id) === String(selectedOrderId)) || null);
 }
+
+// ── Docked order panel (wide screens) ────────────────────────────────────────
+// A row click selects the order here; "Open full order" (or a double-click)
+// opens the full order window with every tool. Below 1440px there is no room
+// for the panel, so a row click opens the order window as before.
+let selectedOrderId = null;
+const paneFullCache = new Map();   // db id → get_order result (has photo + address)
+let paneCardCanvas = null;
+const PANE_MQ = '(min-width: 1440px)';   // keep in sync with the .order-pane CSS
+function paneEnabled() { return window.matchMedia(PANE_MQ).matches; }
+
+function rowClick(id) {
+  if (!paneEnabled()) { openOrder(id); return; }
+  selectedOrderId = id;
+  document.querySelectorAll('#orders-tbody tr[data-id]').forEach(tr =>
+    tr.classList.toggle('is-selected', tr.dataset.id === String(id)));
+  renderOrderPane(allOrders.find(o => String(o.id) === String(id)) || null);
+}
+
+const PANE_STATUS = {
+  paid: 'to ship', processed: 'processed', shipped: 'shipped', complete: 'complete',
+  pending: 'checkout not finished', address_invalid: 'address problem',
+  address_pending_verification: 'address being checked', cancelled: 'cancelled',
+};
+
+function paneAddress(o) {
+  const line1 = o.ship_addr_line1 || o.addr_line1 || '';
+  const line2 = o.ship_addr_line1 ? (o.ship_addr_line2 || '') : (o.addr_line2 || '');
+  const city = o.ship_addr_line1
+    ? [o.ship_city, o.ship_state].filter(Boolean).join(', ') + (o.ship_zip ? ' ' + o.ship_zip : '')
+    : '';
+  return [line1, line2, city].filter(Boolean).join(', ');
+}
+
+function paneEmailsHtml(o) {
+  const by = (o && o.email_by_type) || {};
+  const order = ['confirmation', 'goofy_confirmation', 'address_issue', 'stamp_shipped', 'shipping', 'goofy_shipped', 'goofy_recovery'];
+  const rows = order.filter(k => by[k] && by[k].status).map(k => {
+    const v = emailStatusView(by[k]);
+    return `<div class="op-email"><span>${esc(emailTypeMeta(k).label)}</span><span class="op-email-st ${v.cls}">${esc(v.text)}</span></div>`;
+  });
+  if (!rows.length && o && o.email_status) {
+    const v = emailStatusView({ status: o.email_status, opens: o.email_opens });
+    rows.push(`<div class="op-email"><span>${esc(emailTypeMeta(o.email_last_type || 'confirmation').label)}</span><span class="op-email-st ${v.cls}">${esc(v.text)}</span></div>`);
+  }
+  if (isToShip(o)) {
+    const goat = isGoatOrder(o);
+    rows.push(`<div class="op-email"><span>${goat ? 'Council shipping notice' : 'Shipping confirmation'}</span><span class="op-email-st email-sent">Sends when you print</span></div>`);
+  }
+  return rows.length ? rows.join('') : '<div class="op-email"><span>No emails yet</span></div>';
+}
+
+function renderOrderPane(o) {
+  const pane = document.getElementById('order-pane');
+  if (!pane) return;
+  if (!o || !paneEnabled()) {
+    paneCardCanvas = null;
+    pane.dataset.key = '';
+    pane.innerHTML = `<div class="op-empty">${ordersLoaded ? 'Pick an order to see it here.' : 'Loading…'}</div>`;
+    return;
+  }
+  const id = o.id;
+  // Same order in the same state is already on screen: keep it (and its
+  // drawn card) instead of redrawing on every search keystroke.
+  const key = [id, o.status, o.total, JSON.stringify(o.email_by_type || {}), paneFullCache.has(String(id)) ? 'full' : 'row'].join('|');
+  if (pane.dataset.key === key) return;
+  pane.dataset.key = key;
+  paneCardCanvas = null;
+  const lineId = lineOf(o);
+  const l = lineInfo(lineId) || {};
+  const c = l.color || {};
+  const goat = lineId === 'goat';
+  const full = paneFullCache.get(String(id)) || null;
+  const d = full || o;
+  const what = goat ? goatVariantLabel(o.variant) : orderSubline(o).split(' · ')[0];
+  const amount = orderAmountLabel(o);
+  const summary = [what, amount === '—' ? '' : (amount === 'Free' ? 'Free' : 'Paid ' + amount), PANE_STATUS[o.status] || o.status]
+    .filter(Boolean).join(' · ');
+
+  const fields = goat
+    ? [['Nominated by', goatGiverText(d)], ['QR batch', d.src || '—', true], ['Customer', d.customer_email || '—'], ['Ship to', full ? (paneAddress(full) || '—') : '…']]
+    : [['Customer', d.customer_email || '—'], ['Ship to', full ? (paneAddress(full) || '—') : '…'],
+       ['Chip', d.chip_size ? String(d.chip_size).charAt(0).toUpperCase() + String(d.chip_size).slice(1) : '—'],
+       ['Referred by', isAffiliateOrder(d) ? (affiliateCode(d) || affiliateCreator(d)) : 'Direct']];
+
+  const actions = goat
+    ? `<a class="btn-secondary" href="${esc(goatCertificateUrl(d))}" target="_blank" rel="noopener">Print certificate 6×4</a>
+       <button type="button" class="btn-secondary" id="op-card-btn" onclick="downloadPaneCard()" disabled>License card PNG</button>`
+    : '';   // pet licences: the licence generator + photo tools live in the order window
+
+  pane.innerHTML = `
+    <div class="op-head">
+      <div class="op-top">
+        <span class="op-line" style="color:${esc(c.ink || 'inherit')};background:${esc(c.tint || 'transparent')}">${esc(String(l.name || lineId).toUpperCase())}</span>
+        <span class="op-id" title="${esc(o.order_id || '')}">${esc(shortOrderId(o.order_id))}</span>
+      </div>
+      <h2 class="op-name">${esc(orderDisplayName(o) || '—')}</h2>
+      <div class="op-sum">${esc(summary)}</div>
+    </div>
+    <div class="op-preview" id="op-preview">${goat ? '<div class="op-ph">Drawing the license card…</div>' : (full ? '' : '<div class="op-ph">Loading photo…</div>')}</div>
+    <div class="op-grid">${fields.map(([k, v, mono]) =>
+      `<div class="op-field"><span class="op-k">${esc(k)}</span><span class="op-v${mono ? ' mono' : ''}">${esc(v)}</span></div>`).join('')}</div>
+    <div class="op-actions">
+      <button type="button" class="btn-primary op-open" onclick="openOrder(${id})">Open full order</button>
+      ${actions ? `<div class="op-actions-row">${actions}</div>` : ''}
+      <button type="button" class="btn-secondary op-print" onclick="openLabelPreview([${id}])" title="Opens the print preview. Printing a paid order sends its shipping email.">🖨 Print docs${printWillEmail(o) ? ' &amp; send shipping email' : ''}</button>
+    </div>
+    <div class="op-emails">
+      <span class="op-kicker">EMAILS${goat ? ' · COUNCIL TEMPLATES' : ''}</span>
+      ${paneEmailsHtml(o)}
+    </div>`;
+
+  // Photo / card preview. Standard G.O.A.T. cards need no photo, so they can
+  // draw straight from the list row; everything else waits for get_order.
+  if (goat && o.variant === 'standard') paneDrawGoat(o, o);
+  if (!full) {
+    adminAPI('get_order', { id }).then(res => {
+      if (!res || !res.order) return;
+      paneFullCache.set(String(id), res.order);
+      if (String(selectedOrderId) === String(id)) renderOrderPane(allOrders.find(x => String(x.id) === String(id)) || o);
+    }).catch(() => {
+      const pv = document.getElementById('op-preview');
+      if (pv && String(selectedOrderId) === String(id)) pv.innerHTML = '<div class="op-ph">Couldn’t load the photo. Open the full order.</div>';
+    });
+    return;
+  }
+  if (goat) paneDrawGoat(o, full);
+  else {
+    const ph = effectivePhoto(full);
+    const pv = document.getElementById('op-preview');
+    if (pv) pv.innerHTML = ph && /^(data:image\/|https?:\/\/|\/)/i.test(ph)
+      ? `<img class="op-photo" src="${esc(ph)}" alt="Photo for ${esc(orderDisplayName(o) || 'this order')}">`
+      : '<div class="op-ph">No photo on file</div>';
+  }
+}
+
+async function paneDrawGoat(o, full) {
+  if (!window.GoofyCard) return;
+  const id = o.id;
+  try {
+    const canvas = await window.GoofyCard.render({
+      variant: full.variant, recipientName: goatRecipient(full), giverName: full.giver_name,
+      photo: effectivePhoto(full), crop: full.photo_crop, orderId: full.order_id,
+    });
+    if (String(selectedOrderId) !== String(id)) return;   // moved on
+    paneCardCanvas = canvas;
+    const pv = document.getElementById('op-preview');
+    if (pv) pv.innerHTML = `<img class="op-card" src="${canvas.toDataURL('image/png')}" alt="${esc(goatRecipient(full) || 'G.O.A.T.')} license card">`;
+    const btn = document.getElementById('op-card-btn');
+    if (btn) btn.disabled = false;
+  } catch (err) {
+    const pv = document.getElementById('op-preview');
+    if (pv && String(selectedOrderId) === String(id)) pv.innerHTML = `<div class="op-ph">Couldn’t draw the card: ${esc(err.message || err)}</div>`;
+  }
+}
+
+function downloadPaneCard() {
+  const o = allOrders.find(x => String(x.id) === String(selectedOrderId));
+  if (!paneCardCanvas || !o) return;
+  const who = String(goatRecipient(o) || 'goat').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toUpperCase() || 'GOAT';
+  const a = document.createElement('a');
+  a.download = `${o.order_id || 'GOOFY'}-${who}-card.png`;
+  a.href = paneCardCanvas.toDataURL('image/png');
+  a.click();
+}
+
+// Crossing the 1440px line swaps between "row selects into the panel" and
+// "row opens the order window"; re-render so the panel/selection match.
+window.matchMedia(PANE_MQ).addEventListener('change', () => renderTable());
+
+// ⌘F / Ctrl+F on the Orders view focuses the order search (press it again
+// inside the search box for the browser's own find).
+document.addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'f' || e.shiftKey || e.altKey) return;
+  if (currentView !== 'orders' || document.querySelector('.modal-backdrop.open')) return;
+  const input = document.getElementById('search-input');
+  if (!input || document.activeElement === input) return;
+  e.preventDefault();
+  input.focus();
+  input.select();
+});
 
 // Email marker beside the customer email — ONE chip showing the latest email's
 // status, with a subtitle naming which email it was. Click it for the full
@@ -4246,13 +4701,13 @@ function renderEmailMarker(o) {
   const meta = emailTypeMeta(latest.type);
   const v = emailStatusView(latest.d);
   const icon = v.cls === 'email-bad' ? '⚠' : meta.icon;
-  let html = `<button type="button" class="email-chip ${v.cls}" onclick="event.stopPropagation();openEmailActivity(${o.id})" title="View full email activity">`
+  let html = `<button type="button" class="email-chip ${v.cls}" onclick="event.stopPropagation();openEmailActivity(${o.id})" title="${esc(meta.label)}: ${esc(v.text)}. Click for the full email activity">`
     + `<span class="ec-line"><span class="ec-ico">${icon}</span>${esc(v.text)}</span>`
     + `<span class="ec-sub">${esc(meta.label)}</span></button>`;
   // Bounced/dropped/spam-reported only: offer the contact info Stripe
   // collected at checkout as another way to reach the customer.
   if (v.cls === 'email-bad') {
-    html += `<button type="button" class="stripe-contact-btn" onclick="event.stopPropagation();openStripeContact(${o.id})" title="View Stripe contact — the name/email/phone Stripe collected at checkout">👤 Stripe contact</button>`;
+    html += `<button type="button" class="stripe-contact-btn" onclick="event.stopPropagation();openStripeContact(${o.id})" title="View Stripe contact — the name/email/phone Stripe collected at checkout">👤<span class="sc-txt"> Stripe contact</span></button>`;
   }
   return html;
 }
