@@ -22,7 +22,7 @@ html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--cream);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background:none}
 /* ── Ambient mountain scene (card-art ridges, subtle) ── */
-.scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict;transform:translateZ(0)}
 .scene::after{content:'';position:absolute;inset:0;z-index:4;background:linear-gradient(180deg,var(--bg) 0%,rgba(244,239,227,0) 40%)}
 .sun{position:absolute;top:5%;right:9%;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,66,.32),rgba(245,197,66,0) 70%);z-index:1}
 /* Full-bleed ridge canvas: 120vw wide, centred with -10vw offset, so
@@ -32,7 +32,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .ridges{position:absolute;left:-10vw;bottom:0;width:120vw;max-width:none;height:48vh;min-height:300px;z-index:3}
 /* Scroll motion: layers drift apart vertically AND slide horizontally in
    opposite directions as you scroll. Nothing moves on its own. */
-.layer{transform-box:fill-box;transform-origin:50% 100%;will-change:transform}
+.layer{will-change:transform;backface-visibility:hidden}
 .layer.l1{fill:#e9e2d1;opacity:.9}
 .layer.l2{fill:#dcd2bb;opacity:.85}
 .layer.l3{fill:#cdc0a4;opacity:.7}
@@ -44,7 +44,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 /* Bottom-anchored so they stay glued to the peaks on any screen height. */
 .cloud-drift.d3{top:auto;bottom:27vh;z-index:5}
 .cloud-drift.d4{top:auto;bottom:17vh;z-index:5}
-.cloud{position:relative;width:170px;height:52px;background:rgba(255,253,247,.9);border-radius:999px;opacity:.75;filter:blur(.3px);animation:clouddrift linear infinite;will-change:transform}
+.cloud{position:relative;width:170px;height:52px;background:rgba(255,253,247,.9);border-radius:999px;opacity:.75;animation:clouddrift linear infinite;will-change:transform}
 .cloud::before,.cloud::after{content:'';position:absolute;background:inherit;border-radius:50%}
 .cloud::before{width:68px;height:68px;top:-32px;left:28px}
 .cloud::after{width:48px;height:48px;top:-20px;left:84px}
@@ -77,6 +77,33 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
   100%{transform:translateX(112vw) translateY(0);opacity:0}
 }
 @media (prefers-reduced-motion:reduce){.bird{display:none}.cloud-drift{display:none}}
+/* Scroll parallax, CSS-driven where the browser supports scroll timelines
+   (Safari 26+, Chrome): the compositor moves the layers, so it stays smooth
+   even mid-fling. Same offsets as the JS fallback in parallax() below. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .scene .l1, .scene .l2, .scene .l3, .scene .sun, .scene .d1, .scene .d2, .scene .d3, .scene .d4 {
+      animation-duration: auto; animation-timing-function: linear; animation-fill-mode: both;
+      animation-timeline: scroll(root block);
+    }
+    .scene .l1 { animation-name: px-l1; animation-range: 0px 1500px; }
+    .scene .l2 { animation-name: px-l2; animation-range: 0px 1500px; }
+    .scene .l3 { animation-name: px-l3; animation-range: 0px 1500px; }
+    .scene .sun { animation-name: px-sun; animation-range: 0px 1800px; }
+    .scene .d1 { animation-name: px-d1; animation-range: 0px 1834px; }
+    .scene .d2 { animation-name: px-d2; animation-range: 0px 1778px; }
+    .scene .d3 { animation-name: px-d3; animation-range: 0px 1584px; }
+    .scene .d4 { animation-name: px-d4; animation-range: 0px 1534px; }
+  }
+}
+@keyframes px-l1 { from { transform: translate3d(0,0,0) } 93.3% { transform: translate3d(-70px,42px,0) } to { transform: translate3d(-70px,45px,0) } }
+@keyframes px-l2 { from { transform: translate3d(0,0,0) } 66.7% { transform: translate3d(70px,60px,0) } to { transform: translate3d(70px,90px,0) } }
+@keyframes px-l3 { from { transform: translate3d(0,0,0) } 54.5% { transform: translate3d(-90px,82px,0) } to { transform: translate3d(-90px,150px,0) } }
+@keyframes px-sun { from { transform: translate3d(0,0,0) } to { transform: translate3d(0,90px,0) } }
+@keyframes px-d1 { from { transform: translate3d(0,0,0) } to { transform: translate3d(0,110px,0) } }
+@keyframes px-d2 { from { transform: translate3d(0,0,0) } to { transform: translate3d(0,160px,0) } }
+@keyframes px-d3 { from { transform: translate3d(0,0,0) } to { transform: translate3d(0,190px,0) } }
+@keyframes px-d4 { from { transform: translate3d(0,0,0) } to { transform: translate3d(0,230px,0) } }
 .wrap{max-width:1060px;margin:0 auto;padding:0 20px 40px;position:relative;z-index:1}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
 .brand{font-family:'Cinzel',serif;font-weight:700;font-size:13px;line-height:1.5;color:var(--gold);text-decoration:none;letter-spacing:2px;display:flex;align-items:center;gap:10px}
@@ -119,8 +146,11 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .card-frame[data-variant="custom-anon"] #ov-giver{display:none}
 .card-caption{margin-top:11px;text-align:center;font-size:12.5px;color:var(--muted);font-weight:700}
 /* ── Carousel (images only, no CTAs) ── */
-.carousel{position:relative;width:100%;aspect-ratio:1010/638;border-radius:14px;overflow:hidden;background:#fff;border:2px solid var(--line);box-shadow:0 18px 50px rgba(90,65,10,.18)}
-.cslide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s ease}
+/* iPhone zooms the page into any text field under 16px; keep them all at 16. */
+input[type=text],input[type=email],input[type=search],input[type=tel],input:not([type]),select,textarea{font-size:max(16px,1em)}
+.carousel{position:relative;width:100%;aspect-ratio:1010/638;touch-action:pan-y;user-select:none;-webkit-user-select:none;border-radius:14px;overflow:hidden;background:#fff;border:2px solid var(--line);box-shadow:0 18px 50px rgba(90,65,10,.18)}
+.cslide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .6s ease;pointer-events:none;-webkit-user-drag:none}
+.carousel.swiping .cslide{transition-duration:.3s}
 .cslide.active{opacity:1}
 .c-arrow{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,253,247,.9);color:var(--cream);font-size:20px;cursor:pointer;z-index:2;line-height:1}
 .c-prev{left:10px}.c-next{right:10px}
@@ -257,7 +287,7 @@ button{ -webkit-tap-highlight-color:transparent; }
 .self-row input:checked + .cbox svg{stroke-dashoffset:0}
 .self-row input:focus-visible + .cbox{outline:2px solid var(--gold);outline-offset:2px}
 .field label{display:block;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-.field input{width:100%;background:var(--bg2);border:2px solid var(--line);border-radius:10px;color:var(--cream);font-size:15px;padding:12px 13px;font-family:inherit}
+.field input{width:100%;background:var(--bg2);border:2px solid var(--line);border-radius:10px;color:var(--cream);font-size:16px;padding:12px 13px;font-family:inherit}
 .field input:focus{outline:none;border-color:var(--gold)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:520px){.grid2{grid-template-columns:1fr;gap:16px}}
@@ -369,11 +399,12 @@ footer a{color:var(--gold)}
   <div class="sun"></div>
   <div class="cloud-drift d1"><div class="cloud c1"></div></div>
   <div class="cloud-drift d2"><div class="cloud c2"></div></div>
-  <svg class="ridges" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice">
-    <g class="layer l1"><path d="M-200,300 L90,230 L160,265 L240,185 L310,245 L390,165 L470,235 L550,190 L640,250 L720,175 L810,245 L890,200 L980,250 L1060,190 L1150,245 L1220,205 L1310,250 L1380,215 L1440,300 L1640,300 L1640,420 L-200,420 Z"/></g>
-    <g class="layer l2"><path d="M-200,340 L110,260 L200,310 L310,235 L400,300 L500,245 L610,305 L720,250 L830,310 L930,255 L1040,305 L1150,260 L1240,308 L1330,265 L1440,340 L1640,340 L1640,420 L-200,420 Z"/></g>
-    <g class="layer l3"><path d="M-200,380 L140,300 L260,355 L390,290 L520,355 L650,300 L780,358 L910,305 L1040,358 L1170,310 L1300,358 L1440,380 L1640,380 L1640,420 L-200,420 Z"/></g>
-  </svg>
+  <!-- One SVG per ridge: each is its own compositor layer, so the scroll
+       parallax only moves pixels instead of re-rasterising one full-width
+       SVG every frame (that was the choppy scroll on iPhone). -->
+  <svg class="ridges layer l1" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice"><path d="M-200,300 L90,230 L160,265 L240,185 L310,245 L390,165 L470,235 L550,190 L640,250 L720,175 L810,245 L890,200 L980,250 L1060,190 L1150,245 L1220,205 L1310,250 L1380,215 L1440,300 L1640,300 L1640,420 L-200,420 Z"/></svg>
+  <svg class="ridges layer l2" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice"><path d="M-200,340 L110,260 L200,310 L310,235 L400,300 L500,245 L610,305 L720,250 L830,310 L930,255 L1040,305 L1150,260 L1240,308 L1330,265 L1440,340 L1640,340 L1640,420 L-200,420 Z"/></svg>
+  <svg class="ridges layer l3" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice"><path d="M-200,380 L140,300 L260,355 L390,290 L520,355 L650,300 L780,358 L910,305 L1040,358 L1170,310 L1300,358 L1440,380 L1640,380 L1640,420 L-200,420 Z"/></svg>
   <div class="cloud-drift d3"><div class="cloud c3"></div></div>
   <div class="cloud-drift d4"><div class="cloud c4"></div></div>
   <div class="bird b1" id="bird1"><svg viewBox="0 0 40 14"><path d="M1,10 Q10,2 20,9 Q30,2 39,10"/></svg></div>
@@ -1544,6 +1575,29 @@ function wireStatic(){
     dotsBox.appendChild(d);
   });
   $('cPrev').addEventListener('click', function(){ showSlide(carouselIdx - 1); restartCarousel(); });
+  // Swipe (or mouse-drag) left / right between product images. The carousel
+  // is touch-action: pan-y, so vertical swipes still scroll the page.
+  (function swipeCarousel(){
+    var el = $('carousel');
+    if (!el) return;
+    var sx = 0, sy = 0, down = false;
+    el.addEventListener('pointerdown', function(e){
+      if (e.target.closest && e.target.closest('.c-arrow')) return;
+      down = true; sx = e.clientX; sy = e.clientY;
+    });
+    el.addEventListener('pointerup', function(e){
+      if (!down) return;
+      down = false;
+      var dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dx) < 36 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      el.classList.add('swiping');
+      showSlide(carouselIdx + (dx < 0 ? 1 : -1));
+      restartCarousel();
+      setTimeout(function(){ el.classList.remove('swiping'); }, 350);
+      if (window.PLFTrack) PLFTrack.step('goofy_carousel_swipe');
+    });
+    el.addEventListener('pointercancel', function(){ down = false; });
+  })();
   $('cNext').addEventListener('click', function(){ showSlide(carouselIdx + 1); restartCarousel(); });
   restartCarousel();
   $('fileInput').addEventListener('change', function(e){
@@ -1624,6 +1678,8 @@ function wireStatic(){
   // Translate-only, clamped, so the 120vw bleed never exposes an edge.
   (function parallax(){
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // CSS scroll timelines drive it instead (see @supports in the <style>).
+    if (window.CSS && CSS.supports && CSS.supports('animation-timeline: scroll()')) return;
     var l1 = document.querySelector('.scene .l1');
     var l2 = document.querySelector('.scene .l2');
     var l3 = document.querySelector('.scene .l3');
