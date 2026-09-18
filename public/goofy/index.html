@@ -462,7 +462,7 @@ footer a{color:var(--gold)}
               <div id="giverField"><input id="fGiver" type="text" placeholder="e.g. Dave from Accounting" maxlength="40" aria-labelledby="giverLbl"/></div>
               <p class="giver-note" id="anonNote" hidden>No giver on the licence. The Council keeps your secret. Same $8.95.</p>
             </div>
-            <label class="self-row"><input type="checkbox" class="selfNom"/><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></span><span>🎯 <b>Nominate myself</b> — mail the kit to me</span></label>
+            <label class="self-row"><input type="checkbox" class="selfNom"/><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></span><span>🥸 <b>Nominate myself</b> — mail the kit to me</span></label>
           </div>
           <input type="file" id="fileInput" accept="image/*" hidden/>
 
@@ -471,7 +471,7 @@ footer a{color:var(--gold)}
             <div class="step-title"><h2>The recipient</h2><span class="hint">mandatory — every nomination is a new file</span></div>
             <div id="nomineeListStd"></div>
             <button type="button" class="add-btn" data-add>＋ Add another recipient</button>
-            <label class="self-row"><input type="checkbox" class="selfNom"/><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></span><span>🎯 <b>Nominate myself</b> — mail the kit to me</span></label>
+            <label class="self-row"><input type="checkbox" class="selfNom"/><span class="cbox" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg></span><span>🥸 <b>Nominate myself</b> — mail the kit to me</span></label>
             <div id="addressSlotStd"></div>
           </div>
 
@@ -502,7 +502,7 @@ footer a{color:var(--gold)}
           <div class="step-panel" data-stepkey="review">
             <div class="step-title"><h2>File it with the Council</h2></div>
             <div class="summary"><div id="summaryLines"></div></div>
-            <div class="ship-note">Delivery calculated at checkout. The processing fee above is all-in.</div>
+            <div class="ship-note">Stamp-mail delivery is included. Want tracking? Pick tracked shipping at checkout (optional).</div>
             <button class="cta" id="checkoutBtn">🐐 Pay the processing fee →</button>
             <div class="trust"><span>🔒 Secure Stripe checkout</span><span>🇺🇸 Ships in the US</span></div>
           </div>
@@ -519,7 +519,7 @@ footer a{color:var(--gold)}
   </section>
 
   <section class="faq">
-    <details><summary>What does the processing fee cover?</summary><p>The fee IS the price — $4.95 Standard, $8.95 Custom, plus delivery chosen at checkout. No additional fees, ever. The Council forbids drip pricing.</p></details>
+    <details><summary>What does the processing fee cover?</summary><p>The fee IS the price: $4.95 Standard, $8.95 Custom, stamp-mail delivery included. Want tracking? Tracked shipping is an optional upgrade at checkout. No other fees, ever. The Council forbids drip pricing.</p></details>
     <details><summary>What is drip pricing? (And why does the Council forbid it?)</summary><p>Drip pricing is when a seller advertises one price, then drips extra fees on you at checkout — service fees, processing fees, facility charges. Concert tickets are the classic offender. The Council considers this dishonorable conduct. Every price on this page IS the fee.</p></details>
     <details><summary>Who gets the kit — me or them?</summary><p>Them. You pay the fee and enter the recipient's name and mailing address. The kit is mailed to your nominee.</p></details>
     <details><summary>Can I nominate my boss?</summary><p>The Council does not ask about workplace dynamics. The Council only asks for a mailing address.</p></details>
@@ -613,10 +613,41 @@ function clamp(min, v, max){ return Math.max(min, Math.min(max, v)); }
 function esc(s){ return String(s == null ? '' : s); }
 function money(n){ return '$' + n.toFixed(2); }
 
-var PRICES = (window.GOOFY_PRICES_USD) || { standard:4.95, custom:8.95, stamp:0.95 };
+var PRICES = (window.GOOFY_PRICES_USD) || { standard:4.95, custom:8.95, stamp:0 };
 
 var qs = new URLSearchParams(window.location.search);
 var srcParam = (qs.get('src') || '').trim().slice(0, 120);
+
+/* ── Resume after Stripe ──
+   Right before the redirect to Stripe the whole builder (option, nominees,
+   names, photos + crops, giver / anonymous, self-nominate, address) is saved
+   in IndexedDB (photos are too big for localStorage). Coming back restores it
+   at the review step: Stripe's ← link returns with ?resume=1, and the
+   browser Back button reloads this page (it's served no-store), which shows
+   up as a back_forward navigation. Paying clears the draft (success page). */
+var RESUMING = (function(){
+  if (qs.get('resume') === '1') return true;
+  try {
+    var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    return !!(nav && nav.type === 'back_forward');
+  } catch (e) { return false; }
+})();
+var DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+function draftStore(mode, fn){
+  return new Promise(function(resolve, reject){
+    if (!window.indexedDB) { reject(new Error('no IndexedDB')); return; }
+    var open = indexedDB.open('goofy-builder', 1);
+    open.onupgradeneeded = function(){ open.result.createObjectStore('drafts'); };
+    open.onerror = function(){ reject(open.error); };
+    open.onsuccess = function(){
+      var db = open.result, req;
+      try { var tx = db.transaction('drafts', mode); req = fn(tx.objectStore('drafts')); }
+      catch (e) { db.close(); reject(e); return; }
+      tx.oncomplete = function(){ db.close(); resolve(req && req.result); };
+      tx.onerror = tx.onabort = function(){ db.close(); reject(tx.error); };
+    };
+  });
+}
 if (!srcParam) {
   try {
     var _attr = JSON.parse(sessionStorage.getItem('plf_attr') || localStorage.getItem('plf_attr') || '{}') || {};
@@ -1333,9 +1364,9 @@ function recalc(){
     });
   }
   h += '<div class="line muted"><span>Nomination processing fee</span><span>all-in ✓</span></div>';
-  if (state.selfNominate) h += '<div class="line muted"><span>🎯 Self-nomination</span><span>kit mailed to you</span></div>';
-  h += '<div class="line muted"><span>Delivery</span><span>calculated at checkout</span></div>';
-  h += '<div class="line total"><span>Due today</span><span>' + money(total) + ' + delivery</span></div>';
+  if (state.selfNominate) h += '<div class="line muted"><span>🥸 Self-nomination</span><span>kit mailed to you</span></div>';
+  h += '<div class="line muted"><span>Stamp-mail delivery</span><span>included ✓</span></div>';
+  h += '<div class="line total"><span>Due today</span><span>' + money(total) + '</span></div>';
   $('summaryLines').innerHTML = h;
   $('wizTotal').textContent = money(total);
   $('checkoutBtn').textContent = '🐐 Pay ' + money(total) + ' processing fee →';
@@ -1359,6 +1390,45 @@ function buildSnapshot(cb){
       orderId: null
     }).then(function(c){ out(c.toDataURL('image/jpeg', 0.85)); }, function(){ out(null); });
   } catch (e) { out(null); }
+}
+
+/* ── Checkout draft (see "Resume after Stripe" at the top) ── */
+function resumeUrl(){
+  try { var u = new URL(window.location.href); u.searchParams.set('resume', '1'); return u.toString(); }
+  catch (e) { return window.location.href; }
+}
+function saveDraft(){
+  var draft = {
+    v: 1, ts: Date.now(), variant: state.variant, activeIdx: state.activeIdx,
+    selfNominate: state.selfNominate, giver: $('fGiver').value,
+    nominees: state.nominees.map(function(n){ return { name: n.name, photo: n.photo || null, crop: n.crop }; }),
+    addr: { a1: $('fAddr1').value, a2: $('fAddr2').value, city: $('fCity').value, st: $('fState').value, zip: $('fZip').value }
+  };
+  return draftStore('readwrite', function(st){ return st.put(draft, 'checkout'); });
+}
+function restoreDraft(d){
+  if (!d || d.v !== 1 || !VALID[d.variant] || !d.nominees || !d.nominees.length) return false;
+  if (!(Date.now() - (d.ts || 0) < DRAFT_TTL_MS)) return false;
+  state.selfNominate = !!d.selfNominate;
+  $('fGiver').value = d.giver || '';
+  var a = d.addr || {};
+  $('fAddr1').value = a.a1 || ''; $('fAddr2').value = a.a2 || '';
+  $('fCity').value = a.city || ''; $('fState').value = a.st || ''; $('fZip').value = a.zip || '';
+  state.nominees = d.nominees.slice(0, 5).map(function(n){
+    var c = n.crop || {};
+    return { name: String(n.name || ''), photo: n.photo || null,
+             crop: { cx: isFinite(c.cx) ? +c.cx : 0.5, cy: isFinite(c.cy) ? +c.cy : 0.5, zoom: isFinite(c.zoom) && c.zoom > 0 ? +c.zoom : 1 } };
+  });
+  state.activeIdx = Math.min(Math.max(0, d.activeIdx | 0), state.nominees.length - 1);
+  photoEverAdded = state.nominees.some(function(n){ return !!n.photo; });   // don't pop the reframe modal
+  selectVariant(d.variant, false);            // opens the wizard on this path
+  buildNominees(); syncActivePhoto(); updateReframeBtn(); refreshPreview(); recalc();
+  var last = stepsFor().length;
+  maxReached = last;
+  go(last, 'f');                               // back on the review step, where they clicked Pay
+  try { $('wizardBlock').scrollIntoView({ block: 'start' }); } catch (e) {}
+  if (window.PLFTrack) PLFTrack.step('goofy_checkout_resumed', { variant: state.variant });
+  return true;
 }
 
 /* ── Checkout ── */
@@ -1418,7 +1488,7 @@ function checkout(){
           recipientName:first, giverName:((state.variant === 'custom-giver') ? giver : ''),
           orderId:orderId, orderIds:orderIds, recipientCount:orderIds.length,
           petData:{ petFirstName:first, petLastName:'' },
-          origin:window.location.origin, cancelUrl:window.location.href,
+          origin:window.location.origin, cancelUrl:resumeUrl(),
           affiliateRef:affiliateRef, promoCode:promoCode
         }) });
       })
@@ -1427,7 +1497,12 @@ function checkout(){
         if (d.url) {
           if (window.PLFTrack) PLFTrack.step('goofy_checkout_clicked', { total:orderBody.total, variant:state.variant });
           if (window.PLFPixels && window.PLFPixels.initiateCheckout) window.PLFPixels.initiateCheckout(orderBody.total, 'USD');
-          setTimeout(function(){ window.location.href = d.url; }, 300);
+          // Save the whole builder first so coming back from Stripe
+          // restores it (never let a slow save block the redirect).
+          var gone = false;
+          var goPay = function(){ if (!gone) { gone = true; window.location.href = d.url; } };
+          saveDraft().then(function(){ setTimeout(goPay, 150); }, goPay);
+          setTimeout(goPay, 1500);
         } else throw new Error(d.error || 'no url');
       })
       .catch(function(err){ console.error('goofy checkout error', err); fail(); });
@@ -1584,6 +1659,7 @@ function wireStatic(){
   (function sting(){
     var el = $('councilIntro');
     if (!el) return;
+    if (RESUMING) { if (el.parentNode) el.parentNode.removeChild(el); return; }   // back from checkout: no replay
     var gone = false;
     function dismiss(){
       if (gone) return; gone = true;
@@ -1604,7 +1680,7 @@ function wireStatic(){
     if (!m) return;
     var urlSrc = '';
     try { urlSrc = (qs.get('src') || '').trim().slice(0, 120); } catch (e) {}
-    if (!urlSrc) return;
+    if (!urlSrc || RESUMING) return;   // back from checkout: they've seen it
     // No seen-flag: every ?src= load plays the ceremony, so the page can be
     // re-shown to someone straight from the same link, any time.
     var Q = window.GOOFY_QR || {};
@@ -1762,6 +1838,17 @@ function wireStatic(){
   } else {
     setVariant('standard');
     refreshPreview(); recalc();
+  }
+  // Back from Stripe: put everything back the way they left it, then drop
+  // ?resume=1 from the address bar so a later reload starts clean.
+  if (RESUMING) {
+    draftStore('readonly', function(st){ return st.get('checkout'); })
+      .then(restoreDraft, function(){ return false; })
+      .then(function(){
+        if (qs.get('resume') === '1') {
+          try { var u = new URL(window.location.href); u.searchParams.delete('resume'); history.replaceState(null, '', u.toString()); } catch (e) {}
+        }
+      });
   }
   (function fireView(tries){
     if (window.PLFTrack) {

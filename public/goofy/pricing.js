@@ -18,7 +18,7 @@
   var CENTS = {
     standard: 495,   // G.O.A.T. License Standard nomination processing fee
     custom:   895,   // G.O.A.T. License Custom nomination processing fee ($4.95 + $4.00)
-    stamp:     95,   // Stamp Shipping (shared fulfilment with PLC)
+    stamp:      0,   // Stamp Shipping: included in the processing fee (tracked tiers below are paid upgrades)
     standardShip: 699,  // Standard Shipping (USPS Ground Advantage)
     priority: 1099,  // Priority Shipping (USPS Priority Flat Rate Envelope)
   };

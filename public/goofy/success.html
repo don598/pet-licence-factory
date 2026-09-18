@@ -131,6 +131,21 @@ footer .fine{font-size:12px;color:var(--muted);opacity:.75;line-height:1.7}
 <script src="/pixels.js"></script>
 <script src="/plf-track.js" defer></script>
 <script>
+// Paid: drop the builder's saved checkout draft (see "Resume after Stripe" in
+// /goofy/index.html) so a later visit starts a fresh nomination.
+(function(){
+  try {
+    var open = indexedDB.open('goofy-builder', 1);
+    open.onupgradeneeded = function(){ open.result.createObjectStore('drafts'); };
+    open.onsuccess = function(){
+      var db = open.result;
+      try { var tx = db.transaction('drafts', 'readwrite'); tx.objectStore('drafts').delete('checkout'); tx.oncomplete = tx.onerror = function(){ db.close(); }; }
+      catch (e) { db.close(); }
+    };
+  } catch (e) {}
+})();
+</script>
+<script>
 (function(){
 'use strict';
 // ═════════════════════════════════════════════════════════════

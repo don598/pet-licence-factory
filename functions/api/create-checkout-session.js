@@ -152,6 +152,19 @@ export async function onRequest(context) {
   const cancel     = cancelUrl || (isGoofy ? `${siteOrigin}/goofy/nominate.html` : `${siteOrigin}/game.html`);
 
   // ── Create Stripe Checkout Session ───────────────────────────────────────
+  // One Stripe shipping option (fixed amount in cents, business-day window).
+  const shipRate = (amount, name, minDays, maxDays) => ({
+    shipping_rate_data: {
+      type: 'fixed_amount',
+      fixed_amount: { amount, currency: 'usd' },
+      display_name: name,
+      delivery_estimate: {
+        minimum: { unit: 'business_day', value: minDays },
+        maximum: { unit: 'business_day', value: maxDays },
+      },
+    },
+  });
+
   try {
     const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
@@ -218,57 +231,23 @@ export async function onRequest(context) {
       ...(preAppliedPromoId
         ? { discounts: [{ promotion_code: preAppliedPromoId }] }
         : { allow_promotion_codes: true }),
+      // G.O.A.T.: stamp-mail delivery is included in the processing fee ($0);
+      // the tracked tiers are optional paid upgrades. Pet orders keep paid
+      // stamp shipping. A creator freebie gets free stamp only. (The webhook
+      // maps the charged amount back to a tier: $0 → stamp.)
       shipping_options: freebieFreeShipping
-        ? [
-            // Creator welcome freebie — free stamp shipping, no upgrades.
-            // Keeps the order genuinely free end-to-end.
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                fixed_amount: { amount: 0, currency: 'usd' },
-                display_name: 'Stamp Shipping (free)',
-                delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 3 },
-                  maximum: { unit: 'business_day', value: 7 },
-                },
-              },
-            },
-          ]
-        : [
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                fixed_amount: { amount: PRICES.stamp, currency: 'usd' },
-                display_name: 'Stamp Shipping',
-                delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 3 },
-                  maximum: { unit: 'business_day', value: 7 },
-                },
-              },
-            },
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                fixed_amount: { amount: PRICES.standard, currency: 'usd' },
-                display_name: 'Standard Shipping',
-                delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 4 },
-                  maximum: { unit: 'business_day', value: 7 },
-                },
-              },
-            },
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                fixed_amount: { amount: PRICES.priority, currency: 'usd' },
-                display_name: 'Priority Shipping',
-                delivery_estimate: {
-                  minimum: { unit: 'business_day', value: 3 },
-                  maximum: { unit: 'business_day', value: 5 },
-                },
-              },
-            },
-          ],
+        ? [shipRate(0, 'Stamp Shipping (free)', 3, 7)]
+        : isGoofy
+          ? [
+              shipRate(0, 'Stamp Shipping (included, no tracking)', 3, 7),
+              shipRate(GOOFY_PRICES.standardShip, 'Standard Shipping (tracked)', 4, 7),
+              shipRate(GOOFY_PRICES.priority, 'Priority Shipping (tracked)', 3, 5),
+            ]
+          : [
+              shipRate(PRICES.stamp, 'Stamp Shipping', 3, 7),
+              shipRate(PRICES.standard, 'Standard Shipping', 4, 7),
+              shipRate(PRICES.priority, 'Priority Shipping', 3, 5),
+            ],
       customer_creation: 'always',
       // Abandoned-checkout recovery: expire unfinished sessions after 2 hours
       // so Stripe fires checkout.session.expired with a 30-day recovery URL
