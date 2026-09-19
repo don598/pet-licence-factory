@@ -4773,7 +4773,7 @@ function renderTable() {
       <td class="line-col" data-label="Line">${lineChipHtml(lineOf(o))}</td>
       <td class="oid-col" data-label="Order"><span class="oid" title="${esc(o.order_id || '')}">${esc(shortOrderId(o.order_id))}</span></td>
       <td class="for-col" data-label="${isGoatOrder(o) ? 'Nominee' : 'Pet'}"><span class="for-wrap"><span class="for-name">${esc(who)}</span><span class="for-sub">${esc(orderSubline(o))}</span></span></td>
-      <td class="cust-td" data-label="Customer" title="${esc(o.customer_email || '')}"><span class="cust-cell"><span class="cust-email">${esc(o.customer_email || '—')}</span><span class="cust-mail">${renderEmailMarker(o)}</span></span></td>
+      <td class="cust-td" data-label="Customer" title="${esc(o.customer_email || '')}"><span class="cust-cell"><span class="cust-email">${esc(o.customer_email || o.customer_name || '—')}</span><span class="cust-mail">${renderEmailMarker(o)}</span></span></td>
       <td data-label="Status"><span class="badge badge-${esc(o.status || 'pending')}">${esc(o.status === 'paid' ? 'to ship' : (o.status || 'pending'))}</span></td>
       <td class="num-col" data-label="Total">${esc(orderAmountLabel(o))}</td>
       <td class="age-col" data-label="Age" title="${esc(fmtDate(o.created_at))}">${esc(fmtAge(o.created_at))}</td>
@@ -4862,7 +4862,7 @@ function renderOrderPane(o) {
     .filter(Boolean).join(' · ');
 
   const fields = goat
-    ? [['Nominated by', goatGiverText(d)], ['QR batch', d.src || '—', true], ['Customer', d.customer_email || '—'], ['Ship to', full ? (paneAddress(full) || '—') : '…']]
+    ? [['Nominated by', goatGiverText(d)], ['QR batch', d.src || '—', true], ['Customer', d.customer_email || d.customer_name || '—'], ['Ship to', full ? (paneAddress(full) || '—') : '…']]
     : [['Customer', d.customer_email || '—'], ['Ship to', full ? (paneAddress(full) || '—') : '…'],
        ['Chip', d.chip_size ? String(d.chip_size).charAt(0).toUpperCase() + String(d.chip_size).slice(1) : '—'],
        ['Referred by', isAffiliateOrder(d) ? (affiliateCode(d) || affiliateCreator(d)) : 'Direct']];
