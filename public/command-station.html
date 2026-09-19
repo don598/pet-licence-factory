@@ -2205,6 +2205,44 @@ html, body {
 .wl-table td.wl-email { word-break: break-all; }
 .wl-table tr.empty td { text-align: center; color: var(--muted); padding: 40px 14px; }
 
+/* ── Printables view ── */
+.pr-shell { padding: 0 28px 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pr-drop {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 22px 16px; border: 2px dashed var(--border); border-radius: var(--r-lg);
+  background: var(--surface); color: var(--text-soft); font-size: 13px; text-align: center;
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.pr-drop:hover, .pr-drop.is-over { border-color: var(--accent); background: var(--surface2); }
+.pr-drop.is-busy { opacity: .7; pointer-events: none; }
+.pr-drop-icon { font-size: 22px; line-height: 1; color: var(--accent); }
+.pr-drop-sub { font-size: 11.5px; color: var(--muted); }
+.pr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.pr-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  box-shadow: var(--sh-card); overflow: hidden; display: flex; flex-direction: column; min-width: 0;
+}
+.pr-thumb {
+  aspect-ratio: 4 / 3; background: var(--surface2); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: none; padding: 0; width: 100%; font: inherit; color: var(--muted);
+}
+.pr-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pr-thumb .pr-ext { font-family: var(--mono); font-weight: 700; font-size: 20px; letter-spacing: .06em; color: var(--text-soft); }
+.pr-meta { padding: 10px 12px 4px; min-width: 0; }
+.pr-name { font-size: 13.5px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.pr-actions { display: flex; gap: 6px; padding: 8px 12px 12px; }
+.pr-actions button {
+  flex: 1; min-width: 0; font: 600 12px var(--sans); padding: 7px 6px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.pr-actions button:hover { background: var(--surface2); }
+.pr-actions button.pr-del { flex: 0 0 auto; color: var(--red); }
+@media (max-width: 640px) {
+  .pr-shell { padding: 0 16px 20px; }
+  .pr-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
 /* ════════════════════════════════════════════════════════════════════
    MOBILE / RESPONSIVE LAYER
    Additive only — desktop layout above is untouched. Goal: make the
@@ -2776,6 +2814,10 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
           <span class="nav-icon">📝</span><span>Waitlists</span>
           <span class="nav-count" id="nav-waitlists-count">—</span>
         </button>
+        <button class="nav-item" data-view="printables" onclick="switchView('printables')" title="Files you print often: upload, open, print, remove">
+          <span class="nav-icon">🖨</span><span>Printables</span>
+          <span class="nav-count" id="nav-printables-count">—</span>
+        </button>
       </div>
 
       <div class="sidebar-section-label">Tools</div>
@@ -3042,6 +3084,31 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
                 <tr class="empty"><td colspan="5">Loading…</td></tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── Printables view (R2 library via /api/admin-printables) ─────────── -->
+      <section class="cs-view" id="view-printables">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Printables</h1>
+            <div class="page-subtitle">Files you print often. PDFs and images, up to 50 MB each.</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn-secondary" onclick="loadPrintables()"><span>↻</span> Refresh</button>
+            <button class="btn-primary" onclick="document.getElementById('pr-input').click()"><span>＋</span> Upload</button>
+          </div>
+        </div>
+        <div class="pr-shell">
+          <input type="file" id="pr-input" multiple accept="application/pdf,image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="display:none" onchange="uploadPrintables(this.files); this.value='';">
+          <label class="pr-drop" id="pr-drop" for="pr-input">
+            <span class="pr-drop-icon">⤒</span>
+            <span><strong>Drop files here</strong> or click to upload</span>
+            <span class="pr-drop-sub" id="pr-drop-status">PDF, PNG, JPG, WEBP, GIF, SVG</span>
+          </label>
+          <div class="pr-grid" id="pr-grid">
+            <div class="wl-note"><span class="spinner"></span> Loading printables…</div>
           </div>
         </div>
       </section>
@@ -3914,6 +3981,7 @@ function switchView(name) {
   if (name === 'affiliate' && isTokenValid()) affLoad();
   // Waitlists: same pattern — re-fetch on every switch, only when signed in.
   if (name === 'waitlists' && isTokenValid()) loadWaitlist();
+  if (name === 'printables' && isTokenValid()) loadPrintables();
 }
 (function restoreLastView() {
   try {
@@ -3924,7 +3992,7 @@ function switchView(name) {
 
 // ── Load All ─────────────────────────────────────────────────────────────────
 async function loadAll() {
-  await Promise.all([loadOrders(), loadTasks(), loadWaitlist()]);
+  await Promise.all([loadOrders(), loadTasks(), loadWaitlist(), loadPrintables()]);
 }
 
 async function loadOrders() {
@@ -4042,6 +4110,212 @@ function renderWaitlist() {
       </tr>`).join('')
     : `<tr class="empty"><td colspan="5">No signups yet${waitlistFilter !== 'all' ? ' on this list' : ''}</td></tr>`;
 }
+
+// ── Printables (files printed often) ─────────────────────────────────────────
+// /api/admin-printables → R2 printables/ prefix. Files are private, so every
+// fetch carries the admin JWT and opens/downloads go through blob: URLs.
+// NB: declared with var so loadAll() can run before this block is reached.
+var printablesList = null;
+var printableBlobs = new Map();   // key → blob: URL (thumbnails, open, print)
+
+async function printablesFetch(qs = '', opts = {}) {
+  const res = await fetch('/api/admin-printables' + qs, {
+    ...opts,
+    headers: { ...(opts.headers || {}), ...(adminToken ? { 'Authorization': 'Bearer ' + adminToken } : {}) },
+  });
+  if (res.status === 401) {
+    sessionStorage.removeItem('plf_admin_token');
+    adminToken = null;
+    location.reload();
+    throw new Error('Session expired');
+  }
+  return res;
+}
+
+async function loadPrintables() {
+  const grid = document.getElementById('pr-grid');
+  try {
+    const res = await printablesFetch();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'API error');
+    printablesList = data.files || [];
+  } catch (err) {
+    printablesList = null;
+    const nav = document.getElementById('nav-printables-count');
+    if (nav) nav.textContent = '—';
+    if (grid) grid.innerHTML = `<div class="wl-note"><strong>Printables not available.</strong><div style="font-size:11.5px;margin-top:6px">${esc(err.message)}</div></div>`;
+    return;
+  }
+  renderPrintables();
+}
+
+function printableExt(f) {
+  const m = /\.([A-Za-z0-9]{1,5})$/.exec(f.key || '');
+  return m ? m[1].toUpperCase() : (f.type === 'application/pdf' ? 'PDF' : 'FILE');
+}
+
+function fmtBytes(n) {
+  if (!(n >= 0)) return '';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+  return (n / 1048576).toFixed(1) + ' MB';
+}
+
+function renderPrintables() {
+  const grid = document.getElementById('pr-grid');
+  const nav = document.getElementById('nav-printables-count');
+  const files = printablesList || [];
+  if (nav) nav.textContent = files.length;
+  if (!grid) return;
+  if (!files.length) {
+    grid.innerHTML = '<div class="wl-note">No printables yet. Upload the files you print often and they\'ll live here.</div>';
+    return;
+  }
+  grid.innerHTML = files.map((f, i) => {
+    const isImg = /^image\//.test(f.type);
+    return `<div class="pr-card">
+      <button type="button" class="pr-thumb" onclick="openPrintable(${i})" title="Open ${esc(f.name)}">
+        ${isImg ? `<img alt="" data-pr-thumb="${esc(f.key)}">` : `<span class="pr-ext">${esc(printableExt(f))}</span>`}
+      </button>
+      <div class="pr-meta">
+        <div class="pr-name" title="${esc(f.name)}">${esc(f.name)}</div>
+        <div class="pr-sub">${esc(printableExt(f))} · ${esc(fmtBytes(f.size))} · ${esc(fmtDate(f.uploadedAt))}</div>
+      </div>
+      <div class="pr-actions">
+        <button type="button" onclick="printPrintable(${i})">Print</button>
+        <button type="button" onclick="downloadPrintable(${i})">Download</button>
+        <button type="button" class="pr-del" onclick="deletePrintable(${i})" title="Remove">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  // Image thumbnails load through the authed fetch.
+  grid.querySelectorAll('img[data-pr-thumb]').forEach(async img => {
+    try { img.src = await printableBlobUrl(img.dataset.prThumb); } catch {}
+  });
+}
+
+async function printableBlobUrl(key) {
+  if (printableBlobs.has(key)) return printableBlobs.get(key);
+  const res = await printablesFetch('?key=' + encodeURIComponent(key));
+  if (!res.ok) throw new Error('Could not load file');
+  const url = URL.createObjectURL(await res.blob());
+  printableBlobs.set(key, url);
+  return url;
+}
+
+async function openPrintable(i) {
+  const f = printablesList && printablesList[i];
+  if (!f) return;
+  const win = window.open('', '_blank');   // open now so pop-up blockers allow it
+  try {
+    const url = await printableBlobUrl(f.key);
+    if (win) win.location = url; else location.href = url;
+  } catch (err) {
+    if (win) win.close();
+    showToast(err.message, 'err');
+  }
+}
+
+// Prints through a hidden iframe (PDFs use the browser's PDF viewer, images
+// are wrapped in a page that fits them to the sheet).
+async function printPrintable(i) {
+  const f = printablesList && printablesList[i];
+  if (!f) return;
+  let url;
+  try { url = await printableBlobUrl(f.key); } catch (err) { showToast(err.message, 'err'); return; }
+  const old = document.getElementById('pr-print-frame');
+  if (old) old.remove();
+  const frame = document.createElement('iframe');
+  frame.id = 'pr-print-frame';
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+  const go = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch { openPrintable(i); } };
+  if (/^image\//.test(f.type)) {
+    frame.srcdoc = `<!doctype html><html><head><style>@page{margin:0}html,body{margin:0;height:100%}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100vh}</style></head><body><img src="${url}"></body></html>`;
+    frame.onload = () => {
+      const img = frame.contentDocument.querySelector('img');
+      if (img && !img.complete) img.onload = go; else go();
+    };
+  } else {
+    frame.onload = () => setTimeout(go, 300);
+    frame.src = url;
+  }
+}
+
+async function downloadPrintable(i) {
+  const f = printablesList && printablesList[i];
+  if (!f) return;
+  try {
+    const url = await printableBlobUrl(f.key);
+    const a = document.createElement('a');
+    const ext = printableExt(f).toLowerCase();
+    a.href = url;
+    a.download = new RegExp('\\.' + ext + '$', 'i').test(f.name) ? f.name : `${f.name}.${ext}`;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (err) { showToast(err.message, 'err'); }
+}
+
+async function deletePrintable(i) {
+  const f = printablesList && printablesList[i];
+  if (!f || !confirm(`Remove "${f.name}" from Printables? This deletes the stored file.`)) return;
+  try {
+    const res = await printablesFetch('?key=' + encodeURIComponent(f.key), { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Delete failed');
+    const u = printableBlobs.get(f.key);
+    if (u) { URL.revokeObjectURL(u); printableBlobs.delete(f.key); }
+    printablesList = printablesList.filter(x => x.key !== f.key);
+    renderPrintables();
+    showToast('Removed ' + f.name);
+  } catch (err) { showToast(err.message, 'err'); }
+}
+
+async function uploadPrintables(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  const drop = document.getElementById('pr-drop');
+  const status = document.getElementById('pr-drop-status');
+  const idle = 'PDF, PNG, JPG, WEBP, GIF, SVG';
+  drop && drop.classList.add('is-busy');
+  let done = 0;
+  try {
+    for (const file of files) {
+      if (status) status.textContent = `Uploading ${done + 1} of ${files.length}: ${file.name}…`;
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await printablesFetch('', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      done++;
+    }
+    showToast(`Uploaded ${done} file${done === 1 ? '' : 's'}`);
+  } catch (err) {
+    showToast(err.message, 'err', true);
+  } finally {
+    drop && drop.classList.remove('is-busy');
+    if (status) status.textContent = idle;
+    if (done) loadPrintables();
+  }
+}
+
+(function wirePrintablesDrop() {
+  const drop = document.getElementById('pr-drop');
+  const view = document.getElementById('view-printables');
+  if (!drop || !view) return;
+  ['dragenter', 'dragover'].forEach(ev => view.addEventListener(ev, e => {
+    if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+    e.preventDefault(); drop.classList.add('is-over');
+  }));
+  ['dragleave', 'drop'].forEach(ev => view.addEventListener(ev, e => {
+    if (ev === 'dragleave' && view.contains(e.relatedTarget)) return;
+    drop.classList.remove('is-over');
+  }));
+  view.addEventListener('drop', e => {
+    if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    uploadPrintables(e.dataTransfer.files);
+  });
+})();
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 function parseTotal(t) { return parseFloat((t || '0').replace(/[^0-9.]/g, '')) || 0; }
