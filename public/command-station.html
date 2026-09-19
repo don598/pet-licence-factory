@@ -1100,6 +1100,16 @@ html, body {
 .label-page.portrait { width: 4in; height: 6in; }
 .label-page.landscape { width: 6in; height: 4in; }
 .label-page.goat-cert-page img { width: 100%; height: 100%; display: block; }
+.cs-sheet-inner { max-width: 760px; }
+.cs-sheet-grid, .cs-sheet-help, .cs-sheet-actions { margin-left: 24px; margin-right: 24px; }
+.cs-sheet-grid { padding-top: 16px !important; }
+.cs-sheet-actions { margin-bottom: 20px; }
+.cs-sheet-grid { display: flex; gap: 14px; flex-wrap: wrap; padding: 4px 0 12px; }
+.cs-sheet-grid figure { margin: 0; width: 200px; }
+.cs-sheet-grid img { width: 100%; display: block; background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--sh-card); }
+.cs-sheet-grid figcaption { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.cs-sheet-help { font-size: 12.5px; color: var(--text-soft); line-height: 1.55; background: var(--surface2); border-radius: 10px; padding: 10px 12px; }
+.cs-sheet-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
 .label-page.goat-cert-page .gc-wait { height: 100%; display: flex; align-items: center; justify-content: center; font: 600 14px system-ui, sans-serif; color: #666; }
 
 /* Envelope sticker — 6x4 landscape, sender TL / recipient center / branding BR */
@@ -2908,7 +2918,7 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
             <div class="bulk-action-bar" id="bulk-action-bar">
               <span class="bulk-count" id="bulk-count">0 selected</span>
               <button class="btn btn-accent" id="bulk-print-btn" onclick="printSelected()">🖨 Print Documents & Send Shipping Confirmation Email</button>
-              <button class="btn btn-ghost" id="bulk-sheet-btn" onclick="cardSheetSelected()" title="G.O.A.T. only: a letter-size card sheet for the Silhouette 'ID's' cut template (max 6), then the envelopes + certificates to print">🪪 Card sheet + 6×4 docs</button>
+              <button class="btn btn-ghost" id="bulk-sheet-btn" onclick="cardSheetSelected()" title="License cards (G.O.A.T.) laid out for the Silhouette 'ID's' license print &amp; cut template, 6 per sheet. Not for credit card skins.">🪪 License sheets</button>
               <button class="btn btn-ghost" onclick="bulkMarkProcessed()">✓ Mark Processed (no email)</button>
               <button class="btn btn-ghost" onclick="clearSelection()">Clear</button>
             </div>
@@ -3608,6 +3618,28 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
       <div style="flex:1;font-size:11px;color:var(--muted)">4×6 label printer — each order produces an address sticker + a receipt sticker</div>
       <button class="btn btn-ghost" onclick="closeLabelPreview()">Cancel</button>
       <button class="btn btn-green" id="print-all-btn" onclick="printLabels()">🖨 Print All & Send Shipping Confirmation Email</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────── License sheets (Silhouette "ID's" license print & cut template; credit card skins will get their own) ─────────── -->
+<div class="modal-backdrop" id="cardSheetModal" onclick="if(event.target===this)closeCardSheets()">
+  <div class="modal-inner cs-sheet-inner">
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title">License sheets</h2>
+        <div class="modal-sub" id="cs-sheet-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeCardSheets()">✕</button>
+    </div>
+    <div class="cs-sheet-grid" id="cs-sheet-grid"></div>
+    <div class="cs-sheet-help">
+      <b>Print</b> puts the Silhouette registration marks on the page. Print at <b>100% scale</b> (never “fit to page”) on US Letter, then in Studio open the <b>ID's</b> template and send the cut; the machine finds the marks and cuts on the template's lines, so nothing needs to be placed in Studio.
+      <b>Download PNG</b> is the same sheet without marks, for dropping into the template (Transform: X 0, Y 0, 8.5 × 11 in, send to back).
+    </div>
+    <div class="cs-sheet-actions">
+      <button class="btn btn-ghost" onclick="downloadCardSheets()">⬇ Download PNG</button>
+      <button class="btn btn-accent" onclick="printCardSheets()">🖨 Print with registration marks</button>
     </div>
   </div>
 </div>
@@ -7262,7 +7294,9 @@ async function fillGoatCertPages(goats) {
   }
 }
 
-// ── Card sheet for the Silhouette "ID's" print & cut template ───────────────
+// ── License sheets for the Silhouette "ID's" print & cut template ──────────
+// (License cards only. Credit card skins use a different cut and will get
+// their own template + button.)
 // Up to 6 G.O.A.T. cards on one US Letter page at 300 dpi, each centred on a
 // cut line of that template (positions read from the template file itself,
 // mm from the page's top-left), with the order's address printed just under
@@ -7350,39 +7384,113 @@ async function buildCardSheet(orders) {
   return c;
 }
 
+// Silhouette registration marks, as set in the ID's template (read from the
+// file): 15.875 mm (5/8 in) inset on every side, 20 mm arms, 0.5 mm lines,
+// a solid 5 mm square top-left and L corners top-right + bottom-left.
+const CARD_SHEET_MARKS = { insetMm: 15.875, lengthMm: 20, thickMm: 0.5, squareMm: 5 };
+
+function drawRegistrationMarks(canvas) {
+  const S = CARD_SHEET, M = CARD_SHEET_MARKS, px = S.dpi / 25.4;
+  const x = canvas.getContext('2d');
+  const W = S.pageMm[0], H = S.pageMm[1], i = M.insetMm, L = M.lengthMm, t = M.thickMm;
+  const r = (a, b, w, h) => x.fillRect(Math.round(a * px), Math.round(b * px), Math.round(w * px), Math.round(h * px));
+  x.fillStyle = '#000';
+  r(i, i, M.squareMm, M.squareMm);                 // top-left square
+  r(W - i - L, i, L, t); r(W - i - t, i, t, L);    // top-right L
+  r(i, H - i - t, L, t); r(i, H - i - L, t, L);    // bottom-left L
+  return canvas;
+}
+
+let cardSheets = [];   // [{ canvas, orders }]
+
 async function cardSheetSelected() {
   const ids = Array.from(selectedOrderIds);
   // Table order, so slots read left→right, top→bottom like the list.
-  const rows = Array.from(document.querySelectorAll('.order-cb')).map(cb => cb.dataset.id || cb.value);
+  const rows = Array.from(document.querySelectorAll('.order-cb')).map(cb => String(cb.dataset.id));
   ids.sort((a, b) => rows.indexOf(String(a)) - rows.indexOf(String(b)));
-  const picked = ids.map(id => allOrders.find(o => String(o.id) === String(id))).filter(o => o && isGoatOrder(o));
-  if (!picked.length) { showToast('Select G.O.A.T. orders for the card sheet', 'err'); return; }
-  if (picked.length > CARD_SHEET.cuts.length) { showToast(`The card sheet holds ${CARD_SHEET.cuts.length}. Select up to ${CARD_SHEET.cuts.length} G.O.A.T. orders.`, 'err'); return; }
+  const sel = ids.map(id => allOrders.find(o => String(o.id) === String(id))).filter(Boolean);
+  const picked = sel.filter(isGoatOrder);
+  if (!picked.length) { showToast('License sheets take G.O.A.T. license orders. Select some first.', 'err'); return; }
   if (!window.GoofyCard) { showToast('Card renderer not loaded', 'err'); return; }
+  const skipped = sel.length - picked.length;
   const btn = document.getElementById('bulk-sheet-btn');
   const label = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Building sheet…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Building license sheets…'; }
   try {
     const full = [];
     for (const o of picked) {
       const res = await adminAPI('get_order', { id: o.id });
       full.push(res.order || o);
     }
-    const sheet = await buildCardSheet(full);
-    const blob = await pngWithDpi(sheet, CARD_SHEET.dpi);
-    const a = document.createElement('a');
-    const tags = full.map(o => String(o.order_id || '').slice(-4)).join('-');
-    a.download = `card-sheet-${new Date().toISOString().slice(0, 10)}-${tags}.png`;
-    a.href = URL.createObjectURL(blob);
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    showToast(`Card sheet downloaded (${full.length} card${full.length === 1 ? '' : 's'}). Opening the 6×4 docs…`);
-    openLabelPreview(full.map(o => o.id));
+    const per = CARD_SHEET.cuts.length;
+    cardSheets = [];
+    for (let k = 0; k < full.length; k += per) {
+      const orders = full.slice(k, k + per);
+      cardSheets.push({ canvas: await buildCardSheet(orders), orders });
+    }
+    const grid = document.getElementById('cs-sheet-grid');
+    grid.innerHTML = cardSheets.map((sh, n) => `<figure>
+        <img src="${sh.canvas.toDataURL('image/jpeg', 0.7)}" alt="License sheet ${n + 1}">
+        <figcaption><b>Sheet ${n + 1}</b> · ${sh.orders.length} card${sh.orders.length === 1 ? '' : 's'}<br>${sh.orders.map(o => esc('#' + String(o.order_id || '').slice(-4))).join(' ')}</figcaption>
+      </figure>`).join('');
+    document.getElementById('cs-sheet-sub').textContent =
+      `${full.length} card${full.length === 1 ? '' : 's'} on ${cardSheets.length} sheet${cardSheets.length === 1 ? '' : 's'}`
+      + (skipped ? ` · ${skipped} non-G.O.A.T. order${skipped === 1 ? '' : 's'} left out` : '');
+    document.getElementById('cardSheetModal').classList.add('open');
   } catch (err) {
-    showToast('Card sheet failed: ' + (err.message || err), 'err', true);
+    showToast('License sheets failed: ' + (err.message || err), 'err', true);
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = label; }
   }
+}
+
+function closeCardSheets() { document.getElementById('cardSheetModal').classList.remove('open'); }
+
+async function downloadCardSheets() {
+  const day = new Date().toISOString().slice(0, 10);
+  for (let n = 0; n < cardSheets.length; n++) {
+    const sh = cardSheets[n];
+    const blob = await pngWithDpi(sh.canvas, CARD_SHEET.dpi);
+    const a = document.createElement('a');
+    a.download = `license-sheet-${day}-${n + 1}-${sh.orders.map(o => String(o.order_id || '').slice(-4)).join('-')}.png`;
+    a.href = URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    await new Promise(r => setTimeout(r, 400));   // let the browser take each download
+  }
+}
+
+// Print every sheet with the registration marks, one US Letter page each, at
+// exact physical size. Printing sheets never changes an order's status.
+async function printCardSheets() {
+  if (!cardSheets.length) return;
+  const urls = [];
+  for (const sh of cardSheets) {
+    const c = document.createElement('canvas');
+    c.width = sh.canvas.width; c.height = sh.canvas.height;
+    c.getContext('2d').drawImage(sh.canvas, 0, 0);
+    drawRegistrationMarks(c);
+    urls.push(URL.createObjectURL(await new Promise(r => c.toBlob(r, 'image/png'))));
+  }
+  const old = document.getElementById('cs-sheet-print');
+  if (old) old.remove();
+  const f = document.createElement('iframe');
+  f.id = 'cs-sheet-print';
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  f.srcdoc = `<!doctype html><html><head><title>License sheets</title><style>
+    @page { size: 8.5in 11in; margin: 0; }
+    html, body { margin: 0; padding: 0; }
+    img { display: block; width: 8.5in; height: 11in; page-break-after: always; break-after: page; }
+    img:last-child { page-break-after: auto; break-after: auto; }
+  </style></head><body>${urls.map(u => `<img src="${u}">`).join('')}</body></html>`;
+  f.onload = async () => {
+    const imgs = Array.from(f.contentDocument.images);
+    await Promise.all(imgs.map(im => im.complete ? 0 : new Promise(r => { im.onload = im.onerror = r; })));
+    f.contentWindow.focus();
+    f.contentWindow.print();
+    setTimeout(() => urls.forEach(u => URL.revokeObjectURL(u)), 60000);
+  };
 }
 
 // ── Photo Editor ─────────────────────────────────────────────────────────────
