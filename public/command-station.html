@@ -1099,6 +1099,8 @@ html, body {
 .label-page:last-child { page-break-after: auto; }
 .label-page.portrait { width: 4in; height: 6in; }
 .label-page.landscape { width: 6in; height: 4in; }
+.label-page.goat-cert-page img { width: 100%; height: 100%; display: block; }
+.label-page.goat-cert-page .gc-wait { height: 100%; display: flex; align-items: center; justify-content: center; font: 600 14px system-ui, sans-serif; color: #666; }
 
 /* Envelope sticker — 6x4 landscape, sender TL / recipient center / branding BR */
 .label-envelope {
@@ -2906,6 +2908,7 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
             <div class="bulk-action-bar" id="bulk-action-bar">
               <span class="bulk-count" id="bulk-count">0 selected</span>
               <button class="btn btn-accent" id="bulk-print-btn" onclick="printSelected()">🖨 Print Documents & Send Shipping Confirmation Email</button>
+              <button class="btn btn-ghost" id="bulk-sheet-btn" onclick="cardSheetSelected()" title="G.O.A.T. only: a letter-size card sheet for the Silhouette 'ID's' cut template (max 6), then the envelopes + certificates to print">🪪 Card sheet + 6×4 docs</button>
               <button class="btn btn-ghost" onclick="bulkMarkProcessed()">✓ Mark Processed (no email)</button>
               <button class="btn btn-ghost" onclick="clearSelection()">Clear</button>
             </div>
@@ -7157,19 +7160,24 @@ async function openLabelPreview(orderIds) {
   // the PLF envelope + receipt + driving certificate; other lines (G.O.A.T.)
   // get a plain address label, and their certificate prints from its own page.
   const otherOrders = orders.filter(o => !isPetOrder(o));
+  // G.O.A.T. orders: Council envelope, then that order's 6×4 certificate
+  // (rendered by /goofy/certificate itself, filled in below once drawn).
   area.innerHTML = orders.map((o, i) => isPetOrder(o)
     ? renderEnvelopeLabel(o) + renderReceiptLabel(o) + renderCertificateLabel(o)
-    : isGoatOrder(o) ? renderGoatEnvelopeLabel(o, i) : renderNeutralEnvelopeLabel(o)).join('');
-  const nLabels = (orders.length - otherOrders.length) * 2 + otherOrders.length;
-  sub.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'} · ${nLabels} label${nLabels === 1 ? '' : 's'}`
-    + (otherOrders.length ? ` · ${otherOrders.length} G.O.A.T. (Council envelope label)` : '');
+    : isGoatOrder(o)
+      ? renderGoatEnvelopeLabel(o, i) + `<div class="label-page landscape goat-cert-page" data-cert-oid="${esc(o.order_id || '')}"><div class="gc-wait">Drawing certificate…</div></div>`
+      : renderNeutralEnvelopeLabel(o)).join('');
+  const goats = otherOrders.filter(isGoatOrder);
+  const nLabels = (orders.length - otherOrders.length) * 2 + otherOrders.length + goats.length;
+  sub.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'} · ${nLabels} page${nLabels === 1 ? '' : 's'}`
+    + (goats.length ? ` · ${goats.length} G.O.A.T. (envelope + certificate each)` : '');
   if (lineBar) {
-    const goats = otherOrders.filter(isGoatOrder);
-    lineBar.innerHTML = otherOrders.length
-      ? `<span>${lineChipHtml('goat')} <strong>${otherOrders.length} G.O.A.T. order${otherOrders.length === 1 ? '' : 's'}</strong>: plain address label only here (no PLF receipt or certificate). Print each certificate from its own page:</span>`
-        + goats.map(o => `<a class="btn btn-accent" href="${esc(goatCertificateUrl(o))}" target="_blank" rel="noopener" title="${esc(o.order_id || '')}">🖨 Certificate 6×4 · ${esc(goatRecipient(o) || o.order_id || '')}</a>`).join('')
+    lineBar.innerHTML = goats.length
+      ? `<span>${lineChipHtml('goat')} <strong>${goats.length} G.O.A.T. order${goats.length === 1 ? '' : 's'}</strong>: each prints its Council envelope, then its 6×4 certificate. Single certificate pages, if you need one again:</span>`
+        + goats.map(o => `<a class="btn btn-accent" href="${esc(goatCertificateUrl(o))}" target="_blank" rel="noopener" title="${esc(o.order_id || '')}">🖨 ${esc(o.order_id ? o.order_id.slice(-4) : '')} · ${esc(goatRecipient(o) || '')}</a>`).join('')
       : '';
   }
+  if (goats.length) fillGoatCertPages(goats);
 
   // Honest "Print All" label: how many of these orders will actually email.
   const nEmail = orders.filter(printWillEmail).length;
@@ -7194,6 +7202,10 @@ function printWillEmail(o) {
 }
 
 function printLabels() {
+  if (document.querySelector('#label-preview-area .gc-wait')) {
+    showToast('Certificates are still drawing, one moment…', 'err');
+    return;
+  }
   window.print();
   // Printing the documents is the ONE action that advances orders to
   // "processed" and emails the customer — never a download.
@@ -7209,6 +7221,168 @@ function printSelected() {
 function printSingleOrder() {
   if (!modalOrder) { showToast('No order open', 'err'); return; }
   openLabelPreview([modalOrder.id]);
+}
+
+// ── G.O.A.T. certificates inside Print Documents ────────────────────────────
+// /goofy/certificate draws its own 1800×1200 PNG (window.GOATCertPNG, the same
+// trace its "PNG 6×4" button uses), so load it in an off-screen iframe per
+// order and drop the image into that order's 6×4 page. One certificate
+// layout, whether printed from here or from its own page.
+function goatCertificatePng(o) {
+  return new Promise((resolve, reject) => {
+    const f = document.createElement('iframe');
+    f.setAttribute('aria-hidden', 'true');
+    f.style.cssText = 'position:fixed;left:-3000px;top:0;width:1200px;height:1000px;border:0;visibility:hidden';
+    const url = goatCertificateUrl(o).replace(/^(\/goofy\/certificate)(?=\?|$)/, '$1.html');
+    const done = (fn, v) => { clearTimeout(t); f.remove(); fn(v); };
+    const t = setTimeout(() => done(reject, new Error('Certificate timed out')), 20000);
+    f.onload = async () => {
+      try {
+        const w = f.contentWindow;
+        for (let i = 0; i < 50 && !(w && w.GOATCertPNG); i++) await new Promise(r => setTimeout(r, 100));
+        if (!w || !w.GOATCertPNG) throw new Error('Certificate page did not load');
+        done(resolve, await w.GOATCertPNG());
+      } catch (err) { done(reject, err); }
+    };
+    f.src = url;
+    document.body.appendChild(f);
+  });
+}
+
+async function fillGoatCertPages(goats) {
+  for (const o of goats) {
+    const page = document.querySelector(`#label-preview-area [data-cert-oid="${CSS.escape(o.order_id || '')}"]`);
+    if (!page) continue;
+    try {
+      const png = await goatCertificatePng(o);
+      page.innerHTML = `<img src="${png}" alt="Certificate for ${esc(goatRecipient(o) || o.order_id || '')}">`;
+    } catch (err) {
+      page.innerHTML = `<div class="gc-wait" style="color:#b00">Certificate failed (${esc(err.message || err)}). Use the single certificate link above.</div>`;
+    }
+  }
+}
+
+// ── Card sheet for the Silhouette "ID's" print & cut template ───────────────
+// Up to 6 G.O.A.T. cards on one US Letter page at 300 dpi, each centred on a
+// cut line of that template (positions read from the template file itself,
+// mm from the page's top-left), with the order's address printed just under
+// its cut. In Studio: open the template, drag the PNG in, Transform → X 0,
+// Y 0, W 8.5 in, H 11 in, send to back, print & cut.
+const CARD_SHEET = {
+  dpi: 300, pageMm: [215.9, 279.4],
+  cardWmm: 85.725,                  // 3.375 in; the cuts are 85.5 × 54.0 mm
+  bottomLimitMm: 240,               // stay clear of the bottom registration mark
+  cuts: [                           // [x0, y0, x1, y1] mm, reading order
+    [18.441, 40.130, 103.942, 94.131], [110.890, 42.942, 196.390, 96.942],
+    [18.441, 106.805, 103.941, 160.805], [110.890, 109.617, 196.391, 163.617],
+    [18.318, 167.608, 103.819, 221.608], [109.678, 168.595, 195.179, 222.596],
+  ],
+};
+
+function orderAddressLines(o) {
+  const hasShip = !!o.ship_addr_line1;
+  const line1 = hasShip ? o.ship_addr_line1 : (o.addr_line1 || '');
+  const line2 = hasShip ? (o.ship_addr_line2 || '') : '';
+  const cityLine = hasShip
+    ? [o.ship_city, o.ship_state].filter(Boolean).join(', ') + (o.ship_zip ? ' ' + o.ship_zip : '')
+    : (o.addr_line2 || '');
+  return [line1, line2, cityLine].map(v => String(v || '').trim()).filter(Boolean);
+}
+
+// PNGs from canvas carry no resolution; add a pHYs chunk (300 dpi) so apps
+// that honour it (Silhouette Studio included, usually) place it at 8.5×11 in.
+async function pngWithDpi(canvas, dpi) {
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+  const src = new Uint8Array(await blob.arrayBuffer());
+  const ppm = Math.round(dpi / 0.0254);
+  const chunk = new Uint8Array(21);
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, 9);
+  chunk.set([0x70, 0x48, 0x59, 0x73], 4);             // "pHYs"
+  dv.setUint32(8, ppm); dv.setUint32(12, ppm); chunk[16] = 1;
+  let c = 0xffffffff;
+  for (let i = 4; i < 17; i++) {
+    c ^= chunk[i];
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  dv.setUint32(17, (c ^ 0xffffffff) >>> 0);
+  const out = new Uint8Array(src.length + 21);
+  out.set(src.subarray(0, 33));                      // signature + IHDR
+  out.set(chunk, 33);
+  out.set(src.subarray(33), 54);
+  return new Blob([out], { type: 'image/png' });
+}
+
+async function buildCardSheet(orders) {
+  const S = CARD_SHEET, px = S.dpi / 25.4;
+  const c = document.createElement('canvas');
+  c.width = Math.round(S.pageMm[0] * px); c.height = Math.round(S.pageMm[1] * px);
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  try { await document.fonts.ready; } catch {}
+  for (let i = 0; i < orders.length; i++) {
+    const o = orders[i], [x0, y0, x1, y1] = S.cuts[i];
+    const card = await window.GoofyCard.render({
+      variant: o.variant, recipientName: goatRecipient(o), giverName: o.giver_name,
+      photo: effectivePhoto(o), crop: o.photo_crop, orderId: o.order_id,
+    });
+    const w = S.cardWmm * px, h = w * card.height / card.width;
+    const cx = (x0 + x1) / 2 * px, cy = (y0 + y1) / 2 * px;
+    x.drawImage(card, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
+
+    // Address just under the cut: two lines when the gap allows, else one.
+    const below = S.cuts[i + 2] ? S.cuts[i + 2][1] : S.bottomLimitMm;   // next cut in this column
+    const room = below - y1 - 1.2;                        // mm free under this cut
+    const addr = orderAddressLines(o);
+    const tag = '#' + String(o.order_id || '').slice(-4);
+    const lines = room >= 5.4 && addr.length > 1
+      ? [addr[0] + '   ' + tag, addr.slice(1).join(', ')]
+      : [addr.join(', ') + '   ' + tag];
+    const maxW = (x1 - x0) * px;
+    let size = Math.min(2.3, (room - 0.5) / (lines.length * 1.18)) * px;
+    x.fillStyle = '#000'; x.textAlign = 'center'; x.textBaseline = 'top';
+    const font = sz => `600 ${sz}px Inter, system-ui, sans-serif`;
+    x.font = font(size);
+    const widest = Math.max(...lines.map(l => x.measureText(l).width));
+    if (widest > maxW) { size *= maxW / widest; x.font = font(size); }
+    lines.forEach((l, k) => x.fillText(l, cx, (y1 + 0.9) * px + k * size * 1.18));
+  }
+  return c;
+}
+
+async function cardSheetSelected() {
+  const ids = Array.from(selectedOrderIds);
+  // Table order, so slots read left→right, top→bottom like the list.
+  const rows = Array.from(document.querySelectorAll('.order-cb')).map(cb => cb.dataset.id || cb.value);
+  ids.sort((a, b) => rows.indexOf(String(a)) - rows.indexOf(String(b)));
+  const picked = ids.map(id => allOrders.find(o => String(o.id) === String(id))).filter(o => o && isGoatOrder(o));
+  if (!picked.length) { showToast('Select G.O.A.T. orders for the card sheet', 'err'); return; }
+  if (picked.length > CARD_SHEET.cuts.length) { showToast(`The card sheet holds ${CARD_SHEET.cuts.length}. Select up to ${CARD_SHEET.cuts.length} G.O.A.T. orders.`, 'err'); return; }
+  if (!window.GoofyCard) { showToast('Card renderer not loaded', 'err'); return; }
+  const btn = document.getElementById('bulk-sheet-btn');
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Building sheet…'; }
+  try {
+    const full = [];
+    for (const o of picked) {
+      const res = await adminAPI('get_order', { id: o.id });
+      full.push(res.order || o);
+    }
+    const sheet = await buildCardSheet(full);
+    const blob = await pngWithDpi(sheet, CARD_SHEET.dpi);
+    const a = document.createElement('a');
+    const tags = full.map(o => String(o.order_id || '').slice(-4)).join('-');
+    a.download = `card-sheet-${new Date().toISOString().slice(0, 10)}-${tags}.png`;
+    a.href = URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    showToast(`Card sheet downloaded (${full.length} card${full.length === 1 ? '' : 's'}). Opening the 6×4 docs…`);
+    openLabelPreview(full.map(o => o.id));
+  } catch (err) {
+    showToast('Card sheet failed: ' + (err.message || err), 'err', true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
 }
 
 // ── Photo Editor ─────────────────────────────────────────────────────────────
