@@ -1110,6 +1110,11 @@ html, body {
 .cs-sheet-grid figcaption { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
 .cs-sheet-help { font-size: 12.5px; color: var(--text-soft); line-height: 1.55; background: var(--surface2); border-radius: 10px; padding: 10px 12px; }
 .cs-sheet-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.cs-sheet-progress { margin: 0 24px; }
+.cs-bar { height: 8px; border-radius: 99px; background: var(--surface3, var(--surface2)); overflow: hidden; }
+.cs-bar-fill { height: 100%; width: 0; border-radius: 99px; background: var(--accent); transition: width .25s ease; }
+.cs-bar-label { font-size: 12px; color: var(--muted); margin-top: 7px; }
+.cs-sheet-grid figure.is-pending img { opacity: .35; }
 .label-page.goat-cert-page .gc-wait { height: 100%; display: flex; align-items: center; justify-content: center; font: 600 14px system-ui, sans-serif; color: #666; }
 
 /* Envelope sticker — 6x4 landscape, sender TL / recipient center / branding BR */
@@ -3632,14 +3637,18 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
       </div>
       <button class="modal-close" onclick="closeCardSheets()">✕</button>
     </div>
+    <div class="cs-sheet-progress" id="cs-sheet-progress" hidden>
+      <div class="cs-bar"><div class="cs-bar-fill" id="cs-bar-fill"></div></div>
+      <div class="cs-bar-label" id="cs-bar-label">Starting…</div>
+    </div>
     <div class="cs-sheet-grid" id="cs-sheet-grid"></div>
     <div class="cs-sheet-help">
       <b>Print</b> puts the Silhouette registration marks on the page. Print at <b>100% scale</b> (never “fit to page”) on US Letter, then in Studio open the <b>ID's</b> template and send the cut; the machine finds the marks and cuts on the template's lines, so nothing needs to be placed in Studio.
       <b>Download PNG</b> is the same sheet without marks, for dropping into the template (Transform: X 0, Y 0, 8.5 × 11 in, send to back).
     </div>
     <div class="cs-sheet-actions">
-      <button class="btn btn-ghost" onclick="downloadCardSheets()">⬇ Download PNG</button>
-      <button class="btn btn-accent" onclick="printCardSheets()">🖨 Print with registration marks</button>
+      <button class="btn btn-ghost" id="cs-dl-btn" onclick="downloadCardSheets()" disabled>⬇ Download PNG</button>
+      <button class="btn btn-accent" id="cs-print-btn" onclick="printCardSheets()" disabled>🖨 Print with registration marks</button>
     </div>
   </div>
 </div>
@@ -7347,7 +7356,7 @@ async function pngWithDpi(canvas, dpi) {
   return new Blob([out], { type: 'image/png' });
 }
 
-async function buildCardSheet(orders) {
+async function buildCardSheet(orders, onCard) {
   const S = CARD_SHEET, px = S.dpi / 25.4;
   const c = document.createElement('canvas');
   c.width = Math.round(S.pageMm[0] * px); c.height = Math.round(S.pageMm[1] * px);
@@ -7363,6 +7372,7 @@ async function buildCardSheet(orders) {
     const w = S.cardWmm * px, h = w * card.height / card.width;
     const cx = (x0 + x1) / 2 * px, cy = (y0 + y1) / 2 * px;
     x.drawImage(card, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
+    if (onCard) await onCard(o);
 
     // Address just under the cut: two lines when the gap allows, else one.
     const below = S.cuts[i + 2] ? S.cuts[i + 2][1] : S.bottomLimitMm;   // next cut in this column
@@ -7413,34 +7423,63 @@ async function cardSheetSelected() {
   if (!picked.length) { showToast('License sheets take G.O.A.T. license orders. Select some first.', 'err'); return; }
   if (!window.GoofyCard) { showToast('Card renderer not loaded', 'err'); return; }
   const skipped = sel.length - picked.length;
-  const btn = document.getElementById('bulk-sheet-btn');
-  const label = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = 'Building license sheets…'; }
+  const per = CARD_SHEET.cuts.length;
+  const nSheets = Math.ceil(picked.length / per);
+
+  // Open straight away: every card is drawn here in the browser, so a big
+  // batch takes a while — show what it's doing and how far along it is.
+  const grid = document.getElementById('cs-sheet-grid');
+  const prog = document.getElementById('cs-sheet-progress');
+  const fill = document.getElementById('cs-bar-fill');
+  const plabel = document.getElementById('cs-bar-label');
+  const dlBtn = document.getElementById('cs-dl-btn');
+  const prBtn = document.getElementById('cs-print-btn');
+  cardSheets = [];
+  grid.innerHTML = '';
+  prog.hidden = false;
+  fill.style.width = '0%';
+  dlBtn.disabled = prBtn.disabled = true;
+  document.getElementById('cs-sheet-sub').textContent =
+    `${picked.length} card${picked.length === 1 ? '' : 's'} on ${nSheets} sheet${nSheets === 1 ? '' : 's'}`
+    + (skipped ? ` · ${skipped} non-G.O.A.T. order${skipped === 1 ? '' : 's'} left out` : '');
+  document.getElementById('cardSheetModal').classList.add('open');
+
+  // Two steps per card: fetch the full order, then draw it.
+  const steps = picked.length * 2;
+  let done = 0;
+  const tick = (msg) => {
+    fill.style.width = Math.round(done / steps * 100) + '%';
+    plabel.textContent = msg;
+    return new Promise(r => requestAnimationFrame(() => r()));   // let it paint
+  };
+
   try {
     const full = [];
     for (const o of picked) {
+      await tick(`Loading order ${full.length + 1} of ${picked.length}…`);
       const res = await adminAPI('get_order', { id: o.id });
       full.push(res.order || o);
+      done++;
     }
-    const per = CARD_SHEET.cuts.length;
-    cardSheets = [];
     for (let k = 0; k < full.length; k += per) {
       const orders = full.slice(k, k + per);
-      cardSheets.push({ canvas: await buildCardSheet(orders), orders });
+      const n = k / per + 1;
+      const canvas = await buildCardSheet(orders, async (o) => {
+        done++;
+        await tick(`Sheet ${n} of ${nSheets} · drawing card ${done - picked.length} of ${picked.length}…`);
+      });
+      cardSheets.push({ canvas, orders });
+      grid.insertAdjacentHTML('beforeend', `<figure>
+          <img src="${canvas.toDataURL('image/jpeg', 0.7)}" alt="License sheet ${n}">
+          <figcaption><b>Sheet ${n}</b> · ${orders.length} card${orders.length === 1 ? '' : 's'}<br>${orders.map(o => esc('#' + String(o.order_id || '').slice(-4))).join(' ')}</figcaption>
+        </figure>`);
     }
-    const grid = document.getElementById('cs-sheet-grid');
-    grid.innerHTML = cardSheets.map((sh, n) => `<figure>
-        <img src="${sh.canvas.toDataURL('image/jpeg', 0.7)}" alt="License sheet ${n + 1}">
-        <figcaption><b>Sheet ${n + 1}</b> · ${sh.orders.length} card${sh.orders.length === 1 ? '' : 's'}<br>${sh.orders.map(o => esc('#' + String(o.order_id || '').slice(-4))).join(' ')}</figcaption>
-      </figure>`).join('');
-    document.getElementById('cs-sheet-sub').textContent =
-      `${full.length} card${full.length === 1 ? '' : 's'} on ${cardSheets.length} sheet${cardSheets.length === 1 ? '' : 's'}`
-      + (skipped ? ` · ${skipped} non-G.O.A.T. order${skipped === 1 ? '' : 's'} left out` : '');
-    document.getElementById('cardSheetModal').classList.add('open');
+    await tick(`Ready · ${picked.length} card${picked.length === 1 ? '' : 's'} on ${nSheets} sheet${nSheets === 1 ? '' : 's'}`);
+    prog.hidden = true;
+    dlBtn.disabled = prBtn.disabled = false;
   } catch (err) {
+    prog.hidden = true;
     showToast('License sheets failed: ' + (err.message || err), 'err', true);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = label; }
   }
 }
 
