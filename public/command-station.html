@@ -2234,6 +2234,7 @@ html, body {
 .pr-drop.is-busy { opacity: .7; pointer-events: none; }
 .pr-drop-icon { font-size: 22px; line-height: 1; color: var(--accent); }
 .pr-drop-sub { font-size: 11.5px; color: var(--muted); }
+.pr-print-note { font-size: 12px; color: var(--text-soft); background: var(--surface2); border-radius: 10px; padding: 9px 12px; line-height: 1.5; }
 .pr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
 .pr-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
@@ -3125,6 +3126,7 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
             <span><strong>Drop files here</strong> or click to upload</span>
             <span class="pr-drop-sub" id="pr-drop-status">PDF, PNG, JPG, WEBP, GIF, SVG</span>
           </label>
+          <div class="pr-print-note">Printing opens Chrome's dialog, which remembers the <b>printer</b>, <b>paper size</b> and <b>colour</b> you last used for that printer. For these, pick your document printer and set <b>Letter</b> and <b>Colour</b> once and Chrome keeps them. Images ask for Letter by default; a PDF always follows the dialog.</div>
           <div class="pr-grid" id="pr-grid">
             <div class="wl-note"><span class="spinner"></span> Loading printables…</div>
           </div>
@@ -4275,7 +4277,11 @@ async function printPrintable(i) {
   document.body.appendChild(frame);
   const go = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch { openPrintable(i); } };
   if (/^image\//.test(f.type)) {
-    frame.srcdoc = `<!doctype html><html><head><style>@page{margin:0}html,body{margin:0;height:100%}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100vh}</style></head><body><img src="${url}"></body></html>`;
+    // Ask for US Letter portrait: printables are documents, not 4×6 labels,
+    // and Chrome otherwise offers whatever the last destination used. A PDF
+    // prints through its own viewer, which ignores this — its paper size and
+    // colour come from the Chrome dialog (remembered per printer).
+    frame.srcdoc = `<!doctype html><html><head><style>@page{size:Letter portrait;margin:0.25in}html,body{margin:0;height:100%}body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}</style></head><body><img src="${url}"></body></html>`;
     frame.onload = () => {
       const img = frame.contentDocument.querySelector('img');
       if (img && !img.complete) img.onload = go; else go();
