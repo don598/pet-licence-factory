@@ -217,13 +217,18 @@ function render(){
   var cert = $('cert');
   cert.classList.toggle('thermal', p.thermal);
   cert.classList.toggle('noqr', !p.qr);
-  // Name: largest size that fits the line.
+  // Name: largest size that fits the line. House drops (a kit addressed to a
+  // whole house, not a person) read better as "You", so the certificate the
+  // finder is holding is about them — the verb follows.
   var nm = $('cName'), nt = $('cNameT');
-  nt.textContent = p.name;
+  var house = /^the\s*g\.?\s*o\.?\s*a\.?\s*t\.?\s*of this house$/i.test(p.name.trim());
+  nt.textContent = house ? 'You' : p.name;
   var fs = 40;
   nm.style.fontSize = fs + 'pt';
   while (nt.offsetWidth > nm.clientWidth && fs > 18) { fs -= 1; nm.style.fontSize = fs + 'pt'; }
-  $('cAchieve').textContent = ACHIEVE[p.variant];
+  $('cAchieve').textContent = house
+    ? ACHIEVE[p.variant].replace(/^is\b/, 'are')
+    : ACHIEVE[p.variant];
   $('cDate').textContent = dateLine(p.date);
   var file = [];
   if (p.order) file.push('Filing No. ' + p.order);
