@@ -29,7 +29,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
    horizontal scroll-parallax never exposes an edge, even on ultrawide.
    (SVG is replaced content — left+right alone won't stretch it, so the
    width must be explicit.) */
-.ridges{position:absolute;left:-10vw;bottom:0;width:120vw;max-width:none;height:48vh;min-height:300px;z-index:3}
+.ridges{position:absolute;left:calc(0px - max(10vw, 110px));bottom:0;width:calc(100vw + 2 * max(10vw, 110px));max-width:none;height:48vh;min-height:300px;z-index:3}
 /* Scroll motion: layers drift apart vertically AND slide horizontally in
    opposite directions as you scroll. Nothing moves on its own. */
 .layer{will-change:transform;backface-visibility:hidden}
@@ -1800,6 +1800,9 @@ function wireStatic(){
     function hide(action){
       m.classList.remove('open'); m.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
+      // Close lands at the top of the page, never wherever the page happened
+      // to sit behind the modal.
+      try { window.scrollTo(0, 0); } catch (e) {}
       if (window.PLFTrack) PLFTrack.step(action || 'goofy_qr_modal_dismissed', { src:urlSrc });
     }
     // Star Wars-style proclamation crawl: perspective text rising into the
@@ -1879,11 +1882,7 @@ function wireStatic(){
         openModal();
       });
     }, 1750);
-    $('qrCta').addEventListener('click', function(){
-      hide('goofy_qr_modal_accepted');
-      var target = $('optionsBlock').style.display === 'none' ? $('wizardBlock') : $('optionsBlock');
-      try { target.scrollIntoView({ behavior:'smooth', block:'start' }); } catch (e) {}
-    });
+    $('qrCta').addEventListener('click', function(){ hide('goofy_qr_modal_accepted'); });
     m.addEventListener('click', function(e){ if (e.target === m) hide('goofy_qr_modal_dismissed'); });
   })();
   // No wizard on page load — just the carousel + options. A ?variant= deep
