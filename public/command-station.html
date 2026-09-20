@@ -6984,6 +6984,10 @@ function goatNominatedLine(o) {
   if (o.variant === 'custom-anon') return 'Nominated by a secret admirer';
   return 'Nominated by a fellow legend';
 }
+// G.O.A.T. envelopes: print the Council's street address as a return address?
+// Off — these go out as stamped First-Class letters, which need none.
+const GOAT_ENV_RETURN_ADDRESS = false;
+
 function renderGoatEnvelopeLabel(o, idx) {
   const hasShip = !!o.ship_addr_line1;
   const line1 = hasShip ? o.ship_addr_line1 : (o.addr_line1 || '');
@@ -6992,16 +6996,22 @@ function renderGoatEnvelopeLabel(o, idx) {
     ? [o.ship_city, o.ship_state].filter(Boolean).join(', ') + (o.ship_zip ? ' ' + o.ship_zip : '')
     : (o.addr_line2 || '');
   const country = (hasShip && o.ship_country && o.ship_country !== 'US') ? o.ship_country : '';
-  const senderCity = [SENDER_ADDRESS.city, SENDER_ADDRESS.state].filter(Boolean).join(', ') + (SENDER_ADDRESS.zip ? ' ' + SENDER_ADDRESS.zip : '');
-  const street = [SENDER_ADDRESS.line1, SENDER_ADDRESS.line2].filter(Boolean).join(' ');
+  // Council name only, no street: a stamped First-Class letter needs no
+  // return address, and the kit reads better coming from nowhere in
+  // particular. The trade-off is that an undeliverable one can't come back.
+  // Flip GOAT_ENV_RETURN_ADDRESS to true to print it again.
   const seal = window.GOOFY_SEAL ? window.GOOFY_SEAL.svg('envSeal' + (idx || 0)) : '';
+  const senderCity = GOAT_ENV_RETURN_ADDRESS
+    ? [SENDER_ADDRESS.city, SENDER_ADDRESS.state].filter(Boolean).join(', ') + (SENDER_ADDRESS.zip ? ' ' + SENDER_ADDRESS.zip : '')
+    : '';
+  const street = GOAT_ENV_RETURN_ADDRESS ? [SENDER_ADDRESS.line1, SENDER_ADDRESS.line2].filter(Boolean).join(' ') : '';
   return `
     <div class="label-page landscape label-envelope goat-env">
       <div class="ge-frame"></div><div class="ge-frame inner"></div>
       <div class="ge-sender">
         <b>THE COUNCIL OF G.O.A.T. AFFAIRS</b>
         ${street ? `<span>${esc(street)}</span>` : ''}
-        <span>${esc(senderCity)}</span>
+        ${senderCity ? `<span>${esc(senderCity)}</span>` : ''}
       </div>
       <div class="ge-official">OFFICIAL<br>COUNCIL BUSINESS<small>PENALTY FOR PRIVATE USE: NONE</small></div>
       <div class="ge-center">
