@@ -4930,7 +4930,7 @@ function renderOrderPane(o) {
     .filter(Boolean).join(' · ');
 
   const fields = goat
-    ? [['Nominated by', goatGiverText(d)], ['QR batch', d.src || '—', true], ['Customer', d.customer_email || d.customer_name || '—'], ['Ship to', full ? (paneAddress(full) || '—') : '…']]
+    ? [['Nominated by', goatGiverText(d)], ['QR batch', d.src || '—', true], ['Customer', d.customer_email || d.customer_name || '—'], ['Ship to', full ? ([goatRecipient(full), paneAddress(full)].filter(Boolean).join(', ') || '—') : '…']]
     : [['Customer', d.customer_email || '—'], ['Ship to', full ? (paneAddress(full) || '—') : '…'],
        ['Chip', d.chip_size ? String(d.chip_size).charAt(0).toUpperCase() + String(d.chip_size).slice(1) : '—'],
        ['Referred by', isAffiliateOrder(d) ? (affiliateCode(d) || affiliateCreator(d)) : 'Direct']];
@@ -6093,7 +6093,8 @@ async function openOrder(dbId) {
   document.getElementById('customer-info-rows').innerHTML = [
     [petLine ? 'Name' : 'Purchaser', order.customer_name],
     ['Email',         order.customer_email],
-    [petLine ? 'Address' : 'Ship to', addr],
+    // A G.O.A.T. kit goes to the nominee, not the purchaser: name them.
+    [petLine ? 'Address' : 'Ship to', petLine ? addr : [goatRecipient(order), paneAddress(order)].filter(Boolean).join(', ')],
     ['Stripe ID',     order.stripe_payment_id],
     ['Tracking #',    order.tracking_number],
   ].map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v || '—')}</span></div>`).join('');
@@ -6175,8 +6176,9 @@ async function openOrder(dbId) {
     : `${goatRecipient(order) || '(no name)'} · ${goatVariantLabel(order.variant)}`;
   const custSummary = order.customer_name || order.customer_email || '(not captured)';
   const cityState = [order.ship_city, order.ship_state].filter(Boolean).join(', ');
-  document.getElementById('customer-info-hint').textContent =
-    cityState ? `${custSummary} · ${cityState}` : custSummary;
+  document.getElementById('customer-info-hint').textContent = petLine
+    ? (cityState ? `${custSummary} · ${cityState}` : custSummary)
+    : `${custSummary} → ${goatRecipient(order) || 'nominee'}${cityState ? ' · ' + cityState : ''}`;
 
   // Always-visible order quick-stats (chip size + item breakdown)
   document.getElementById('order-quickstats').innerHTML = orderQuickStatsHtml(order);
