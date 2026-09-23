@@ -249,15 +249,92 @@ Questions? Just reply to this email.
   return sendEmail(env, { to: customerEmail, subject, html, text, customArgs: { order_id: orderId, email_type: 'confirmation' } });
 }
 
+// ── G.O.A.T. email look (shared) ────────────────────────────────────────────
+// Matches the goofylicenses.com/goat site and its success page: cream paper,
+// a white rounded card, Cinzel headings in Council gold, Inter body, the cream
+// filing-number box and the yellow button. Cinzel/Inter load where the mail
+// client allows web fonts (Apple Mail, iOS); elsewhere Georgia / system sans.
+const GOAT_EMAIL = {
+  bg: '#f4efe3', card: '#ffffff', line: '#e4d9bf', ink: '#2b2118', muted: '#7c7264',
+  gold: '#a86e0a', filing: '#faf5ea', btn: '#f5c542', btnInk: '#2a1a05', btnShadow: '#c8920f',
+  serif: "'Cinzel',Georgia,'Times New Roman',serif",
+  sans: "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif",
+};
+function goatOrigin(env) {
+  return ((env && env.GOOFY_ORIGIN) || 'https://goofylicenses.com').replace(/\/+$/, '');
+}
+function goatH2(text) {
+  const E = GOAT_EMAIL;
+  return `<div style="margin:0 0 10px;font-family:${E.sans};font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${E.gold};">${text}</div>`;
+}
+function goatRow(label, value, opts = {}) {
+  const E = GOAT_EMAIL;
+  return `<tr>
+          <td style="padding:9px 0;border-bottom:1px solid ${E.line};font-size:14px;color:${E.muted};">${label}</td>
+          <td style="padding:9px 0;border-bottom:1px solid ${E.line};font-size:14px;color:${E.ink};text-align:right;${opts.mono ? "font-family:'Courier New',monospace;" : ''}${opts.bold ? 'font-weight:700;' : ''}">${opts.html ? value : esc(value)}</td>
+        </tr>`;
+}
+function goatButton(href, label) {
+  const E = GOAT_EMAIL;
+  return `<a href="${esc(href)}" style="display:inline-block;background:${E.btn};color:${E.btnInk};text-decoration:none;font-family:${E.sans};font-weight:800;font-size:15px;padding:14px 28px;border-radius:12px;border-bottom:4px solid ${E.btnShadow};">${label}</a>`;
+}
+// title: the gold Cinzel headline. lead: one line under it (HTML-escaped by
+// the caller). sections: HTML rows. footer: extra footer HTML.
+function goatEmailShell(env, { subject, preheader, title, lead, sections, footer }) {
+  const E = GOAT_EMAIL, origin = goatOrigin(env);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${esc(subject)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:${E.bg};font-family:${E.sans};color:${E.ink};">
+  ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(preheader)}</div>` : ''}
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${E.bg};padding:26px 0;">
+    <tr><td align="center" style="padding:0 12px;">
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;">
+        <tr><td style="padding:0 6px 16px;text-align:left;">
+          <div style="font-family:${E.serif};font-weight:700;font-size:14px;letter-spacing:2px;color:${E.gold};">🐐 GOOFY LICENSES</div>
+          <div style="font-family:${E.sans};font-weight:700;font-size:10px;letter-spacing:3px;color:${E.muted};margin-top:2px;">THE COUNCIL OF G.O.A.T. AFFAIRS</div>
+        </td></tr>
+      </table>
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;background:${E.card};border:1px solid ${E.line};border-radius:18px;">
+        <tr><td style="padding:34px 36px 6px;text-align:center;">
+          <img src="${esc(origin)}/goofy/images/seal-email.png" width="88" height="88" alt="Certified G.O.A.T. seal" style="display:block;margin:0 auto 16px;border:0;">
+          <h1 style="margin:0;font-family:${E.serif};font-weight:700;font-size:25px;line-height:1.35;letter-spacing:1.5px;color:${E.gold};">${title}</h1>
+          ${lead ? `<p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:${E.muted};">${lead}</p>` : ''}
+        </td></tr>
+        ${sections}
+        <tr><td style="padding:0 0 30px;"></td></tr>
+      </table>
+      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;">
+        <tr><td style="padding:18px 20px;text-align:center;font-size:12px;line-height:1.7;color:${E.muted};">
+          Questions? Reply to this email, a clerk reads every message.<br>
+          Goofy Licenses makes novelty gag licenses for entertainment. Not a real government document.
+          ${footer || ''}
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+function goatFilingBox(orderId) {
+  const E = GOAT_EMAIL;
+  return `<tr><td style="padding:22px 36px 6px;">
+          <div style="background:${E.filing};border:1px solid ${E.line};border-radius:10px;padding:13px 16px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:${E.muted};">COUNCIL FILING NUMBER</div>
+            <div style="font-family:'Courier New',monospace;font-size:14px;color:${E.gold};margin-top:4px;word-break:break-all;">${esc(orderId || '—')}</div>
+          </div>
+        </td></tr>`;
+}
+
 // ── Goofy Licenses nomination confirmation email ────────────────────────────
 // Called from the Stripe webhook (and update-address) when a GOOFY order is
 // finalised. Council bureaucracy framing; every price is a processing fee.
 // This is a separate template so a nominator NEVER receives pet-license copy.
-// Sender stays the shared hello@petlicensefactory.com until the Goofy sender
-// is set up at domain cutover.
+// Goes to the NOMINATOR; the kit goes to the nominee.
 export async function sendGoofyConfirmationEmail(env, order) {
   const {
-    orderId, customerEmail, customerName,
+    orderId, customerEmail,
     recipientName, giverName, variant, recipientCount,
     shippingOption, total,
     shipAddrLine1, shipAddrLine2, shipCity, shipState, shipZip, shipCountry,
@@ -269,106 +346,83 @@ export async function sendGoofyConfirmationEmail(env, order) {
   const count = Math.max(1, parseInt(recipientCount) || 1);
   const party = count > 1 ? `${nominee} (+${count - 1} more)` : nominee;
   const honorLabel = ({
-    'standard':     'G.O.A.T. License — Standard Nomination',
-    'custom-giver': 'G.O.A.T. License — Custom Nomination (with giver credit)',
-    'custom-anon':  'G.O.A.T. License — Custom Nomination (anonymous)',
-  })[variant] || 'G.O.A.T. License Nomination';
+    'standard':     'G.O.A.T. License, Standard',
+    'custom-giver': 'G.O.A.T. License, Custom (with giver credit)',
+    'custom-anon':  'G.O.A.T. License, Custom (anonymous)',
+  })[variant] || 'G.O.A.T. License';
   const shipLabel = ({
-    stamp:    'Stamp Mail (USPS)',
-    standard: 'Standard Shipping (7–14 business days)',
-    priority: 'Priority Shipping (3–5 business days)',
-  })[shippingOption] || 'Standard Shipping';
+    stamp:    'Stamp mail (USPS)',
+    standard: 'Standard, tracked',
+    priority: 'Priority, tracked',
+  })[shippingOption] || 'USPS mail';
   const presentedBy = variant === 'custom-giver' && giverName
     ? `Presented by ${giverName}`
-    : variant === 'custom-anon' ? 'Presented anonymously' : 'Filed by the Council';
+    : variant === 'custom-anon' ? 'Anonymous (your name is not on it)' : 'Filed by the Council';
 
-  const addrParts = [shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry]
-    .filter(Boolean).join('<br>');
+  // The kit goes to the nominee, so their name heads the address (not the
+  // buyer's name from the card).
+  const cityLine = [shipCity, [shipState, shipZip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const addrLines = [party, shipAddrLine1, shipAddrLine2, cityLine, shipCountry && shipCountry !== 'US' ? shipCountry : '']
+    .filter(Boolean);
+  const hasAddr = !!(shipAddrLine1 || cityLine);
 
-  const subject = `🐐 Nomination filed — ${party}'s G.O.A.T. License is being processed!`;
+  const subject = `🐐 Nomination filed: ${party}'s G.O.A.T. License`;
+  const E = GOAT_EMAIL;
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
-<body style="margin:0;padding:0;background:#120b24;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#120b24;padding:24px 0;">
-    <tr><td align="center">
-      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#221547;border:2px solid #f5c542;border-radius:8px;overflow:hidden;">
-
-        <!-- Header -->
-        <tr><td style="padding:32px 32px 16px;text-align:center;">
-          <div style="font-size:48px;">🐐</div>
-          <h1 style="margin:12px 0 0;font-size:18px;color:#f5c542;letter-spacing:2px;text-transform:uppercase;">Nomination Filed!</h1>
-          <p style="margin:12px 0 0;font-size:14px;color:#fdf6e3;line-height:1.5;">
-            The Council has accepted your nomination. ${esc(nominee)} is about to become officially a GOAT.
-          </p>
-        </td></tr>
-
-        <!-- Filing number -->
-        <tr><td style="padding:24px 32px 8px;">
-          <div style="background:#1b1038;border:1px solid #f5c542;border-radius:4px;padding:14px 18px;">
-            <div style="font-size:11px;color:#b9a8e0;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Council Filing Number</div>
-            <div style="font-family:'Courier New',monospace;font-size:14px;color:#f5c542;word-break:break-all;">${esc(orderId || '—')}</div>
-          </div>
-        </td></tr>
-
-        <!-- Summary -->
-        <tr><td style="padding:16px 32px;">
-          <h2 style="margin:0 0 12px;font-size:13px;color:#f5c542;letter-spacing:1px;text-transform:uppercase;font-weight:600;">🧾 Nomination Summary</h2>
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size:14px;color:#fdf6e3;border-collapse:collapse;">
-            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(245,197,66,.25);">Honor</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(245,197,66,.25);color:#f5c542;">${esc(honorLabel)}</td></tr>
-            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(245,197,66,.25);">Nominee</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(245,197,66,.25);color:#f5c542;">${esc(party)}</td></tr>
-            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(245,197,66,.25);">Attribution</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(245,197,66,.25);color:#f5c542;">${esc(presentedBy)}</td></tr>
-            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(245,197,66,.25);">Delivery</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(245,197,66,.25);color:#f5c542;">${esc(shipLabel)}</td></tr>
-            <tr><td style="padding:12px 0 0;font-weight:700;color:#f5c542;">Nomination processing fee</td><td style="padding:12px 0 0;text-align:right;font-weight:700;color:#f5c542;font-size:16px;">${esc(total || '—')}</td></tr>
+  const html = goatEmailShell(env, {
+    subject,
+    preheader: `The Council has accepted your nomination of ${party}.`,
+    title: 'Nomination Filed! ★',
+    lead: `The Council has accepted your nomination. The certified <b style="color:${E.ink};">G.O.A.T. license kit</b> will be printed, sealed, and mailed to ${esc(party)}.`,
+    sections: `
+        ${goatFilingBox(orderId)}
+        <tr><td style="padding:22px 36px 4px;">
+          ${goatH2('🧾 Nomination summary')}
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+          ${goatRow('Honor', honorLabel)}
+          ${goatRow('Nominee', party)}
+          ${goatRow('Credit', presentedBy)}
+          ${goatRow('Delivery', shipLabel)}
+          <tr>
+            <td style="padding:12px 0 0;font-size:15px;font-weight:800;color:${E.ink};">Processing fee</td>
+            <td style="padding:12px 0 0;text-align:right;font-family:${E.serif};font-size:18px;font-weight:700;color:${E.gold};">${esc(total || '—')}</td>
+          </tr>
           </table>
         </td></tr>
-
-        <!-- Shipping -->
-        ${addrParts ? `<tr><td style="padding:16px 32px;">
-          <h2 style="margin:0 0 12px;font-size:13px;color:#f5c542;letter-spacing:1px;text-transform:uppercase;font-weight:600;">📦 Kit Ships To</h2>
-          <div style="background:#1b1038;border-left:3px solid #f5c542;padding:12px 16px;font-size:14px;color:#fdf6e3;line-height:1.6;">
-            ${customerName ? `<strong style="color:#f5c542;">${esc(customerName)}</strong><br>` : ''}
-            ${addrParts}
+        ${hasAddr ? `<tr><td style="padding:22px 36px 4px;">
+          ${goatH2('📮 Kit mails to')}
+          <div style="background:${E.filing};border-left:3px solid ${E.gold};border-radius:6px;padding:12px 16px;font-size:14px;line-height:1.7;color:${E.ink};">
+            <b>${esc(addrLines[0])}</b><br>${addrLines.slice(1).map(esc).join('<br>')}
           </div>
         </td></tr>` : ''}
-
-        <!-- What's next -->
-        <tr><td style="padding:16px 32px 24px;">
-          <h2 style="margin:0 0 12px;font-size:13px;color:#f5c542;letter-spacing:1px;text-transform:uppercase;font-weight:600;">⚡ What Happens Next</h2>
-          <ol style="margin:0;padding-left:20px;font-size:14px;color:#fdf6e3;line-height:1.8;">
-            <li>🖨️ The Council prints the certified G.O.A.T. license kit (2–3 business days).</li>
-            <li>📮 The kit is sealed, stamped, and mailed to <strong>${esc(nominee)}</strong>.</li>
-            <li>🐐 Confusion, then delight. Then they nominate someone. The loop continues.</li>
+        <tr><td style="padding:22px 36px 4px;">
+          ${goatH2('⚡ What happens next')}
+          <ol style="margin:0;padding-left:20px;font-size:14px;line-height:2;color:${E.muted};">
+            <li>The Council prints the certified license <b style="color:${E.ink};">(2–3 business days)</b>.</li>
+            <li>The kit is sealed, stamped, and mailed to <b style="color:${E.ink};">${esc(party)}</b>.</li>
           </ol>
-        </td></tr>
-
-        <!-- Footer -->
-        <tr><td style="padding:20px 32px;background:#1b1038;border-top:1px solid rgba(245,197,66,.25);text-align:center;font-size:12px;color:#b9a8e0;line-height:1.6;">
-          Questions? Just reply to this email — a clerk reads every message.<br>
-          <span style="opacity:.6;">Goofy Licenses · novelty gag licenses for entertainment · not a government document</span>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+        </td></tr>`,
+  });
 
   const text =
 `Nomination filed! 🐐
 
-Council Filing Number: ${orderId || '—'}
-Honor:  ${honorLabel}
-Nominee: ${nominee}
-${presentedBy}
-Delivery: ${shipLabel}
-Nomination processing fee: ${total || '—'}
+The Council has accepted your nomination. The certified G.O.A.T. license kit will be printed, sealed, and mailed to ${party}.
 
-${addrParts ? `Kit ships to:\n${customerName ? customerName + '\n' : ''}${[shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry].filter(Boolean).join('\n')}\n\n` : ''}Next up: the Council prints the certified G.O.A.T. license kit, seals it, and mails it to ${nominee}.
+Council filing number: ${orderId || '—'}
+Honor:    ${honorLabel}
+Nominee:  ${party}
+Credit:   ${presentedBy}
+Delivery: ${shipLabel}
+Processing fee: ${total || '—'}
+
+${hasAddr ? `Kit mails to:\n${addrLines.join('\n')}\n\n` : ''}What happens next:
+1. The Council prints the certified license (2–3 business days).
+2. The kit is sealed, stamped, and mailed to ${party}.
 
 Questions? Just reply to this email.
 
-— The Council of G.O.A.T. Affairs (Goofy Licenses)`;
+The Council of G.O.A.T. Affairs (Goofy Licenses)`;
 
   return sendEmail(env, { to: customerEmail, subject, html, text, sender: LINE_SENDER.goat, customArgs: { order_id: orderId, email_type: 'goofy_confirmation' } });
 }
@@ -858,39 +912,23 @@ export async function sendGoofyRecoveryEmail(env, { to, recipientName, recoveryU
   const asmGroupId = env.SENDGRID_ASM_GROUP_ID ? parseInt(env.SENDGRID_ASM_GROUP_ID, 10) : null;
   const unsubHref = asmGroupId ? '<%asm_group_unsubscribe_raw_url%>' : '[unsubscribe]';
 
-  const html = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
-<body style="margin:0;padding:0;background:#120b24;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#120b24;padding:24px 0;">
-    <tr><td align="center">
-      <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;background:#221547;border:2px solid #f5c542;border-radius:14px;overflow:hidden;">
-
-        <tr><td style="padding:30px 32px 12px;text-align:center;">
-          <div style="font-size:48px;">🐐</div>
-          <h1 style="margin:12px 0 0;font-size:15px;color:#f5c542;letter-spacing:2px;text-transform:uppercase;line-height:1.6;">The file is still open</h1>
-          <p style="margin:12px 0 0;font-size:15px;color:#fdf6e3;line-height:1.6;">
-            You started a G.O.A.T. nomination for ${esc(nominee)} and made it all the way to checkout, then life happened. The Council kept the file exactly as you left it.
-          </p>
-        </td></tr>
-
-        <tr><td style="padding:20px 32px 8px;">
-          <div style="background:#1b1038;border:1px dashed #f5c542;border-radius:10px;padding:20px;text-align:center;">
-            <p style="margin:0 0 14px;font-size:14px;color:#fdf6e3;line-height:1.6;">
-              One click below takes you straight back to the payment page with everything already filled in. The link works for 30 days, but ${esc(nominee)} would prefer sooner.
+  const E = GOAT_EMAIL;
+  const html = goatEmailShell(env, {
+    subject,
+    preheader: `The Council kept ${nominee}'s file exactly as you left it.`,
+    title: 'The file is still open',
+    lead: `You started a G.O.A.T. nomination for ${esc(nominee)} and made it all the way to checkout, then life happened. The Council kept the file exactly as you left it.`,
+    sections: `
+        <tr><td style="padding:24px 36px 4px;text-align:center;">
+          <div style="background:${E.filing};border:1px dashed ${E.gold};border-radius:12px;padding:22px 20px;">
+            <p style="margin:0 0 16px;font-size:14px;line-height:1.7;color:${E.muted};">
+              One click takes you straight back to the payment page with everything filled in. The link works for 30 days, but ${esc(nominee)} would prefer sooner.
             </p>
-            <a href="${esc(recoveryUrl)}" style="display:inline-block;padding:14px 28px;background:#f5c542;color:#2a1a05;text-decoration:none;border-radius:12px;font-weight:800;font-size:15px;letter-spacing:.5px;">Finish the nomination →</a>
+            ${goatButton(recoveryUrl, 'Finish the nomination →')}
           </div>
-        </td></tr>
-
-        <tr><td style="padding:20px 32px;text-align:center;font-size:12px;color:#b9a8e0;line-height:1.6;border-top:1px solid rgba(245,197,66,.25);">
-          You are getting this one-time reminder because you started a nomination at Goofy Licenses. Reply any time, a clerk reads these.<br>
-          <span style="opacity:.7;">Goofy Licenses · novelty gag licenses · not a government document</span><br>
-          <a href="${unsubHref}" style="color:#b9a8e0;text-decoration:underline;">Unsubscribe</a>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body></html>`;
+        </td></tr>`,
+    footer: `<br>You're getting this one-time reminder because you started a nomination at Goofy Licenses.<br><a href="${unsubHref}" style="color:${E.muted};text-decoration:underline;">Unsubscribe</a>`,
+  });
 
   const text =
 `${nominee}'s G.O.A.T. nomination is still on the clerk's desk.
@@ -946,72 +984,43 @@ export async function sendGoofyShippedEmail(env, order) {
 
   const subject = `🐐 ${nominee}'s G.O.A.T. license is in the mail`;
 
-  const row = (label, value, mono) => `<tr>
-            <td style="padding:9px 0;border-bottom:1px solid #ddd6c5;font-size:14px;color:#4a4a4a;">${label}</td>
-            <td style="padding:9px 0;border-bottom:1px solid #ddd6c5;font-size:14px;color:#1a1a1a;text-align:right;${mono ? "font-family:'Courier New',monospace;" : ''}">${esc(value)}</td>
-          </tr>`;
-
+  const E = GOAT_EMAIL;
   const trackingBlock = tracking
-    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #1a1a1a;border-radius:4px;">
-            <tr><td style="padding:18px 20px;text-align:center;">
-              <div style="font-size:11px;letter-spacing:2px;color:#4a4a4a;text-transform:uppercase;">Tracking number</div>
-              <div style="margin:8px 0 14px;font-family:'Courier New',monospace;font-size:17px;font-weight:700;color:#1a1a1a;word-break:break-all;">${esc(tracking)}</div>
-              <a href="${esc(trackUrl)}" style="display:inline-block;background:#f5c542;color:#2a1a05;text-decoration:none;font-weight:700;font-size:15px;padding:13px 28px;border-radius:8px;">Track the package</a>
-              ${selfNominate ? '' : `<div style="margin-top:12px;font-size:13px;color:#4a4a4a;">It's a surprise, so tracking goes to you, not to ${esc(nominee)}.</div>`}
-            </td></tr>
-          </table>`
-    : `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #1a1a1a;border-radius:4px;">
-            <tr><td style="padding:16px 20px;text-align:center;font-size:14px;line-height:1.6;color:#333333;">
-              Sealed, stamped and sent by USPS mail. Stamp mail doesn't come with tracking, so allow a few business days.
-            </td></tr>
-          </table>`;
+    ? `<div style="background:${E.filing};border:1px solid ${E.line};border-radius:12px;padding:20px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:${E.muted};">TRACKING NUMBER</div>
+            <div style="margin:8px 0 16px;font-family:'Courier New',monospace;font-size:17px;font-weight:700;color:${E.gold};word-break:break-all;">${esc(tracking)}</div>
+            ${goatButton(trackUrl, 'Track the package →')}
+            ${selfNominate ? '' : `<div style="margin-top:12px;font-size:13px;color:${E.muted};">It's a surprise, so tracking goes to you, not to ${esc(nominee)}.</div>`}
+          </div>`
+    : `<div style="background:${E.filing};border:1px solid ${E.line};border-radius:12px;padding:16px 20px;text-align:center;font-size:14px;line-height:1.7;color:${E.muted};">
+            Sealed, stamped and sent by USPS mail. Stamp mail doesn't come with tracking, so allow a few business days.
+          </div>`;
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
-<body style="margin:0;padding:0;background:#e7e2d6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#e7e2d6;padding:24px 0;">
-    <tr><td align="center" style="padding:0 12px;">
-      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;background:#fffdf7;border:1px solid #1a1a1a;border-radius:4px;">
-        <tr><td style="padding:34px 40px 8px;text-align:center;">
-          <img src="${esc(origin)}/goofy/images/seal-email.png" width="96" height="96" alt="Certified G.O.A.T. seal" style="display:block;margin:0 auto 18px;border:0;">
-          <div style="font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:15px;letter-spacing:3px;color:#1a1a1a;">THE COUNCIL OF G.O.A.T. AFFAIRS</div>
-          <div style="width:120px;height:1px;background:#1a1a1a;margin:18px auto;line-height:1px;font-size:1px;">&nbsp;</div>
-          <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:26px;line-height:1.25;color:#1a1a1a;">The certification is in the mail.</h1>
-          <p style="margin:14px 0 0;font-size:16px;line-height:1.6;color:#333333;">${esc(nominee)}'s G.O.A.T. license kit has left the chambers and is on its way.</p>
-        </td></tr>
-        <tr><td style="padding:22px 40px 6px;">
+  const html = goatEmailShell(env, {
+    subject,
+    preheader: `${nominee}'s G.O.A.T. license kit has left the chambers.`,
+    title: 'The certification is in the mail',
+    lead: `${esc(nominee)}'s G.O.A.T. license kit has left the chambers and is on its way.`,
+    sections: `
+        <tr><td style="padding:24px 36px 4px;">
           ${trackingBlock}
         </td></tr>
-        <tr><td style="padding:14px 40px 6px;">
+        <tr><td style="padding:22px 36px 4px;">
+          ${goatH2('🧾 The filing')}
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
-          ${row('Filing no.', orderId || '', true)}
-          ${row('Honor', honorLabel)}
-          ${row('Nominee', nominee)}
-          ${presentedBy ? row('Presented by', presentedBy) : ''}
-          ${shipTo ? row('Ships to', shipTo) : ''}
+          ${goatRow('Filing no.', orderId || '', { mono: true })}
+          ${goatRow('Honor', honorLabel)}
+          ${goatRow('Nominee', nominee)}
+          ${presentedBy ? goatRow('Presented by', presentedBy) : ''}
+          ${shipTo ? goatRow('Mails to', shipTo) : ''}
           </table>
         </td></tr>
-        <tr><td style="padding:18px 40px 34px;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#1a1a1a;border-radius:4px;">
-            <tr><td style="padding:18px 20px;text-align:center;">
-              <div style="font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:16px;color:#fffdf7;">Know another legend?</div>
-              <div style="margin-top:6px;font-size:14px;line-height:1.5;color:#e6e1d4;">The kit carries a QR code. Scan it to nominate the next one, or head to <a href="${esc(origin)}/goat" style="color:#f5c542;">goofylicenses.com/goat</a>.</div>
-            </td></tr>
-          </table>
-        </td></tr>
-      </table>
-      <table role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;width:100%;">
-        <tr><td style="padding:18px 20px;text-align:center;font-size:12px;line-height:1.6;color:#4a4a4a;">
-          <strong style="color:#1a1a1a;">Goofy Licenses</strong> · goofylicenses.com<br>
-          Novelty licenses for entertainment. Not a real government document.<br>
-          Questions? Reply to this email, a clerk reads every message.
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+        <tr><td style="padding:24px 36px 4px;text-align:center;">
+          <div style="font-family:${E.serif};font-weight:700;font-size:17px;color:${E.gold};">Know another legend?</div>
+          <p style="margin:6px 0 16px;font-size:14px;line-height:1.7;color:${E.muted};">Every kit carries a QR code for the next nomination. Or start one here.</p>
+          ${goatButton(origin + '/goat', '🐐 Nominate another GOAT →')}
+        </td></tr>`,
+  });
 
   const text =
 `The certification is in the mail.
