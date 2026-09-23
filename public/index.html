@@ -247,6 +247,18 @@ input::placeholder{color:var(--faint);font-weight:600}
 
 /* Option cards */
 .opts{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.opts.fmt{grid-template-columns:repeat(3,1fr)}
+@media (max-width:560px){.opts.fmt{grid-template-columns:1fr}}
+.opts.fmt .opt-card .fi{font-size:24px;line-height:1}
+#packWrap[hidden]{display:none}
+.st.skip .dot{opacity:.35}
+.st.skip .lab{text-decoration:line-through;opacity:.6}
+.upsell{display:flex;align-items:center;gap:13px;border:2px dashed var(--brand);border-radius:var(--radius-sm);padding:13px 14px;background:var(--brand-soft);margin-top:12px}
+.upsell[hidden]{display:none}
+.upsell .ui{font-size:28px;flex-shrink:0}
+.upsell .ut{flex:1;min-width:0;font-size:12.5px;color:var(--muted);font-weight:600}
+.upsell .ut b{display:block;font-size:14.5px;color:var(--ink)}
+.upsell button{border:0;background:var(--brand);color:#fff;font-weight:900;font-size:13px;border-radius:10px;padding:9px 12px;cursor:pointer;white-space:nowrap;font-family:inherit}
 .opt-card{position:relative;border:2px solid var(--line-2);border-radius:var(--radius-sm);padding:15px 14px;cursor:pointer;background:#fff;transition:border-color .15s,box-shadow .15s,transform .08s;display:flex;flex-direction:column;gap:4px}
 .opt-card:hover{border-color:var(--brand)}
 .opt-card.sel{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
@@ -444,13 +456,14 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
       <div class="pitch">
         <span class="eyebrow">🪪 Official-ish™ pet ID</span>
         <h1>Turn your credit card into your <span class="hl">pet's driver's license.</span></h1>
-        <p class="subtitle">A custom pet driver's license printed as a premium credit-card skin, with your furry friend's photo, name, and very official stats.</p>
+        <p class="subtitle">A custom pet driver's license printed as a premium credit-card skin (or a real standalone license card), with your furry friend's photo, name, and very official stats.</p>
         <div class="usability"><span class="ui">💳</span><span><b>Doesn't affect your card at all.</b> Swipe, insert, and tap all keep working perfectly — it's a thin printed skin that sticks on top, not a new card.</span></div>
         <div class="rating"><span class="stars">★★★★★</span><span>4.9 &middot; 1,200+ happy pets</span></div>
-        <div class="price-row"><span class="big" id="priceMain">$9.99</span><span class="from">+ shipping</span></div>
+        <div class="price-row"><span class="big" id="priceMain">$9.99</span><span class="from" id="priceFrom">+ shipping</span></div>
         <div class="pills">
           <span class="pill">✓ Premium card-skin</span>
           <span class="pill">✓ Fully personalised</span>
+          <span class="pill">✓ Skin, card, or both</span>
           <span class="pill">✓ Ships fast</span>
         </div>
         <a class="hero-cta" href="#build" data-scroll-build><span class="pix">🐾</span> Make your pet's license →</a>
@@ -520,10 +533,18 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 
           <!-- Step 3: Pack -->
           <div class="step-panel" data-step="3">
-            <div class="step-title"><h2>Choose your pack</h2></div>
-            <div class="opts" id="packOpts">
-              <div class="opt-card" data-pack="1"><span class="check">✓</span><span class="ot">1-Pack</span><span class="od">One license sticker</span><span class="op" id="packP1">$9.99</span></div>
-              <div class="opt-card sel" data-pack="2"><span class="badge" id="packSave">SAVE 20%</span><span class="check">✓</span><span class="ot">2-Pack</span><span class="od">Two stickers — gift one</span><span class="op" id="packP2">$15.99</span></div>
+            <div class="step-title"><h2>Choose your license</h2></div>
+            <div class="opts fmt" id="fmtOpts">
+              <div class="opt-card sel" data-format="skin"><span class="check">✓</span><span class="fi">💳</span><span class="ot">Card Skin</span><span class="od">Sticks on your credit card. Chip still works.</span><span class="op" id="fmtPskin">$9.99</span></div>
+              <div class="opt-card" data-format="card"><span class="check">✓</span><span class="fi">🪪</span><span class="ot">License Card</span><span class="od">A real PVC card of its own, like an actual ID.</span><span class="op" id="fmtPcard">$8.95</span></div>
+              <div class="opt-card" data-format="bundle"><span class="badge" id="fmtSave">BEST VALUE</span><span class="check">✓</span><span class="fi">🎁</span><span class="ot">Bundle</span><span class="od">One skin + one license card.</span><span class="op" id="fmtPbundle">$15.99</span></div>
+            </div>
+            <div id="packWrap">
+              <div class="subhead" style="margin-top:18px">How many?</div>
+              <div class="opts" id="packOpts">
+                <div class="opt-card" data-pack="1"><span class="check">✓</span><span class="ot">1-Pack</span><span class="od" id="packD1">One license sticker</span><span class="op" id="packP1">$9.99</span></div>
+                <div class="opt-card sel" data-pack="2"><span class="badge" id="packSave">SAVE 20%</span><span class="check">✓</span><span class="ot">2-Pack</span><span class="od" id="packD2">Two stickers — gift one</span><span class="op" id="packP2">$15.99</span></div>
+              </div>
             </div>
           </div>
 
@@ -542,6 +563,11 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
           <div class="step-panel" data-step="5">
             <div class="step-title"><h2>Review &amp; checkout</h2></div>
             <div class="recap"><span class="ri" id="recapText">Looking good!</span></div>
+            <div class="upsell" id="upsell" hidden>
+              <span class="ui">🎁</span>
+              <span class="ut"><b id="upsellTitle">Make it a bundle</b><span id="upsellText">Get the card skin AND a real license card.</span></span>
+              <button type="button" id="upsellBtn" data-track="bundle-upsell">Add it</button>
+            </div>
             <div class="subhead">Add an extra</div>
             <div class="addon" id="decal">
               <span class="ai">🚗</span>
@@ -658,7 +684,7 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
   </div>
 </footer>
 
-<script src="pricing.js"></script>
+<script src="pricing.js?v=20260923"></script>
 <script src="affiliate-tracker.js"></script>
 <script src="pixels.js"></script>
 <script src="plf-track.js" defer></script>
@@ -667,9 +693,16 @@ footer{border-top:1px solid var(--line);background:var(--surface);padding:28px 0
 'use strict';
 var $ = function(id){return document.getElementById(id);};
 function clamp(min,v,max){ return Math.max(min, Math.min(max, v)); }
-var PRICES = (window.PLF_PRICES_USD) || { pack1:9.99, pack2:15.99, decal:4.49, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
+var PRICES = (window.PLF_PRICES_USD) || { pack1:9.99, pack2:15.99, card1:8.95, card2:13.95, bundle:15.99, decal:4.49, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
+// What they're buying: format (skin | card | bundle) × pack. See /pricing.js.
+function item(){
+  if(window.PLF_ITEM) return window.PLF_ITEM(state.format, state.packQty);
+  var f=state.format, two=state.packQty===2&&f!=='bundle';
+  var usd=f==='bundle'?PRICES.bundle:f==='card'?(two?PRICES.card2:PRICES.card1):(two?PRICES.pack2:PRICES.pack1);
+  return {format:f, packQty:two?2:1, usd:usd, label:(two?'2-Pack ':'1-Pack ')+(f==='card'?'License Card':'License Sticker')+(two?'s':'')};
+}
 
-var state = { photo:null, crop:{cx:0.5,cy:0.5,zoom:1}, packQty:2, chipSize:'mini', wantsDecal:false, addrReal:false, discount:false };
+var state = { photo:null, crop:{cx:0.5,cy:0.5,zoom:1}, format:'skin', packQty:2, chipSize:'mini', wantsDecal:false, addrReal:false, discount:false };
 
 // Set once a free digital lead is captured (either the Step-5 form or the exit
 // modal), so the exit-intent trigger never re-fires after a successful capture.
@@ -977,6 +1010,31 @@ $('addrToggle').addEventListener('change', function(e){
 });
 
 // ── Options ──
+function setFormat(f){
+  state.format = f;
+  [].forEach.call($('fmtOpts').children, function(ch){ ch.classList.toggle('sel', ch.getAttribute('data-format')===f); });
+  $('packWrap').hidden = (f==='bundle');
+  var card = f==='card';
+  $('packD1').textContent = card ? 'One license card' : 'One license sticker';
+  $('packD2').textContent = card ? 'Two cards — gift one' : 'Two stickers — gift one';
+  $('packP1').textContent = money(card ? PRICES.card1 : PRICES.pack1);
+  $('packP2').textContent = money(card ? PRICES.card2 : PRICES.pack2);
+  var p1 = card ? PRICES.card1 : PRICES.pack1, p2 = card ? PRICES.card2 : PRICES.pack2;
+  $('packSave').textContent = 'SAVE '+Math.round((1-(p2/(p1*2)))*100)+'%';
+  renderStepper(); recalc(); updateRecap();
+}
+$('fmtOpts').addEventListener('click', function(e){
+  var c = e.target.closest('[data-format]'); if(!c) return;
+  setFormat(c.getAttribute('data-format'));
+  revealPreviewBtn();
+});
+$('upsellBtn').addEventListener('click', function(){
+  var from = state.format;
+  if(window.PLFTrack) PLFTrack.step('bundle_upsell', { from: from });
+  setFormat('bundle');
+  // A card-only buyer never picked a chip; the skin in the bundle needs one.
+  if(from==='card') go(4,'b');
+});
 $('packOpts').addEventListener('click', function(e){
   var c = e.target.closest('[data-pack]'); if(!c) return;
   state.packQty = parseInt(c.getAttribute('data-pack'));
@@ -998,12 +1056,13 @@ $('decal').addEventListener('click', function(){
 // ── Pricing / summary ──
 function money(n){ return '$'+n.toFixed(2); }
 function recalc(){
-  var base = state.packQty===2 ? PRICES.pack2 : PRICES.pack1;
+  var it = item();
+  var base = it.usd;
   var dec = state.wantsDecal ? PRICES.decal : 0;
   var disc = state.discount ? (base+dec)*PRICES.disc : 0;
   var total = base + dec - disc;
   var h = '';
-  h += '<div class="line"><span>'+state.packQty+'-Pack License Sticker'+(state.packQty>1?'s':'')+'</span><span>'+money(base)+'</span></div>';
+  h += '<div class="line"><span>'+it.label+'</span><span>'+money(base)+'</span></div>';
   if(state.wantsDecal) h += '<div class="line"><span>4×4" Vinyl Car Decal</span><span>+'+money(dec)+'</span></div>';
   if(state.discount) h += '<div class="line save"><span>First-time buyer (15% off)</span><span>−'+money(disc)+'</span></div>';
   h += '<div class="line muted"><span>Shipping</span><span>from '+money(PRICES.stamp)+' (USPS)</span></div>';
@@ -1011,7 +1070,19 @@ function recalc(){
   $('summaryLines').innerHTML = h;
   // Don't claim a subtotal before the visitor has seen the pack choice that
   // produces it (2-pack is pre-selected, which reads as bait if shown early).
-  $('wizTotal').textContent = (maxReached >= 3) ? money(total) : 'from '+money(PRICES.pack1);
+  $('wizTotal').textContent = (maxReached >= 3) ? money(total) : 'from '+money(Math.min(PRICES.pack1, PRICES.card1));
+  // Review-step upsell: anyone not already on the bundle.
+  var up = $('upsell');
+  if(up){
+    up.hidden = state.format==='bundle';
+    if(state.format!=='bundle'){
+      var other = state.format==='card' ? 'the card skin for your credit card' : 'a real PVC license card';
+      $('upsellTitle').textContent = 'Make it a bundle: '+money(PRICES.bundle);
+      $('upsellText').textContent = 'Add '+other+'. One of each, '+money(PRICES.bundle)+' total'
+        + (state.packQty===2 ? ' (instead of the 2-pack).' : '.');
+      $('upsellBtn').textContent = 'Make it a bundle';
+    }
+  }
 }
 $('discCheck').addEventListener('change', function(){
   state.discount = this.checked;
@@ -1020,7 +1091,12 @@ $('discCheck').addEventListener('change', function(){
 });
 
 // ── Init prices ──
-$('priceMain').textContent = money(PRICES.pack1);
+$('priceMain').textContent = money(Math.min(PRICES.pack1, PRICES.card1));
+$('priceFrom').textContent = 'and up + shipping';
+$('fmtPskin').textContent = 'from '+money(PRICES.pack1);
+$('fmtPcard').textContent = 'from '+money(PRICES.card1);
+$('fmtPbundle').textContent = money(PRICES.bundle);
+$('fmtSave').textContent = 'SAVE '+money(PRICES.pack1+PRICES.card1-PRICES.bundle);
 $('packP1').textContent = money(PRICES.pack1);
 $('packP2').textContent = money(PRICES.pack2);
 $('packSave').textContent = 'SAVE '+Math.round((1-(PRICES.pack2/(PRICES.pack1*2)))*100)+'%';
@@ -1038,7 +1114,9 @@ function clearErr(){ $('errBox').classList.remove('show'); }
 // ═══════════════════════════════════════════════════
 // WIZARD
 // ═══════════════════════════════════════════════════
-var STEP_LABELS = ['Photo','Details','Pack','Chip','Review'];
+var STEP_LABELS = ['Photo','Details','License','Chip','Review'];
+// A license card has no chip to line up with, so card-only orders skip step 4.
+function skipped(n){ return n===4 && state.format==='card'; }
 var TOTAL_STEPS = 5;
 var cur = 1, maxReached = 1;
 var panels = [].slice.call(document.querySelectorAll('.step-panel'));
@@ -1051,7 +1129,7 @@ STEP_LABELS.forEach(function(label, i){
   st.innerHTML = '<div class="dot">'+(i+1)+'</div><div class="lab">'+label+'</div>';
   st.addEventListener('click', function(){
     var n = parseInt(st.dataset.step);
-    if(n <= maxReached && n !== cur) go(n, n<cur?'b':'f');
+    if(n <= maxReached && n !== cur && !skipped(n)) go(n, n<cur?'b':'f');
   });
   stepperEl.appendChild(st);
 });
@@ -1060,7 +1138,8 @@ var stNodes = [].slice.call(stepperEl.children);
 function renderStepper(){
   stNodes.forEach(function(st, i){
     var n = i+1;
-    st.classList.remove('done','active','clickable');
+    st.classList.remove('done','active','clickable','skip');
+    if(skipped(n)){ st.classList.add('skip'); st.querySelector('.dot').textContent = '–'; return; }
     if(n < cur) st.classList.add('done');
     else if(n === cur) st.classList.add('active');
     if(n <= maxReached) st.classList.add('clickable');
@@ -1099,9 +1178,11 @@ function updateRecap(){
   var first=$('fFirst').value.trim(), species=$('fSpecies').value;
   var name = first || 'Your pet';
   var sp = species ? species.charAt(0)+species.slice(1).toLowerCase() : 'pet';
-  var packTxt = state.packQty===2 ? '2-pack' : '1-pack';
+  var packTxt = state.format==='bundle' ? 'skin + card bundle'
+    : (state.packQty===2 ? '2-pack' : '1-pack')+' '+(state.format==='card' ? 'license card' : 'card skin');
   var extra = state.wantsDecal ? ' + car decal' : '';
-  $('recapText').innerHTML = '<b>'+name+'</b> the '+sp+' &middot; '+packTxt+' &middot; '+(state.chipSize==='mini'?'mini':'classic')+' chip'+extra;
+  var chip = state.format==='card' ? '' : ' &middot; '+(state.chipSize==='mini'?'mini':'classic')+' chip';
+  $('recapText').innerHTML = '<b>'+name+'</b> the '+sp+' &middot; '+packTxt+chip+extra;
 }
 
 function validateStep(n){
@@ -1121,8 +1202,20 @@ function validateStep(n){
 }
 
 function go(n, dir){ cur = n; maxReached = Math.max(maxReached, n); showStep(n, dir); }
-$('wizNext').addEventListener('click', function(){ if(validateStep(cur) && cur < TOTAL_STEPS) go(cur+1, 'f'); });
-$('wizBack').addEventListener('click', function(){ if(cur > 1) go(cur-1, 'b'); clearErr(); });
+$('wizNext').addEventListener('click', function(){
+  if(!validateStep(cur) || cur >= TOTAL_STEPS) return;
+  var n = cur+1; if(skipped(n)) n++;
+  go(n, 'f');
+});
+$('wizBack').addEventListener('click', function(){
+  if(cur > 1){ var n = cur-1; if(skipped(n)) n--; go(n, 'b'); }
+  clearErr();
+});
+// Deep link: ?format=card | bundle | skin preselects the license format.
+(function(){
+  var f = (new URLSearchParams(location.search).get('format')||'').toLowerCase();
+  if(f==='card' || f==='bundle') setFormat(f);
+})();
 
 // ── Composite licence render (canvas) ──
 // opts: { width, quality, mime, watermark }. The watermark variant is used for
@@ -1228,7 +1321,7 @@ function checkout(){
   var btn=$('checkoutBtn'); btn.classList.add('loading'); btn.disabled=true;
 
   var dob=dobToCard($('fDob').value);
-  var base=state.packQty===2?PRICES.pack2:PRICES.pack1;
+  var it=item(), base=it.usd;
   var dec=state.wantsDecal?PRICES.decal:0;
   var petData = {
     petFirstName:first, petLastName:last,
@@ -1239,7 +1332,7 @@ function checkout(){
     addrLine2: state.addrReal ? $('fAddr2').value.trim() : 'Tailwag, TX 76543'
   };
   var orderBody = Object.assign({}, petData, {
-    photo: state.photo, packQty: state.packQty, chipSize: state.chipSize,
+    photo: state.photo, format: it.format, packQty: it.packQty, chipSize: state.chipSize,
     wantsDecal: state.wantsDecal, total: parseFloat((base+dec).toFixed(2))
   });
 
@@ -1261,7 +1354,7 @@ function checkout(){
       var affiliateRef=(window.PLFAffiliate&&window.PLFAffiliate.getRef&&window.PLFAffiliate.getRef())||'';
       var promoCode=(new URLSearchParams(window.location.search).get('promo')||'').trim()||(window.PLFPromo&&window.PLFPromo.getCode&&window.PLFPromo.getCode())||'';
       return fetch('/api/create-checkout-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        orderId:orderId, packQty:state.packQty, wantsDecal:state.wantsDecal, discountEarned:state.discount,
+        orderId:orderId, format:it.format, packQty:it.packQty, wantsDecal:state.wantsDecal, discountEarned:state.discount,
         petData:{petFirstName:first,petLastName:last},
         origin:window.location.origin, cancelUrl:window.location.href,
         affiliateRef:affiliateRef, promoCode:promoCode
@@ -1274,7 +1367,7 @@ function checkout(){
         // delay so the TikTok/Meta beacon can flush before the page unloads.
         // Meta records the last numbers the buyer saw before Stripe, so
         // abandonment can be analyzed against price point and pack choice.
-        if(window.PLFTrack) PLFTrack.step('checkout_clicked', { total: orderBody.total, pack: state.packQty, discount: !!state.discount });
+        if(window.PLFTrack) PLFTrack.step('checkout_clicked', { total: orderBody.total, pack: it.packQty, format: it.format, discount: !!state.discount });
         if(window.PLFPixels&&window.PLFPixels.initiateCheckout) window.PLFPixels.initiateCheckout(orderBody.total, 'USD');
         console.log('[plf] InitiateCheckout fired ($'+orderBody.total+'), navigating to Stripe in 300ms');
         setTimeout(function(){ window.location.href=d.url; }, 300);

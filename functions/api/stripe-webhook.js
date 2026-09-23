@@ -305,6 +305,7 @@ export async function onRequest(context) {
       petFirstName:   orderRow.pet_first_name,
       petLastName:    orderRow.pet_last_name,
       packCount:      orderRow.pack_count,
+      format:         session.metadata?.variant || '',
       addOn:          orderRow.add_on,
       chipSize:       orderRow.chip_size,
       shippingOption: orderRow.shipping_option,

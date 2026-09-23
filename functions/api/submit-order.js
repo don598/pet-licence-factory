@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { getDb } from '../_shared/db.js';
-import { GOOFY_PRICES } from '../_shared/pricing.js';
+import { GOOFY_PRICES, plcFormat, plcItem } from '../_shared/pricing.js';
 import { lineOfBrand } from '../_shared/lines.js';
 
 const CORS_HEADERS = {
@@ -67,8 +67,9 @@ export async function onRequest(context) {
   // ── Dual-brand columns (additive; PLC rows default to 'plc') ─────────────
   // Lazy, idempotent DDL — same self-heal pattern used elsewhere
   // (stripe-webhook recovery_email_sent_at). Fire-and-forget: a DDL failure
-  // must never block order submission; the PLC INSERT below doesn't touch
-  // these columns, so PLC is unaffected even if they don't exist yet.
+  // must never block order submission. (The PLC INSERT below writes
+  // `variant` too, for the pet format: skin | card | bundle. Every column
+  // here already exists in production.)
   try {
     await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS brand TEXT DEFAULT 'plc'`);
     await db.query(`ALTER TABLE pet_orders ADD COLUMN IF NOT EXISTS src TEXT`);
@@ -218,11 +219,11 @@ export async function onRequest(context) {
       `INSERT INTO pet_orders (
         order_id, status, pet_first_name, pet_last_name, dl_number, dob, exp_date, iss_date,
         addr_line1, addr_line2, sex, height, weight, eyes, lic_class, restrict, signature,
-        photo_url, pack_count, total, chip_size, add_on, pet_species
+        photo_url, pack_count, total, chip_size, add_on, pet_species, variant
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8,
         $9, $10, $11, $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21, $22, $23
+        $18, $19, $20, $21, $22, $23, $24
       )`,
       [
         orderId,
@@ -243,11 +244,12 @@ export async function onRequest(context) {
         'ALL',
         (s(body.petFirstName) + ' ' + s(body.petLastName)).trim(),
         photoUrl,
-        parseInt(body.packQty) || 1,
+        plcItem(body.format, body.packQty).packQty,
         '$' + (parseFloat(body.total) || 0).toFixed(2),
         s(body.chipSize, 'mini'),
         body.wantsDecal ? 'car_decal' : null,
         s(body.species).toLowerCase() || null,
+        plcFormat(body.format),                 // skin | card | bundle
       ]
     );
 

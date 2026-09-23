@@ -2764,7 +2764,7 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
 [data-theme="dark"] .op-email-st.email-ok { color: #7fd6ae; }
   </style>
   <!-- Canonical client pricing (window.PLF_PRICES) — keep in sync with functions/_shared/pricing.js -->
-  <script src="pricing.js"></script>
+  <script src="pricing.js?v=20260923"></script>
   <!-- Product-line registry (window.GOOFY_LINES): names, colors, lineOf(order).
        Drives the line switcher, order chips, per-line stats and waitlists. -->
   <script src="/lines.js"></script>
@@ -2924,7 +2924,7 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
             <div class="bulk-action-bar" id="bulk-action-bar">
               <span class="bulk-count" id="bulk-count">0 selected</span>
               <button class="btn btn-accent" id="bulk-print-btn" onclick="printSelected()">🖨 Print Documents & Send Shipping Confirmation Email</button>
-              <button class="btn btn-ghost" id="bulk-sheet-btn" onclick="cardSheetSelected()" title="License cards (G.O.A.T.) laid out for the Silhouette 'ID's' license print &amp; cut template, 6 per sheet. Not for credit card skins.">🪪 License sheets</button>
+              <button class="btn btn-ghost" id="bulk-sheet-btn" onclick="cardSheetSelected()" title="License cards (G.O.A.T., and pet license-card orders after Generate Card) laid out for the Silhouette 'ID's' license print &amp; cut template, 6 per sheet. Not for credit card skins.">🪪 License sheets</button>
               <button class="btn btn-ghost" onclick="bulkMarkProcessed()">✓ Mark Processed (no email)</button>
               <button class="btn btn-ghost" onclick="clearSelection()">Clear</button>
             </div>
@@ -3896,6 +3896,25 @@ const GOAT_VARIANT_LABELS = {
   'custom-anon':  'Custom, anonymous',
 };
 function goatVariantLabel(v) { return GOAT_VARIANT_LABELS[v] || (v ? String(v) : 'Standard'); }
+
+// Pet orders: what prints. pet_orders.variant holds the format ('skin' card
+// skin sticker | 'card' standalone PVC license card | 'bundle' one of each);
+// empty on older rows = skin. PLF_ITEM (/pricing.js) gives price + label.
+function petItem(o) {
+  const f = o && (o.variant === 'card' || o.variant === 'bundle') ? o.variant : 'skin';
+  if (window.PLF_ITEM) return window.PLF_ITEM(f, o && o.pack_count);
+  const two = parseInt(o && o.pack_count) === 2 && f !== 'bundle';
+  return { format: f, packQty: two ? 2 : 1, cents: two ? 1599 : 999, label: (two ? '2-Pack' : '1-Pack') + ' License Sticker' + (two ? 's' : '') };
+}
+// Does this order include a standalone license card (goes on License sheets)?
+function petHasCard(o) { return isPetOrder(o) && petItem(o).format !== 'skin'; }
+function petHasSkin(o) { return isPetOrder(o) && petItem(o).format !== 'card'; }
+function petItemShort(o) {
+  const it = petItem(o);
+  if (it.format === 'bundle') return 'Skin + card';
+  if (it.format === 'card') return it.packQty === 2 ? 'Card 2-pack' : 'Card';
+  return it.packQty === 2 ? '2-pack' : 'Single';
+}
 function goatVariantShort(v) { return v && v !== 'standard' ? 'Custom' : 'Standard'; }
 function goatRecipient(o) {
   return String((o && (o.recipient_name || [o.pet_first_name, o.pet_last_name].filter(Boolean).join(' '))) || '').trim();
@@ -4751,8 +4770,7 @@ function orderSubline(o) {
   const bits = [];
   if (isGoatOrder(o)) bits.push(goatVariantLabel(o.variant));
   else {
-    const pack = parseInt(o.pack_count) || 1;
-    bits.push(pack === 2 ? '2-pack' : 'Single');
+    bits.push(petItemShort(o));
     if (o.add_on === 'car_decal') bits.push('car decal');
   }
   if (o.shipping_option) bits.push(({ stamp: 'Stamp', standard: 'Standard', priority: 'Priority' })[o.shipping_option] || o.shipping_option);
@@ -5921,8 +5939,12 @@ function orderQuickStatsHtml(o) {
       gp('', '1× Council certificate (6×4)'),
     ].join('');
   }
-  const pack = parseInt(o.pack_count) || 1;
-  const items = [{ name: `Licence Sticker (${pack === 2 ? '2-Pack' : '1-Pack'})`, qty: pack }];
+  const it = petItem(o);
+  const items = it.format === 'bundle'
+    ? [{ name: 'Licence Sticker', qty: 1 }, { name: 'License Card (PVC)', qty: 1 }]
+    : it.format === 'card'
+      ? [{ name: `License Card, PVC (${it.packQty === 2 ? '2-Pack' : '1-Pack'})`, qty: it.packQty }]
+      : [{ name: `Licence Sticker (${it.packQty === 2 ? '2-Pack' : '1-Pack'})`, qty: it.packQty }];
   if (o.add_on === 'car_decal') items.push({ name: '4×4" Car Decal', qty: 1 });
   const totalItems = items.reduce((s, i) => s + i.qty, 0);
 
@@ -5933,7 +5955,7 @@ function orderQuickStatsHtml(o) {
     `<span class="oqs-chip ${cls}"><span class="oqs-k">${k}</span> ${esc(v)}</span>`;
 
   return [
-    pill('Chip', chipLabel),
+    ...(it.format === 'card' ? [] : [pill('Chip', chipLabel)]),
     pill('Items', String(totalItems), 'oqs-total'),
     ...items.map(i => pill('', `${i.qty}× ${i.name}`)),
   ].join('');
@@ -6053,7 +6075,7 @@ async function openOrder(dbId) {
     ['Height',      order.height],
     ['Weight',      order.weight],
     ['Eyes',        order.eyes],
-    ['Pack',        order.pack_count + '-Pack' + (order.add_on ? ' + Decal' : '')],
+    ['Item',        petItem(order).label + (order.add_on ? ' + Decal' : '')],
     ['Chip Size',   order.chip_size],
     ['Shipping',    fmtShipping(order.shipping_option)],
     ['Affiliate',   isAffiliateOrder(order)
@@ -6149,7 +6171,7 @@ async function openOrder(dbId) {
   const petSummary = [order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ')
     || '(no name)';
   document.getElementById('pet-info-hint').textContent = petLine
-    ? `${petSummary} · ${order.pack_count || 1}-Pack${order.add_on === 'car_decal' ? ' + Decal' : ''}`
+    ? `${petSummary} · ${petItem(order).label}${order.add_on === 'car_decal' ? ' + Decal' : ''}`
     : `${goatRecipient(order) || '(no name)'} · ${goatVariantLabel(order.variant)}`;
   const custSummary = order.customer_name || order.customer_email || '(not captured)';
   const cityState = [order.ship_city, order.ship_state].filter(Boolean).join(', ');
@@ -6615,6 +6637,7 @@ async function generateLicence() {
     }
 
     licenceCanvas = canvas;
+    rememberPetCardArt(o, canvas);
 
     // Show preview (scaled to fit modal)
     const wrap = document.getElementById('licence-preview');
@@ -7072,8 +7095,7 @@ function renderCertificateLabel(o) {
 function orderDiscountInfo(o) {
   const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES)
     || { pack1: 999, pack2: 1599, decal: 449, stamp: 95, standard: 699, priority: 1099 };
-  const pack = parseInt(o.pack_count) || 1;
-  const listSubtotal = (pack === 2 ? PRICES.pack2 : PRICES.pack1) + (o.add_on === 'car_decal' ? PRICES.decal : 0);
+  const listSubtotal = petItem(o).cents + (o.add_on === 'car_decal' ? PRICES.decal : 0);
   const shipAmt = PRICES[(o.shipping_option || 'stamp').toLowerCase()] ?? PRICES.stamp;
   const isFree = isAffiliateFreebie(o);
   const paidCents = isFree ? 0 : Math.round((parseFloat(String(o.total || '').replace(/[^0-9.]/g, '')) || 0) * 100);
@@ -7104,9 +7126,10 @@ function renderReceiptLabel(o) {
   const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES)
     || { pack1: 999, pack2: 1599, decal: 449, stamp: 95, standard: 699, priority: 1099 };
   const fmt = (cents) => '$' + (cents / 100).toFixed(2);
-  const pack       = parseInt(o.pack_count) || 1;
-  const packLabel  = pack === 2 ? 'Pet Licence Sticker (2-Pack)' : 'Pet Licence Sticker (1-Pack)';
-  const packAmt    = pack === 2 ? PRICES.pack2 : PRICES.pack1;
+  const item       = petItem(o);
+  const packLabel  = ({ skin: 'Pet Licence Sticker', card: 'Pet License Card (PVC)', bundle: 'Pet License Bundle (Sticker + Card)' })[item.format]
+    + (item.format === 'bundle' ? '' : item.packQty === 2 ? ' (2-Pack)' : ' (1-Pack)');
+  const packAmt    = item.cents;
   const wantsDecal = o.add_on === 'car_decal';
   const decalAmt   = wantsDecal ? PRICES.decal : 0;
   const listSubtotal = packAmt + decalAmt;
@@ -7161,7 +7184,7 @@ function renderReceiptLabel(o) {
       <div class="lr-divider"></div>
       <div class="lr-items">
         <div class="lr-items-title">Items</div>
-        <div class="lr-line"><span class="lr-line-name">${esc(packLabel)}${o.chip_size ? ` <span class="lr-line-meta">(${esc(o.chip_size)} chip)</span>` : ''}</span><span class="lr-line-amt">${fmt(packAmt)}</span></div>
+        <div class="lr-line"><span class="lr-line-name">${esc(packLabel)}${o.chip_size && item.format !== 'card' ? ` <span class="lr-line-meta">(${esc(o.chip_size)} chip)</span>` : ''}</span><span class="lr-line-amt">${fmt(packAmt)}</span></div>
         ${wantsDecal ? `<div class="lr-line"${addonRefunded ? ' style="text-decoration:line-through;opacity:.5"' : ''}><span class="lr-line-name">4×4" Vinyl Car Decal${addonRefunded ? ' (refunded)' : ''}</span><span class="lr-line-amt">${fmt(PRICES.decal)}</span></div>` : ''}
         <div class="lr-line lr-sub"><span class="lr-line-name">Subtotal</span><span class="lr-line-amt">${fmt(listSubtotal)}</span></div>
         ${discountAmt > 0 ? `<div class="lr-line lr-disc"><span class="lr-line-name">${esc(discountLabel)}</span><span class="lr-line-amt">−${fmt(discountAmt)}</span></div>` : ''}
@@ -7320,8 +7343,31 @@ async function fillGoatCertPages(goats) {
 }
 
 // ── License sheets for the Silhouette "ID's" print & cut template ──────────
-// (License cards only. Credit card skins use a different cut and will get
-// their own template + button.)
+// (License cards only: G.O.A.T. cards, and pet orders with a standalone
+// license card (format 'card' or 'bundle'). Credit card skins use a different
+// cut and will get their own template + button.)
+
+// Pet license card art, per order, from the last "Generate Card" in the order
+// modal (a pet licence needs background removal + the admin's framing, so it
+// can't be redrawn blind in bulk). The render is the 1322×957 print template;
+// the card itself is the top 1322×834 (credit-card ratio), the strip below is
+// the printout footer. Kept for this session only.
+const PET_CARD_H = 834;
+const petCardArt = new Map();   // String(order.id) → canvas
+function rememberPetCardArt(o, canvas) {
+  if (!o || !petHasCard(o)) return;
+  const c = document.createElement('canvas');
+  c.width = canvas.width; c.height = Math.min(PET_CARD_H, canvas.height);
+  c.getContext('2d').drawImage(canvas, 0, 0);
+  petCardArt.set(String(o.id), c);
+}
+// How many license cards an order puts on the sheet.
+function sheetCardCount(o) {
+  if (isGoatOrder(o)) return 1;
+  if (!petHasCard(o)) return 0;
+  const it = petItem(o);
+  return it.format === 'card' ? it.packQty : 1;
+}
 // Up to 6 G.O.A.T. cards on one US Letter page at 300 dpi, each centred on a
 // cut line of that template (positions read from the template file itself,
 // mm from the page's top-left), with the order's address printed just under
@@ -7381,10 +7427,12 @@ async function buildCardSheet(orders, onCard) {
   try { await document.fonts.ready; } catch {}
   for (let i = 0; i < orders.length; i++) {
     const o = orders[i], [x0, y0, x1, y1] = S.cuts[i];
-    const card = await window.GoofyCard.render({
-      variant: o.variant, recipientName: goatRecipient(o), giverName: o.giver_name,
-      photo: effectivePhoto(o), crop: o.photo_crop, orderId: o.order_id,
-    });
+    const card = isPetOrder(o)
+      ? petCardArt.get(String(o.id))
+      : await window.GoofyCard.render({
+          variant: o.variant, recipientName: goatRecipient(o), giverName: o.giver_name,
+          photo: effectivePhoto(o), crop: o.photo_crop, orderId: o.order_id,
+        });
     const w = S.cardWmm * px, h = w * card.height / card.width;
     const cx = (x0 + x1) / 2 * px, cy = (y0 + y1) / 2 * px;
     x.drawImage(card, Math.round(cx - w / 2), Math.round(cy - h / 2), Math.round(w), Math.round(h));
@@ -7435,12 +7483,21 @@ async function cardSheetSelected() {
   const rows = Array.from(document.querySelectorAll('.order-cb')).map(cb => String(cb.dataset.id));
   ids.sort((a, b) => rows.indexOf(String(a)) - rows.indexOf(String(b)));
   const sel = ids.map(id => allOrders.find(o => String(o.id) === String(id))).filter(Boolean);
-  const picked = sel.filter(isGoatOrder);
-  if (!picked.length) { showToast('License sheets take G.O.A.T. license orders. Select some first.', 'err'); return; }
-  if (!window.GoofyCard) { showToast('Card renderer not loaded', 'err'); return; }
-  const skipped = sel.length - picked.length;
+  // G.O.A.T. orders, plus pet orders with a license card whose licence has
+  // been rendered (Generate Card) in the order modal this session.
+  const petNeedsRender = sel.filter(o => petHasCard(o) && !petCardArt.has(String(o.id)));
+  const picked = sel.filter(o => isGoatOrder(o) || (petHasCard(o) && petCardArt.has(String(o.id))));
+  if (!picked.length) {
+    showToast(petNeedsRender.length
+      ? `Open ${petNeedsRender.length === 1 ? 'that pet order' : 'each pet order'} and Generate Card first, then make the sheet.`
+      : 'License sheets take G.O.A.T. orders and pet license-card orders. Select some first.', 'err', true);
+    return;
+  }
+  if (picked.some(isGoatOrder) && !window.GoofyCard) { showToast('Card renderer not loaded', 'err'); return; }
+  const skipped = sel.length - picked.length - petNeedsRender.length;
+  const nCards = picked.reduce((n, o) => n + sheetCardCount(o), 0);
   const per = CARD_SHEET.cuts.length;
-  const nSheets = Math.ceil(picked.length / per);
+  const nSheets = Math.ceil(nCards / per);
 
   // Open straight away: every card is drawn here in the browser, so a big
   // batch takes a while — show what it's doing and how far along it is.
@@ -7456,12 +7513,13 @@ async function cardSheetSelected() {
   fill.style.width = '0%';
   dlBtn.disabled = prBtn.disabled = true;
   document.getElementById('cs-sheet-sub').textContent =
-    `${picked.length} card${picked.length === 1 ? '' : 's'} on ${nSheets} sheet${nSheets === 1 ? '' : 's'}`
-    + (skipped ? ` · ${skipped} non-G.O.A.T. order${skipped === 1 ? '' : 's'} left out` : '');
+    `${nCards} card${nCards === 1 ? '' : 's'} on ${nSheets} sheet${nSheets === 1 ? '' : 's'}`
+    + (petNeedsRender.length ? ` · ${petNeedsRender.length} pet order${petNeedsRender.length === 1 ? '' : 's'} left out (open it and Generate Card first)` : '')
+    + (skipped ? ` · ${skipped} order${skipped === 1 ? '' : 's'} without a license card left out` : '');
   document.getElementById('cardSheetModal').classList.add('open');
 
-  // Two steps per card: fetch the full order, then draw it.
-  const steps = picked.length * 2;
+  // Fetch each order, then draw each card.
+  const steps = picked.length + nCards;
   let done = 0;
   const tick = (msg) => {
     fill.style.width = Math.round(done / steps * 100) + '%';
@@ -7477,12 +7535,14 @@ async function cardSheetSelected() {
       full.push(res.order || o);
       done++;
     }
-    for (let k = 0; k < full.length; k += per) {
-      const orders = full.slice(k, k + per);
+    // One slot per card: a pet 2-pack of cards takes two.
+    const slots = full.flatMap(o => Array(sheetCardCount(o)).fill(o));
+    for (let k = 0; k < slots.length; k += per) {
+      const orders = slots.slice(k, k + per);
       const n = k / per + 1;
       const canvas = await buildCardSheet(orders, async (o) => {
         done++;
-        await tick(`Sheet ${n} of ${nSheets} · drawing card ${done - picked.length} of ${picked.length}…`);
+        await tick(`Sheet ${n} of ${nSheets} · drawing card ${done - picked.length} of ${nCards}…`);
       });
       cardSheets.push({ canvas, orders });
       grid.insertAdjacentHTML('beforeend', `<figure>
@@ -7490,7 +7550,7 @@ async function cardSheetSelected() {
           <figcaption><b>Sheet ${n}</b> · ${orders.length} card${orders.length === 1 ? '' : 's'}<br>${orders.map(o => esc('#' + String(o.order_id || '').slice(-4))).join(' ')}</figcaption>
         </figure>`);
     }
-    await tick(`Ready · ${picked.length} card${picked.length === 1 ? '' : 's'} on ${nSheets} sheet${nSheets === 1 ? '' : 's'}`);
+    await tick(`Ready · ${nCards} card${nCards === 1 ? '' : 's'} on ${nSheets} sheet${nSheets === 1 ? '' : 's'}`);
     prog.hidden = true;
     dlBtn.disabled = prBtn.disabled = false;
   } catch (err) {

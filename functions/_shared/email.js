@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import { LINE_SENDER } from './lines.js';
+import { plcItem } from './pricing.js';
 
 const SENDGRID_ENDPOINT = 'https://api.sendgrid.com/v3/mail/send';
 
@@ -112,12 +113,13 @@ export async function sendOrderConfirmationEmail(env, order) {
   const {
     orderId, customerEmail, customerName,
     petFirstName, petLastName,
-    packCount, addOn, chipSize,
+    packCount, format, addOn, chipSize,
     shippingOption, total,
     shipAddrLine1, shipAddrLine2, shipCity, shipState, shipZip, shipCountry,
   } = order;
 
   if (!customerEmail) return { skipped: true, reason: 'no email' };
+  const item = plcItem(format, packCount);   // skin | card | bundle
 
   const petFull = [petFirstName, petLastName].filter(Boolean).join(' ') || 'your pet';
   const shipLabel = ({
@@ -125,8 +127,8 @@ export async function sendOrderConfirmationEmail(env, order) {
     standard: 'Standard Shipping (7–14 business days)',
     priority: 'Priority Shipping (3–5 business days)',
   })[shippingOption] || 'Standard Shipping';
-  const packLabel = (parseInt(packCount) === 2 ? '2-Pack' : '1-Pack')
-    + ' License Sticker' + (addOn === 'car_decal' ? ' + Car Decal' : '');
+  const packLabel = item.label + (addOn === 'car_decal' ? ' + Car Decal' : '');
+  const printWhat = ({ skin: 'sticker', card: 'card', bundle: 'sticker and card' })[item.format];
 
   const addrParts = [shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry]
     .filter(Boolean).join('<br>');
@@ -164,7 +166,7 @@ export async function sendOrderConfirmationEmail(env, order) {
           <h2 style="margin:0 0 12px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">🧾 Order Summary</h2>
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size:14px;color:#223355;border-collapse:collapse;">
             <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,102,255,.15);">Item</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(0,102,255,.15);color:#0099cc;">${esc(packLabel)}</td></tr>
-            <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,102,255,.15);">Chip Size</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(0,102,255,.15);color:#0099cc;">${esc((chipSize || 'mini').charAt(0).toUpperCase() + (chipSize || 'mini').slice(1))}</td></tr>
+            ${item.format === 'card' ? '' : `<tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,102,255,.15);">Chip Size</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(0,102,255,.15);color:#0099cc;">${esc((chipSize || 'mini').charAt(0).toUpperCase() + (chipSize || 'mini').slice(1))}</td></tr>`}
             <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,102,255,.15);">Shipping</td><td style="padding:6px 0;text-align:right;border-bottom:1px dashed rgba(0,102,255,.15);color:#0099cc;">${esc(shipLabel)}</td></tr>
             <tr><td style="padding:12px 0 0;font-weight:700;color:#0077ff;">Total</td><td style="padding:12px 0 0;text-align:right;font-weight:700;color:#0077ff;font-size:16px;">${esc(total || '—')}</td></tr>
           </table>
@@ -191,13 +193,13 @@ export async function sendOrderConfirmationEmail(env, order) {
         <tr><td style="padding:16px 32px 24px;">
           <h2 style="margin:0 0 12px;font-size:13px;color:#0088cc;letter-spacing:1px;text-transform:uppercase;font-weight:600;">⚡ What Happens Next</h2>
           ${shippingOption === 'stamp' ? `<ol style="margin:0;padding-left:20px;font-size:14px;color:#223355;line-height:1.8;">
-            <li>🖨️ We print your custom license sticker (2–3 business days).</li>
+            <li>🖨️ We print your custom license ${printWhat} (2–3 business days).</li>
             <li>📮 We seal and stamp your envelope and drop it in the mail.</li>
             <li>📬 Keep an eye on your mailbox — stamp mail typically arrives in 3–5 business days.</li>
             <li>❓ Not arrived after 21 days? Email <a href="mailto:contact@creditcardart.com" style="color:#0055cc;">contact@creditcardart.com</a> and we'll sort it out.</li>
             <li>🏆 ${esc(petFull)} is the fastest animal in the neighborhood.</li>
           </ol>` : `<ol style="margin:0;padding-left:20px;font-size:14px;color:#223355;line-height:1.8;">
-            <li>🖨️ We print your custom license sticker (2–3 business days).</li>
+            <li>🖨️ We print your custom license ${printWhat} (2–3 business days).</li>
             <li>📫 We carefully package it and ship it via your chosen method.</li>
             <li>📧 You get a follow-up email with tracking once it's in the mail.</li>
             <li>🏆 ${esc(petFull)} is the fastest animal in the neighborhood.</li>
@@ -233,8 +235,7 @@ Order ID: ${orderId || '—'}
 Pet: ${petFull}
 
 Item:     ${packLabel}
-Chip:     ${chipSize || 'mini'}
-Shipping: ${shipLabel}
+${item.format === 'card' ? '' : `Chip:     ${chipSize || 'mini'}\n`}Shipping: ${shipLabel}
 Total:    ${total || '—'}
 
 ${addrParts ? `Shipping to:\n${customerName ? customerName + '\n' : ''}${[shipAddrLine1, shipAddrLine2, [shipCity, shipState, shipZip].filter(Boolean).join(', '), shipCountry].filter(Boolean).join('\n')}\n\n` : ''}Next up: we'll print ${petFull}'s license, package it with care, and ship it your way. You'll get a tracking email once it's out the door.

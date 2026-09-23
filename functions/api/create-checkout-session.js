@@ -1,6 +1,6 @@
 // ── Pet License Factory — Stripe Checkout (Cloudflare Pages Function) ───────
 // POST /api/create-checkout-session
-// Body: { orderId, packQty, wantsDecal, discountEarned, petData, origin, cancelUrl,
+// Body: { orderId, packQty, format, wantsDecal, discountEarned, petData, origin, cancelUrl,
 //         promoCode?, affiliateRef? }
 // Returns: { url, sessionId }
 // ---------------------------------------------------------------------------
@@ -8,7 +8,7 @@
 import Stripe from 'stripe';
 import { getDb } from '../_shared/db.js';
 import { readRefCookie, normalizeCode } from '../_shared/affiliate.js';
-import { PRICES, GOOFY_PRICES } from '../_shared/pricing.js';
+import { PRICES, GOOFY_PRICES, plcItem } from '../_shared/pricing.js';
 import { lineOfBrand } from '../_shared/lines.js';
 
 // PRICES (US cents) is the canonical source of truth — see
@@ -38,6 +38,8 @@ export async function onRequest(context) {
   const {
     orderId        = '',
     packQty        = 1,
+    // Pet format: 'skin' (default) | 'card' | 'bundle'. See plcItem().
+    format         = 'skin',
     wantsDecal     = false,
     discountEarned = false,
     petData        = {},
@@ -71,7 +73,8 @@ export async function onRequest(context) {
   const ref = normalizeCode(affiliateRef || refFromCookie);
 
   // ── Calculate line item amounts in cents ──────────────────────────────────
-  let packAmount  = packQty === 2 ? PRICES.pack2 : PRICES.pack1;
+  const item = plcItem(format, packQty);
+  let packAmount  = item.amount;
   let decalAmount = wantsDecal ? PRICES.decal : 0;
 
   if (discountEarned) {
@@ -85,12 +88,12 @@ export async function onRequest(context) {
       price_data: {
         currency: 'usd',
         product_data: {
-          name: packQty === 2
-            ? 'Pet License Sticker (2-Pack)'
-            : 'Pet License Sticker (1-Pack)',
-          description: discountEarned
-            ? 'Custom pet license sticker — 15% mini-game discount applied!'
-            : 'Custom pet license sticker with your pet\'s photo and info',
+          name: item.name,
+          description: ({
+            skin:   'Custom pet license card skin sticker with your pet\'s photo and info',
+            card:   'Custom pet license printed on a real PVC card with your pet\'s photo and info',
+            bundle: 'Your pet\'s license as a card skin sticker AND a real PVC license card',
+          })[item.format] + (discountEarned ? ' (15% mini-game discount applied!)' : ''),
         },
         unit_amount: packAmount,
       },
@@ -198,22 +201,24 @@ export async function onRequest(context) {
     }
 
     // ── Freebie restriction: scope the 100%-off creator welcome code to a
-    // single 1-pack pet license at regular price. Without this the freebie
+    // single 1-pack pet license at regular price (a sticker, or a card if
+    // they picked the card; a bundle gets the sticker). Without this the freebie
     // would zero out a 2-pack or a decal add-on too, which is not the deal.
     // Replace the line items with a fresh single-item cart regardless of
     // what the body asked for. The 100% coupon then zeros the cart and
     // Stripe always clamps amount_total >= 0, so no stacking can go negative.
     // (PLC-only: the Goofy branch already rebuilt the cart above.)
     if (freebieFreeShipping && !isGoofy) {
+      const free = plcItem(item.format === 'card' ? 'card' : 'skin', 1);
       lineItems.length = 0;
       lineItems.push({
         price_data: {
           currency: 'usd',
           product_data: {
-            name: 'Pet License Sticker (1-Pack)',
-            description: 'Creator welcome freebie — custom pet license sticker',
+            name: free.name,
+            description: 'Creator welcome freebie — custom pet ' + (free.format === 'card' ? 'license card' : 'license sticker'),
           },
-          unit_amount: PRICES.pack1,
+          unit_amount: free.amount,
         },
         quantity: 1,
       });
@@ -286,13 +291,14 @@ export async function onRequest(context) {
         order_id:        orderId,
         pet_first_name:  (petData.petFirstName || '').slice(0, 100),
         pet_last_name:   (petData.petLastName  || '').slice(0, 100),
-        pack_qty:        String(packQty),
+        pack_qty:        String(item.packQty),
         wants_decal:     String(wantsDecal),
         discount_earned: String(discountEarned),
         affiliate_ref:   ref || '',
         // ── Goofy Licenses (additive keys; empty on PLC orders) ──
         brand:           isGoofy ? 'goat' : 'plc',
-        variant:         isGoofy ? gVariant : '',
+        // G.O.A.T. variant, or the pet format (skin | card | bundle).
+        variant:         isGoofy ? gVariant : (freebieFreeShipping ? (item.format === 'card' ? 'card' : 'skin') : item.format),
         src:             isGoofy ? String(src || '').slice(0, 120) : '',
         recipient_name:  isGoofy ? String(recipientName || '').slice(0, 100) : '',
         giver_name:      isGoofy ? String(giverName || '').slice(0, 100) : '',

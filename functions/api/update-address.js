@@ -85,7 +85,7 @@ export async function onRequest(context) {
     const result = await db.query(
       `SELECT id, order_id, status, verification_attempts, stripe_payment_intent,
               customer_email, customer_name, pet_first_name, pet_last_name,
-              pack_count, add_on, chip_size, shipping_option, total
+              pack_count, add_on, chip_size, shipping_option, total, variant
        FROM pet_orders WHERE stripe_session_id = $1 ORDER BY id ASC LIMIT 1`,
       [sessionId]
     );
@@ -235,6 +235,7 @@ export async function onRequest(context) {
       petFirstName:   order.pet_first_name,
       petLastName:    order.pet_last_name,
       packCount:      order.pack_count,
+      format:         order.variant,
       addOn:          order.add_on,
       chipSize:       order.chip_size,
       shippingOption: order.shipping_option,

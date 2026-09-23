@@ -215,7 +215,7 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
 #mg-org-btn{display:none;font-family:'Press Start 2P',monospace;font-size:8px;padding:10px 16px;background:#002a00;color:#00ff41;border:2px solid #00ff41;cursor:pointer;touch-action:manipulation;box-shadow:0 0 8px rgba(0,255,65,.4);animation:arcade-pulse 1.5s infinite}
 </style>
   <!-- Canonical client pricing (window.PLF_PRICES_USD) — keep in sync with functions/_shared/pricing.js -->
-  <script src="pricing.js"></script>
+  <script src="pricing.js?v=20260923"></script>
 </head>
 <body>
 <!-- Ghost element for chip drag -->
@@ -380,17 +380,35 @@ html,body{width:100%;height:100%;overflow:hidden;overflow-x:hidden;background:#0
   <!-- S5 CHECKOUT -->
   <div id="ps5" class="m-panel-inner" style="display:none">
     <div id="m-s5-picker">
-      <div class="m-panel-title">▸ CHOOSE YOUR PACK</div>
-      <div class="m-pack-row">
+      <div class="m-panel-title">▸ CHOOSE YOUR LICENSE</div>
+      <div class="m-pack-row" id="fmt-row">
+        <div class="m-pack-card selected" id="fmt-skin" onclick="selectFormat('skin')">
+          <div class="m-pack-title">CARD SKIN</div>
+          <div class="m-pack-price" id="fmt-price-skin">$9.99</div>
+          <div class="m-pack-sub">For your credit card</div>
+        </div>
+        <div class="m-pack-card" id="fmt-card" onclick="selectFormat('card')">
+          <div class="m-pack-title">LICENSE CARD</div>
+          <div class="m-pack-price" id="fmt-price-card">$8.95</div>
+          <div class="m-pack-sub">Real PVC card</div>
+        </div>
+        <div class="m-pack-card" id="fmt-bundle" onclick="selectFormat('bundle')">
+          <div class="m-pack-title">BUNDLE</div>
+          <div class="m-pack-price" id="fmt-price-bundle">$15.99</div>
+          <div class="m-pack-sub">Skin + card</div>
+        </div>
+      </div>
+      <div class="m-panel-title" id="pack-heading" style="margin-top:10px">▸ CHOOSE YOUR PACK</div>
+      <div class="m-pack-row" id="pack-row">
         <div class="m-pack-card" id="pack-1" onclick="selectPack(1)">
           <div class="m-pack-title">1-PACK</div>
           <div class="m-pack-price" id="price-1">$9.99</div>
-          <div class="m-pack-sub">1 license sticker</div>
+          <div class="m-pack-sub" id="pack-sub-1">1 license sticker</div>
         </div>
         <div class="m-pack-card selected" id="pack-2" onclick="selectPack(2)">
           <div class="m-pack-title">2-PACK</div>
           <div class="m-pack-price" id="price-2">$15.99</div>
-          <div class="m-pack-sub">2 license stickers</div>
+          <div class="m-pack-sub" id="pack-sub-2">2 license stickers</div>
         </div>
       </div>
       <div class="m-decal-row" id="decal-row" onclick="toggleDecal()">
@@ -531,7 +549,7 @@ async function submitOrder(orderData) {
       sex: orderData.sex||'', height: orderData.height||'',
       weight: orderData.weight||'', eyeColor: orderData.eyeColor||'',
       species: orderData.species||'',
-      photo: orderData.photo||null, packQty: orderData.packQty||1,
+      photo: orderData.photo||null, format: orderData.format||'skin', packQty: orderData.packQty||1,
       chipSize: orderData.chipSize||'mini', wantsDecal: orderData.wantsDecal||false,
       total: orderData.total||0,
     }),
@@ -559,6 +577,45 @@ const A = {
 // is a safe fallback if pricing.js hasn't loaded.
 const PRICES = (typeof window !== 'undefined' && window.PLF_PRICES_USD)
   || { pack1:9.99, pack2:15.99, decal:4.49, disc:0.15, stamp:0.95, standard:6.99, priority:10.99 };
+
+// ── License format: 'skin' (card skin sticker) | 'card' (standalone PVC
+// license card) | 'bundle' (one of each; pack size doesn't apply). Prices
+// come from PLF_ITEM in /pricing.js (mirror of functions/_shared/pricing.js).
+let plcFormat = 'skin';
+function plcItem(){
+  if (window.PLF_ITEM) return window.PLF_ITEM(plcFormat, packQty);
+  const two = packQty === 2 && plcFormat !== 'bundle';
+  if (plcFormat === 'bundle') return { format: 'bundle', packQty: 1, usd: PRICES.bundle || 15.99, label: 'Bundle: License Sticker + License Card' };
+  const [p1, p2] = fmtPrices(plcFormat), noun = plcFormat === 'card' ? 'License Card' : 'License Sticker';
+  return { format: plcFormat, packQty: two ? 2 : 1, usd: two ? p2 : p1,
+    label: (two ? '2-Pack ' : '1-Pack ') + noun + (two ? 's' : '') };
+}
+function fmtPrices(f){
+  return f === 'card' ? [PRICES.card1 || 8.95, PRICES.card2 || 13.95] : [PRICES.pack1, PRICES.pack2];
+}
+function selectFormat(f, quiet){
+  plcFormat = (f === 'card' || f === 'bundle') ? f : 'skin';
+  ['skin','card','bundle'].forEach(k => $('fmt-'+k).classList.toggle('selected', k === plcFormat));
+  // The bundle is one of each, so the pack choice goes away.
+  $('pack-row').style.display = plcFormat === 'bundle' ? 'none' : '';
+  $('pack-heading').style.display = plcFormat === 'bundle' ? 'none' : '';
+  const card = plcFormat === 'card';
+  $('pack-sub-1').textContent = card ? '1 license card' : '1 license sticker';
+  $('pack-sub-2').textContent = card ? '2 license cards' : '2 license stickers';
+  updatePriceDisplay();
+  // The panel changes height (bundle hides the pack row); keep the nav above it.
+  if (typeof updateNavPosition === 'function') updateNavPosition();
+  if (!quiet) beep(plcFormat === 'bundle' ? 700 : plcFormat === 'card' ? 600 : 520, .08);
+}
+function fmtPriceLabels(d, disc){
+  const usd = { skin: PRICES.pack1, card: PRICES.card1 || 8.95, bundle: PRICES.bundle || 15.99 };
+  Object.keys(usd).forEach(k => {
+    const p = usd[k];
+    $('fmt-price-'+k).innerHTML = d
+      ? `<span class="old-price">$${p.toFixed(2)}</span><span class="new-price">$${(p*(1-disc)).toFixed(2)}</span>`
+      : `$${p.toFixed(2)}`;
+  });
+}
 
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -1481,6 +1538,7 @@ function startStation5(){
   showLicPreviewCard();
   packQty=2; wantsDecal=false; discountEarned=false; shippingOption='stamp';
   $('pack-2').classList.add('selected'); $('pack-1').classList.remove('selected');
+  selectFormat(plcFormat, true);
   $('decal-row').classList.remove('active'); $('decal-check').textContent=' ';
   $('m-s5-discount').style.display='none';
   $('m-play-game-btn').style.display='block';
@@ -1492,7 +1550,8 @@ function startStation5(){
 }
 function updatePriceDisplay(){
   const d = discountEarned;
-  const p1 = PRICES.pack1, p2 = PRICES.pack2, dec = PRICES.decal, disc = PRICES.disc;
+  const [p1, p2] = fmtPrices(plcFormat), dec = PRICES.decal, disc = PRICES.disc;
+  fmtPriceLabels(d, disc);
   if(d){
     $('price-1').innerHTML = `<span class="old-price">$${p1.toFixed(2)}</span><span class="new-price">$${(p1*(1-disc)).toFixed(2)}</span>`;
     $('price-2').innerHTML = `<span class="old-price">$${p2.toFixed(2)}</span><span class="new-price">$${(p2*(1-disc)).toFixed(2)}</span>`;
@@ -1739,11 +1798,11 @@ function closeCheckoutOverlay(){
 }
 function s5BackToPicker(){ $('m-s5-summary').style.display='none'; $('m-s5-shipping').style.display='block'; setNav(()=>s5GoSummary(),()=>s5BackFromShipping(),'REVIEW ORDER ▶'); }
 function buildOrderSummary(){
-  const base=packQty===2?PRICES.pack2:PRICES.pack1,dec=wantsDecal?PRICES.decal:0;
+  const base=plcItem().usd,dec=wantsDecal?PRICES.decal:0;
   const disc=discountEarned?-((base+dec)*PRICES.disc):0; // 15% off entire cart
   const shipPrice=PRICES[shippingOption]||PRICES.stamp;
   const total=base+dec+disc+shipPrice;
-  let h=`<div class="m-order-line"><span>${packQty}-Pack License Sticker${packQty>1?'s':''}</span><span>$${base.toFixed(2)}</span></div>`;
+  let h=`<div class="m-order-line"><span>${plcItem().label}</span><span>$${base.toFixed(2)}</span></div>`;
   if(wantsDecal)h+=`<div class="m-order-line"><span>4×4" Vinyl Car Decal</span><span>+$${PRICES.decal.toFixed(2)}</span></div>`;
   if(discountEarned)h+=`<div class="m-order-line" style="color:#00ff41"><span>Discount (15%)</span><span>-$${Math.abs(disc).toFixed(2)}</span></div>`;
   const shipNames={stamp:'Stamp Mail (USPS)',standard:'Standard Shipping',priority:'Priority Shipping'};
@@ -1753,10 +1812,10 @@ function buildOrderSummary(){
   if($('co-order-lines')) $('co-order-lines').innerHTML=h;
 }
 async function s5Checkout(){
-  const base=packQty===2?PRICES.pack2:PRICES.pack1,dec=wantsDecal?PRICES.decal:0;
+  const base=plcItem().usd,dec=wantsDecal?PRICES.decal:0;
   const disc=discountEarned?(base+dec)*PRICES.disc:0; // 15% off entire cart
   const shipPrice=PRICES[shippingOption]||PRICES.stamp;
-  const orderData={...petData,photo:photoDataURL,chipSize,packQty,wantsDecal,shippingOption,basePrice:base,decalAmt:dec,discountEarned,total:parseFloat((base+dec-disc+shipPrice).toFixed(2))};
+  const orderData={...petData,photo:photoDataURL,chipSize,format:plcItem().format,packQty:plcItem().packQty,wantsDecal,shippingOption,basePrice:base,decalAmt:dec,discountEarned,total:parseFloat((base+dec-disc+shipPrice).toFixed(2))};
 
   // Disable both Place Order buttons (in-panel and checkout overlay) while
   // we create the Stripe session so the user can't double-submit.
@@ -1830,7 +1889,8 @@ async function s5Checkout(){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         orderId,
-        packQty,
+        format:  plcItem().format,
+        packQty: plcItem().packQty,
         wantsDecal,
         discountEarned,
         petData: { petFirstName: petData.petFirstName, petLastName: petData.petLastName },
