@@ -56,9 +56,6 @@ export async function onRequest(context) {
     // Multi-nominee batch: every id belongs to one checkout (one shipment).
     orderIds       = [],
     recipientCount = 0,
-    // G.O.A.T.: the nominee's mailing address from the builder, used to
-    // prefill Stripe's shipping form. { name, line1, line2, city, state, zip }
-    shipTo         = null,
   } = body;
 
   // Brand gate: ONLY the G.O.A.T. line ('goat', or the legacy 'goofy' the
@@ -227,34 +224,6 @@ export async function onRequest(context) {
       });
     }
 
-    // ── G.O.A.T.: prefill Stripe's shipping form with the nominee's address.
-    // Checkout has no "default shipping address" parameter, but it prefills
-    // from the Customer's saved shipping. Without this the giver is asked for
-    // a shipping address again and often types their own, and fulfilment
-    // ships to whatever Stripe collected. Best-effort: on failure Checkout
-    // just asks as before.
-    let prefillCustomer = null;
-    const st = shipTo && typeof shipTo === 'object' ? shipTo : null;
-    const clip = (v, n) => String(v || '').trim().slice(0, n);
-    if (isGoofy && st && clip(st.line1, 200) && clip(st.zip, 20)) {
-      try {
-        prefillCustomer = await stripe.customers.create({
-          name: clip(st.name, 100) || undefined,
-          shipping: {
-            name: clip(st.name, 100) || 'G.O.A.T. Nominee',
-            address: {
-              line1: clip(st.line1, 200), line2: clip(st.line2, 200) || undefined,
-              city: clip(st.city, 100), state: clip(st.state, 40),
-              postal_code: clip(st.zip, 20), country: 'US',
-            },
-          },
-          metadata: { source: 'goat_checkout_prefill', order_id: String(orderId || '').slice(0, 100) },
-        });
-      } catch (err) {
-        console.warn('shipping prefill customer failed (continuing without):', err);
-      }
-    }
-
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
@@ -284,12 +253,7 @@ export async function onRequest(context) {
               shipRate(PRICES.standard, 'Standard Shipping', 4, 7),
               shipRate(PRICES.priority, 'Priority Shipping', 3, 5),
             ],
-      // A prefilled G.O.A.T. checkout reuses that customer (Checkout asks
-      // for the giver's email, and the customer's name is the nominee's,
-      // so billing details stay on the payment, not the customer).
-      ...(prefillCustomer
-        ? { customer: prefillCustomer.id, customer_update: { shipping: 'auto' } }
-        : { customer_creation: 'always' }),
+      customer_creation: 'always',
       // Abandoned-checkout recovery: expire unfinished sessions after 2 hours
       // so Stripe fires checkout.session.expired with a 30-day recovery URL
       // (and whatever email the customer typed before bailing). The webhook
