@@ -4,6 +4,8 @@
 // key (EZAK…) for live. Same code, swap the env var to go live.
 // ---------------------------------------------------------------------------
 
+import { lineOfOrder } from './lines.js';
+
 const EP_BASE = 'https://api.easypost.com/v2';
 
 // Return address for all shipments
@@ -17,6 +19,14 @@ export const FROM_ADDRESS = {
   country: 'US',
   email:   'contact@creditcardart.com',
 };
+
+// G.O.A.T. kits are gifts, often anonymous: the label names the Council, not
+// the business (USPS still needs a street address, so that stays).
+function fromAddressFor(order) {
+  return lineOfOrder(order) === 'goat'
+    ? { ...FROM_ADDRESS, name: 'The Council of G.O.A.T. Affairs' }
+    : FROM_ADDRESS;
+}
 
 // Parcel dimensions per order shape. Small rigid mailer for the card-skin
 // sticker. 2-pack + decal adds weight but keeps the same envelope size.
@@ -106,7 +116,7 @@ export async function createAndBuyLabel(env, order) {
   const shipment = await ep(env, 'POST', '/shipments', {
     shipment: {
       to_address:   toAddressFrom(order),
-      from_address: FROM_ADDRESS,
+      from_address: fromAddressFor(order),
       parcel:       parcelFor(order),
       // Strict USPS verification: fail before buying postage if the address is
       // undeliverable. Stripe's address autocomplete is format-only — it won't
