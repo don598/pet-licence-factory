@@ -285,8 +285,12 @@ function goatEmailShell(env, { subject, preheader, title, lead, sections, footer
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${esc(subject)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet"></head>
-<body style="margin:0;padding:0;background:${E.bg};font-family:${E.sans};color:${E.ink};">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  /* Keep Gmail / Apple Mail from turning the address into blue links. */
+  a[x-apple-data-detectors], u + #body a, u + .goat-body a, .goat-addr a { color: inherit !important; text-decoration: none !important; font: inherit !important; }
+</style></head>
+<body id="body" class="goat-body" style="margin:0;padding:0;background:${E.bg};font-family:${E.sans};color:${E.ink};">
   ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(preheader)}</div>` : ''}
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${E.bg};padding:26px 0;">
     <tr><td align="center" style="padding:0 12px;">
@@ -385,13 +389,13 @@ export async function sendGoofyConfirmationEmail(env, order) {
           ${goatRow('Delivery', shipLabel)}
           <tr>
             <td style="padding:12px 0 0;font-size:15px;font-weight:800;color:${E.ink};">Processing fee</td>
-            <td style="padding:12px 0 0;text-align:right;font-family:${E.serif};font-size:18px;font-weight:700;color:${E.gold};">${esc(total || '—')}</td>
+            <td style="padding:12px 0 0;text-align:right;font-family:${E.sans};font-size:18px;font-weight:800;color:${E.gold};">${esc(total || '—')}</td>
           </tr>
           </table>
         </td></tr>
         ${hasAddr ? `<tr><td style="padding:22px 36px 4px;">
           ${goatH2('📮 Kit mails to')}
-          <div style="background:${E.filing};border-left:3px solid ${E.gold};border-radius:6px;padding:12px 16px;font-size:14px;line-height:1.7;color:${E.ink};">
+          <div class="goat-addr" style="background:${E.filing};border-left:3px solid ${E.gold};border-radius:6px;padding:12px 16px;font-size:14px;line-height:1.7;color:${E.ink};">
             <b>${esc(addrLines[0])}</b><br>${addrLines.slice(1).map(esc).join('<br>')}
           </div>
         </td></tr>` : ''}
