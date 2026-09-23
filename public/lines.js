@@ -41,7 +41,7 @@
       blurb: 'Nominate a legend. The Council certifies them and mails a Greatest Of All Time license, with an official certificate.',
       cta: 'Nominate a legend',
       url: '/goat',
-      image: '/goofy-home/goat-card.jpg',
+      image: '/goofy-home/goat-card-custom.jpg',
       certificateUrl: '/goofy/certificate',
       color: { ink: '#7A4F05', tint: '#F5EAD0', dot: '#A86E0A', panel: '#EDE4D0' }
     },
