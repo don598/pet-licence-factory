@@ -56,6 +56,10 @@ export async function onRequest(context) {
     // Multi-nominee batch: every id belongs to one checkout (one shipment).
     orderIds       = [],
     recipientCount = 0,
+    // G.O.A.T.: the nominee's mailing address from the builder
+    // { name, line1, line2, city, state, zip }. When present, Stripe doesn't
+    // collect a shipping address; the webhook fills the order from metadata.
+    shipTo         = null,
   } = body;
 
   // Brand gate: ONLY the G.O.A.T. line ('goat', or the legacy 'goofy' the
@@ -71,6 +75,13 @@ export async function onRequest(context) {
   // Affiliate ref resolution priority: explicit body → first-party cookie.
   const refFromCookie = readRefCookie(request);
   const ref = normalizeCode(affiliateRef || refFromCookie);
+
+  const clip = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
+  const st = isGoofy && shipTo && typeof shipTo === 'object' ? shipTo : null;
+  const goatShipTo = st && clip(st.line1, 200) && clip(st.city, 100) && clip(st.state, 40) && clip(st.zip, 20)
+    ? { name: clip(st.name, 100), line1: clip(st.line1, 200), line2: clip(st.line2, 200),
+        city: clip(st.city, 100), state: clip(st.state, 40), zip: clip(st.zip, 20) }
+    : null;
 
   // ── Calculate line item amounts in cents ──────────────────────────────────
   const item = plcItem(format, packQty);
@@ -227,11 +238,10 @@ export async function onRequest(context) {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
-      shipping_address_collection: {
-        // US-only: the Stamp shipping tier is USPS domestic mail and cannot
-        // be sent internationally.
-        allowed_countries: ['US'],
-      },
+      // US-only: the Stamp shipping tier is USPS domestic mail and cannot be
+      // sent internationally. A G.O.A.T. nomination already has the nominee's
+      // address from the builder, so Stripe doesn't ask again (see goatShipTo).
+      ...(goatShipTo ? {} : { shipping_address_collection: { allowed_countries: ['US'] } }),
       // Either pre-apply a promo, or let the customer type one in. Not both.
       ...(preAppliedPromoId
         ? { discounts: [{ promotion_code: preAppliedPromoId }] }
@@ -306,6 +316,12 @@ export async function onRequest(context) {
         // finalises all of them; the email names the first + count).
         order_ids:       isGoofy && gIds.length > 1 ? gIds.join(',').slice(0, 500) : '',
         recipient_count: isGoofy ? String(gCount) : '',
+        // Where a G.O.A.T. kit ships when Stripe didn't collect an address
+        // (read by the webhook). Absent on PLC orders.
+        ...(goatShipTo ? {
+          ship_name: goatShipTo.name, ship_line1: goatShipTo.line1, ship_line2: goatShipTo.line2,
+          ship_city: goatShipTo.city, ship_state: goatShipTo.state, ship_zip: goatShipTo.zip,
+        } : {}),
       },
       success_url: successUrl,
       cancel_url:  cancel,

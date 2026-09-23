@@ -1518,6 +1518,10 @@ function checkout(){
           brand:'goofy', variant:state.variant, src:srcParam,
           recipientName:first, giverName:((state.variant === 'custom-giver') ? giver : ''),
           orderId:orderId, orderIds:orderIds, recipientCount:orderIds.length,
+          // Where the kit goes. With this, Stripe doesn't ask for a shipping
+          // address again (givers found that confusing and typed their own).
+          shipTo:{ name:first, line1:orderBody.addrStreet, line2:orderBody.addrLine2,
+                   city:orderBody.addrCity, state:orderBody.addrState, zip:orderBody.addrZip },
           petData:{ petFirstName:first, petLastName:'' },
           origin:window.location.origin, cancelUrl:resumeUrl(),
           affiliateRef:affiliateRef, promoCode:promoCode

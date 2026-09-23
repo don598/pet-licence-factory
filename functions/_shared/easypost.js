@@ -49,8 +49,10 @@ function parcelFor(order) {
 
 // Build the EasyPost `to_address` from a paid pet_orders row.
 function toAddressFrom(order) {
+  // A G.O.A.T. kit goes to the nominee, not the person who paid.
+  const goatName = lineOfOrder(order) === 'goat' ? (order.recipient_name || order.pet_first_name) : '';
   return {
-    name:    order.customer_name || [order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ') || 'Recipient',
+    name:    goatName || order.customer_name || [order.pet_first_name, order.pet_last_name].filter(Boolean).join(' ') || 'Recipient',
     street1: order.ship_addr_line1 || '',
     street2: order.ship_addr_line2 || '',
     city:    order.ship_city       || '',

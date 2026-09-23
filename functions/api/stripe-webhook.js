@@ -104,7 +104,13 @@ export async function onRequest(context) {
   const ship         = session.shipping_details
                     || session.collected_information?.shipping_details
                     || {};
-  const addr         = ship.address || {};
+  // G.O.A.T. checkouts don't collect a shipping address (the builder already
+  // has the nominee's); create-checkout-session puts it in metadata instead.
+  const md           = session.metadata || {};
+  const addr         = ship.address?.line1 ? ship.address
+                     : md.ship_line1 ? { line1: md.ship_line1, line2: md.ship_line2 || '', city: md.ship_city || '',
+                                         state: md.ship_state || '', postal_code: md.ship_zip || '', country: 'US' }
+                     : {};
   const email        = session.customer_details?.email || '';
   const customerName = session.customer_details?.name  || ship.name || '';
   const paymentIntentId = session.payment_intent || '';
