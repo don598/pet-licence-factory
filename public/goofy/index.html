@@ -1518,6 +1518,10 @@ function checkout(){
           brand:'goofy', variant:state.variant, src:srcParam,
           recipientName:first, giverName:((state.variant === 'custom-giver') ? giver : ''),
           orderId:orderId, orderIds:orderIds, recipientCount:orderIds.length,
+          // Prefills Stripe's shipping form so the giver isn't asked again
+          // (and doesn't type their own address by mistake).
+          shipTo:{ name:first, line1:orderBody.addrStreet, line2:orderBody.addrLine2,
+                   city:orderBody.addrCity, state:orderBody.addrState, zip:orderBody.addrZip },
           petData:{ petFirstName:first, petLastName:'' },
           origin:window.location.origin, cancelUrl:resumeUrl(),
           affiliateRef:affiliateRef, promoCode:promoCode
