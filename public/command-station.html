@@ -2341,7 +2341,7 @@ html, body {
   .cs-header-right { order: 1; width: 100%; justify-content: space-between; }
   .cs-search kbd { display: none; }
   .cs-user-meta { display: none; }
-  #last-sync, #bg-prerun-status { font-size: 10px; }
+  #last-sync { font-size: 10px; }
 
   /* Page header: smaller title, tighter padding, actions wrap.       */
   .page-header { padding: 16px 14px 12px; gap: 10px; }
@@ -2623,7 +2623,6 @@ html, body {
 .btn-icon { padding: 0; width: 42px; height: 42px; justify-content: center; font-size: 16px; }
 .orders-header { align-items: center; }
 .sync-note { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 11px; color: var(--muted); white-space: nowrap; }
-.sync-note #bg-prerun-status { display: flex; align-items: center; gap: 6px; }
 .cs-search { background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; }
 .cs-search .cs-search-icon { color: var(--muted); flex: 0 0 auto; }
 .cs-search input { font-size: 14.5px; min-width: 0; }
@@ -2875,7 +2874,7 @@ button.stat-card:focus-visible { outline: 2px solid var(--accent); outline-offse
             <h1 class="page-title">Orders</h1>
           </div>
           <div class="page-actions">
-            <span class="sync-note"><span id="bg-prerun-status"></span><span id="last-sync"></span></span>
+            <span class="sync-note"><span id="last-sync"></span></span>
             <label class="cs-search" for="search-input">
               <svg class="cs-search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
               <span class="sr-only">Search orders</span>
@@ -4085,10 +4084,6 @@ async function loadOrders() {
   renderTable();
 
   document.getElementById('last-sync').textContent = 'Synced ' + new Date().toLocaleTimeString();
-
-  // Kick off background BG-removal pre-run (non-blocking). Pet orders only:
-  // other lines never go through the pet-licence cutout pipeline.
-  setTimeout(() => preRunBgQueue(allOrders.filter(isPetOrder)), 500);
 }
 
 // ── Waitlists (coming-soon lines + suggestion box) — read-only ───────────────
@@ -8787,74 +8782,6 @@ async function bgCacheSet(photoUrl, blob) {
       }
     };
   } catch (e) { console.warn('[PLF] bg cache write failed:', e); }
-}
-
-// ── Background pre-run queue ──────────────────────────────────────────────────
-// After the orders list loads, silently process photos in the background so
-// the admin sees instant BG removal when they click into any order.
-let _bgPreRunState = { running: false, queue: [], processed: 0, total: 0, active: 0 };
-const BG_CONCURRENCY = 2; // @imgly is heavy; 2 concurrent is safe
-
-async function preRunBgQueue(orders) {
-  if (_bgPreRunState.running) return;
-  // Only orders we haven't already cached this session (in-memory)
-  const candidates = orders.filter(o => !_bgRemovedCache[o.id] && !_bgRemovedCache['row-' + o.id]);
-  if (!candidates.length) return;
-
-  _bgPreRunState.running = true;
-  _bgPreRunState.queue = candidates.slice();
-  _bgPreRunState.total = candidates.length;
-  _bgPreRunState.processed = 0;
-  _bgPreRunState.active = 0;
-  updateBgPreRunIndicator();
-
-  const workers = [];
-  for (let i = 0; i < BG_CONCURRENCY; i++) workers.push(bgPreRunWorker());
-  await Promise.all(workers);
-
-  _bgPreRunState.running = false;
-  updateBgPreRunIndicator();
-}
-
-async function bgPreRunWorker() {
-  while (_bgPreRunState.queue.length) {
-    const order = _bgPreRunState.queue.shift();
-    _bgPreRunState.active++;
-    updateBgPreRunIndicator();
-    try {
-      // Mark in-memory so we don't re-enqueue
-      _bgRemovedCache['row-' + order.id] = 'pending';
-      // Fetch full order (photo_url isn't in list response)
-      const res = await adminAPI('get_order', { id: order.id });
-      const full = res.order;
-      const ep = full && effectivePhoto(full);
-      if (ep) {
-        // Check persistent cache first
-        const cached = await bgCacheGet(ep);
-        if (cached) {
-          _bgRemovedCache[ep] = URL.createObjectURL(cached);
-        } else {
-          // Actually run BG removal (this is the expensive step)
-          await removePhotoBackground(ep);
-        }
-      }
-      delete _bgRemovedCache['row-' + order.id];
-    } catch (err) {
-      console.warn('[PLF] bg pre-run failed for order', order.id, err);
-    }
-    _bgPreRunState.processed++;
-    _bgPreRunState.active--;
-    updateBgPreRunIndicator();
-  }
-}
-
-function updateBgPreRunIndicator() {
-  const el = document.getElementById('bg-prerun-status');
-  if (!el) return;
-  const { running, processed, total, active } = _bgPreRunState;
-  if (!running && !active) { el.textContent = ''; return; }
-  const remaining = total - processed;
-  el.innerHTML = `<span class="spinner" style="width:10px;height:10px;border-width:1.5px"></span> Pre-processing photos: ${processed}/${total}`;
 }
 
 function fetchWithProgress(url, cacheKey, onProgress) {
