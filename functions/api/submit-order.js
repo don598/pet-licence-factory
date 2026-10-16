@@ -36,13 +36,14 @@ export async function onRequest(context) {
   // Opportunistic cleanup: prune abandoned-cart shells that never reached
   // Stripe checkout. We create the order row before redirecting to Stripe so
   // we have an order_id to hand to checkout; if the customer never pays, the
-  // row sits as `pending` forever. Stripe Checkout sessions themselves expire
-  // after 24 h, so anything still `pending` with no payment after a few days
-  // is definitively abandoned. Window is generous to leave room for slow
-  // customers returning to finish checkout via a re-issued link.
+  // row sits as `pending` forever. Checkout sessions expire after 2 h, and the
+  // abandoned-checkout email (stripe-webhook.js) sends Stripe's recovery URL,
+  // which stays payable for 30 days. A payment through it still needs this
+  // row (the webhook marks it paid and ships from it), so keep pending rows
+  // past that window before treating them as abandoned.
   //
   // Fire-and-forget — never block (or fail) order submission on cleanup.
-  const ABANDONED_PENDING_TTL = "72 hours";
+  const ABANDONED_PENDING_TTL = "31 days";
   try {
     const r = await db.query(
       `DELETE FROM pet_orders
